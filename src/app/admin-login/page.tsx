@@ -1,12 +1,22 @@
 
+'use client';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import React from 'react';
 
 export default function AdminLoginPage() {
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+
+  React.useEffect(() => {
+    setEmail('admin@example.com');
+    setPassword('password');
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <main className="flex-1 flex flex-col items-center justify-center p-4">
@@ -33,12 +43,19 @@ export default function AdminLoginPage() {
                     type="email"
                     placeholder="admin@example.com"
                     required
-                    defaultValue="admin@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2 text-left">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required defaultValue="password" />
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    required 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                 </div>
                 <Button asChild className="w-full" variant="accent">
                   <Link href="/admin/dashboard">Login</Link>
