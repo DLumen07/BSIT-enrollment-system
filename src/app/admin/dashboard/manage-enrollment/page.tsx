@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import { ChevronRight, FileSignature, LayoutGrid, BookCopy, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 
 export default function ManageEnrollmentPage() {
   const managementOptions = [
@@ -44,22 +43,23 @@ export default function ManageEnrollmentPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {managementOptions.map((option) => (
-            <Card key={option.title} className="flex flex-col hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center gap-4">
-                {option.icon}
-                <div>
-                    <CardTitle>{option.title}</CardTitle>
-                    <CardDescription>{option.description}</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-grow flex items-end justify-end">
-                <Button asChild variant="outline">
-                  <Link href={option.link}>
-                    Go to Page <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <Link href={option.link} key={option.title} className="group">
+                <Card className="flex flex-col h-full hover:shadow-lg transition-shadow hover:border-primary">
+                    <CardHeader className="flex flex-row items-start gap-4">
+                        {option.icon}
+                        <div>
+                            <CardTitle>{option.title}</CardTitle>
+                            <CardDescription>{option.description}</CardDescription>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="flex-grow flex items-end justify-end">
+                        <div className="flex items-center text-sm font-medium text-primary group-hover:underline">
+                            Go to Page
+                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </Link>
           ))}
         </div>
       </main>
