@@ -60,10 +60,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 export default function AdminDashboardPage() {
-    const [isEnrollmentOpen, setIsEnrollmentOpen] = React.useState(false);
 
   return (
     <SidebarProvider>
@@ -95,39 +93,12 @@ export default function AdminDashboardPage() {
                 Students
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <Collapsible open={isEnrollmentOpen} onOpenChange={setIsEnrollmentOpen}>
-               <CollapsibleTrigger asChild>
-                <SidebarMenuItem>
-                    <SidebarMenuButton>
-                        <ClipboardList />
-                        Manage Enrollment
-                        <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${isEnrollmentOpen ? 'rotate-180' : ''}`} />
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-               </CollapsibleTrigger>
-              <CollapsibleContent className="pl-7">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton href="/admin/dashboard/manage-applications" className="h-8">
-                            <FileSignature className="h-3.5 w-3.5"/>
-                            Manage Applications
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                         <SidebarMenuButton href="/admin/dashboard/manage-blocks" className="h-8">
-                            <LayoutGrid className="h-3.5 w-3.5"/>
-                            Manage Blocks
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                         <SidebarMenuButton href="/admin/dashboard/manage-subjects" className="h-8">
-                            <BookCopy className="h-3.5 w-3.5"/>
-                            Manage Subjects
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-              </CollapsibleContent>
-            </Collapsible>
+            <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/dashboard/manage-enrollment">
+                    <ClipboardList />
+                    Manage Enrollment
+                </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton href="#">
                 <BarChart3 />
