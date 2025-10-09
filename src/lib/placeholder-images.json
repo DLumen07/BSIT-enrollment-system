@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-image",
+      "description": "A hero image for the landing page.",
+      "imageUrl": "https://picsum.photos/seed/1/600/400",
+      "imageHint": "abstract geometric"
+    }
+  ]
 }
