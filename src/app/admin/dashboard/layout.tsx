@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {
   Bell,
   Home,
-  Search,
   LogOut,
   Users2,
   ClipboardList,
@@ -27,7 +26,6 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,14 +116,6 @@ export default function AdminDashboardLayout({
              {/* This will be the breadcrumb, to be implemented later */}
           </div>
           <div className="flex items-center gap-4">
-            <div className="relative hidden md:block">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
-              />
-            </div>
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="rounded-full">
               <Bell className="h-5 w-5" />

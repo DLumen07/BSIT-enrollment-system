@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import {
   ChevronRight,
+  Search,
 } from 'lucide-react';
 import React from 'react';
 
@@ -23,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 
 
 export default function AdminDashboardPage() {
@@ -36,6 +38,14 @@ export default function AdminDashboardPage() {
               <span className="text-foreground">Dashboard</span>
             </div>
           </div>
+           <div className="relative hidden md:block">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search..."
+                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+              />
+            </div>
         </header>
         <main className="flex-1 p-4 sm:p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
