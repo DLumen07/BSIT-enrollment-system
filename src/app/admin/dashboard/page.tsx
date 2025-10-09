@@ -60,8 +60,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { usePathname } from 'next/navigation';
 
 export default function AdminDashboardPage() {
+  const pathname = usePathname();
 
   return (
     <SidebarProvider>
@@ -82,9 +84,11 @@ export default function AdminDashboardPage() {
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/admin/dashboard" isActive>
-                <Home />
-                Dashboard
+              <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard'}>
+                <Link href="/admin/dashboard">
+                  <Home />
+                  Dashboard
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -94,10 +98,12 @@ export default function AdminDashboardPage() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/dashboard/manage-enrollment">
-                    <ClipboardList />
-                    Manage Enrollment
-                </SidebarMenuButton>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/dashboard/manage-enrollment')}>
+                  <Link href="/admin/dashboard/manage-enrollment">
+                      <ClipboardList />
+                      Manage Enrollment
+                  </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton href="#">
