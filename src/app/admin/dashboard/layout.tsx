@@ -8,6 +8,8 @@ import {
   Users2,
   ClipboardList,
   BarChart3,
+  ChevronRight,
+  Search,
 } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
@@ -36,6 +38,44 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { Input } from '@/components/ui/input';
+
+const Breadcrumb = () => {
+    const pathname = usePathname();
+    const segments = pathname.split('/').filter(Boolean);
+
+    // Don't render breadcrumbs for the main dashboard page
+    if (pathname === '/admin/dashboard') {
+        return (
+             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <span className="text-foreground">Dashboard</span>
+            </div>
+        );
+    }
+    
+    const capitalize = (s: string) => {
+        const str = s.replace(/-/g, ' ');
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    return (
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            {segments.map((segment, index) => {
+                const href = '/' + segments.slice(0, index + 1).join('/');
+                const isLast = index === segments.length - 1;
+
+                return (
+                    <React.Fragment key={href}>
+                        {index > 0 && <ChevronRight className="h-4 w-4" />}
+                        <Link href={href} className={`${isLast ? 'text-foreground' : 'hover:text-foreground'}`}>
+                           {capitalize(segment)}
+                        </Link>
+                    </React.Fragment>
+                );
+            })}
+        </div>
+    );
+};
 
 
 export default function AdminDashboardLayout({
@@ -113,8 +153,18 @@ export default function AdminDashboardLayout({
         <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
           <SidebarTrigger className="md:hidden"/>
           <div className="flex-1">
-             {/* This will be the breadcrumb, to be implemented later */}
+             <Breadcrumb />
           </div>
+           {pathname === '/admin/dashboard' && (
+             <div className="relative hidden md:block">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search..."
+                  className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                />
+              </div>
+            )}
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="rounded-full">

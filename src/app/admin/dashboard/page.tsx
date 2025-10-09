@@ -30,23 +30,6 @@ import { Input } from '@/components/ui/input';
 export default function AdminDashboardPage() {
   return (
     <>
-        <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <span>Admin</span>
-              <ChevronRight className="h-4 w-4" />
-              <span className="text-foreground">Dashboard</span>
-            </div>
-          </div>
-           <div className="relative hidden md:block">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
-              />
-            </div>
-        </header>
         <main className="flex-1 p-4 sm:p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>

@@ -8,34 +8,25 @@ export default function ManageEnrollmentPage() {
     {
       title: 'Manage Applications',
       description: 'Review and process student applications.',
-      link: '/admin/dashboard/manage-applications',
+      link: '/admin/dashboard/manage-enrollment/manage-applications',
       icon: <FileSignature className="h-8 w-8 text-primary" />,
     },
     {
       title: 'Manage Blocks',
       description: 'Organize students into blocks or sections.',
-      link: '/admin/dashboard/manage-blocks',
+      link: '/admin/dashboard/manage-enrollment/manage-blocks',
       icon: <LayoutGrid className="h-8 w-8 text-primary" />,
     },
     {
       title: 'Manage Subjects',
       description: 'Add, edit, or remove subjects offered.',
-      link: '/admin/dashboard/manage-subjects',
+      link: '/admin/dashboard/manage-enrollment/manage-subjects',
       icon: <BookCopy className="h-8 w-8 text-primary" />,
     },
   ];
 
   return (
     <>
-      <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Link href="/admin/dashboard" className="hover:text-foreground">Admin</Link>
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-foreground">Manage Enrollment</span>
-          </div>
-        </div>
-      </header>
       <main className="flex-1 p-4 sm:p-6 space-y-6">
         <div className="space-y-2">
             <h1 className="text-3xl font-bold">Enrollment Management</h1>
