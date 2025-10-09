@@ -2,7 +2,7 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, MoreHorizontal, CheckCircle2, XCircle } from 'lucide-react';
+import { ChevronRight, MoreHorizontal, CheckCircle2, XCircle, Pencil, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -112,7 +112,12 @@ export default function ManageApplicationsPage() {
   };
 
   const handleReject = (application: Application, reason: string) => {
-    setPendingApplications(prev => prev.filter(app => app.id !== application.id));
+    // If rejecting from approved list
+    if (approvedApplications.find(app => app.id === application.id)) {
+        setApprovedApplications(prev => prev.filter(app => app.id !== application.id));
+    } else { // If rejecting from pending list
+        setPendingApplications(prev => prev.filter(app => app.id !== application.id));
+    }
     setRejectedApplications(prev => [...prev, { ...application, rejectionReason: reason }]);
     handleCloseRejectionDialog();
   };
@@ -199,6 +204,7 @@ export default function ManageApplicationsPage() {
                                                 <TableHead>Course</TableHead>
                                                 <TableHead>Year</TableHead>
                                                 <TableHead>Status</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -210,6 +216,28 @@ export default function ManageApplicationsPage() {
                                                     <TableCell>{application.year}</TableCell>
                                                     <TableCell>
                                                         <Badge className="bg-green-500 hover:bg-green-600">Approved</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                    <span className="sr-only">Open menu</span>
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                                <DropdownMenuItem>
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)}>
+                                                                    <X className="mr-2 h-4 w-4" />
+                                                                    Reject
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
