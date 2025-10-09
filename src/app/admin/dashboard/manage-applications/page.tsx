@@ -23,6 +23,9 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Textarea } from '@/components/ui/textarea';
 
 const pendingApplications = [
     { 
@@ -31,7 +34,6 @@ const pendingApplications = [
         name: 'John Doe', 
         course: 'BSIT', 
         year: 2, 
-        date: '2024-08-01',
         credentials: {
             birthCertificate: true,
             grades: true,
@@ -44,7 +46,6 @@ const pendingApplications = [
         name: 'Jane Smith', 
         course: 'ACT', 
         year: 1, 
-        date: '2024-08-02',
         credentials: {
             birthCertificate: true,
             grades: false,
@@ -57,7 +58,6 @@ const pendingApplications = [
         name: 'Peter Jones', 
         course: 'BSIT', 
         year: 1, 
-        date: '2024-08-02',
         credentials: {
             birthCertificate: true,
             grades: true,
@@ -66,16 +66,35 @@ const pendingApplications = [
     },
 ];
 
+const rejectionReasons = [
+    { id: 'incomplete_docs', label: 'Incomplete or missing documents.' },
+    { id: 'not_qualified', label: 'Does not meet the minimum qualifications.' },
+    { id: 'slots_full', label: 'All available slots for the course are filled.' },
+];
+
 type Application = typeof pendingApplications[0];
 
 export default function ManageApplicationsPage() {
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [rejectionDialog, setRejectionDialog] = useState<{ isOpen: boolean; application: Application | null }>({
+    isOpen: false,
+    application: null,
+  });
 
   const credentialLabels: { key: keyof Application['credentials']; label: string }[] = [
     { key: 'birthCertificate', label: 'Birth Certificate' },
     { key: 'grades', label: 'Form 138 / Report Card' },
     { key: 'goodMoral', label: 'Good Moral Certificate' },
   ];
+
+  const handleOpenRejectionDialog = (application: Application) => {
+    setSelectedApplication(null); // Close the credentials dialog if it's open
+    setRejectionDialog({ isOpen: true, application });
+  };
+
+  const handleCloseRejectionDialog = () => {
+    setRejectionDialog({ isOpen: false, application: null });
+  }
 
   return (
     <>
@@ -142,7 +161,9 @@ export default function ManageApplicationsPage() {
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
                                                                 <DropdownMenuItem>Approve</DropdownMenuItem>
-                                                                <DropdownMenuItem>Reject</DropdownMenuItem>
+                                                                <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)}>
+                                                                    Reject
+                                                                </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
                                                     </TableCell>
@@ -210,8 +231,40 @@ export default function ManageApplicationsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="destructive" onClick={() => setSelectedApplication(null)}>Reject</Button>
+                        <Button variant="destructive" onClick={() => handleOpenRejectionDialog(selectedApplication)}>Reject</Button>
                         <Button className="bg-green-500 hover:bg-green-600 text-white" onClick={() => setSelectedApplication(null)}>Approve</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        )}
+
+        {rejectionDialog.isOpen && rejectionDialog.application && (
+            <Dialog open={rejectionDialog.isOpen} onOpenChange={(open) => !open && handleCloseRejectionDialog()}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Reject Application</DialogTitle>
+                        <DialogDescription>
+                            Provide a reason for rejecting the application for <span className="font-semibold">{rejectionDialog.application.name}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Label>Select a reason:</Label>
+                        <RadioGroup defaultValue={rejectionReasons[0].id}>
+                            {rejectionReasons.map((reason) => (
+                                <div key={reason.id} className="flex items-center space-x-2">
+                                    <RadioGroupItem value={reason.id} id={reason.id} />
+                                    <Label htmlFor={reason.id}>{reason.label}</Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                        <div className="grid w-full gap-1.5">
+                            <Label htmlFor="custom-reason">Or provide a custom reason:</Label>
+                            <Textarea placeholder="Type your message here." id="custom-reason" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCloseRejectionDialog}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleCloseRejectionDialog}>Confirm Rejection</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
