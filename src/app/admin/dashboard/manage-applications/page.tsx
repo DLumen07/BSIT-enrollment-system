@@ -38,6 +38,7 @@ const pendingApplications = [
             birthCertificate: true,
             grades: true,
             goodMoral: false,
+            registrationForm: true,
         }
     },
     { 
@@ -50,6 +51,7 @@ const pendingApplications = [
             birthCertificate: true,
             grades: false,
             goodMoral: true,
+            registrationForm: false,
         }
     },
     { 
@@ -62,6 +64,7 @@ const pendingApplications = [
             birthCertificate: true,
             grades: true,
             goodMoral: true,
+            registrationForm: true,
         }
     },
 ];
@@ -85,6 +88,7 @@ export default function ManageApplicationsPage() {
     { key: 'birthCertificate', label: 'Birth Certificate' },
     { key: 'grades', label: 'Form 138 / Report Card' },
     { key: 'goodMoral', label: 'Good Moral Certificate' },
+    { key: 'registrationForm', label: 'Finished Registration Form' },
   ];
 
   const handleOpenRejectionDialog = (application: Application) => {
