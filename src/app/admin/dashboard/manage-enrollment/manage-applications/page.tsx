@@ -26,8 +26,9 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 
-const pendingApplications = [
+const initialPendingApplications = [
     { 
         id: 1, 
         studentId: '2024-1001', 
@@ -75,9 +76,13 @@ const rejectionReasons = [
     { id: 'slots_full', label: 'All available slots for the course are filled.' },
 ];
 
-type Application = typeof pendingApplications[0];
+type Application = typeof initialPendingApplications[0] & { rejectionReason?: string };
+
 
 export default function ManageApplicationsPage() {
+  const [pendingApplications, setPendingApplications] = useState<Application[]>(initialPendingApplications);
+  const [approvedApplications, setApprovedApplications] = useState<Application[]>([]);
+  const [rejectedApplications, setRejectedApplications] = useState<Application[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [rejectionDialog, setRejectionDialog] = useState<{ isOpen: boolean; application: Application | null }>({
     isOpen: false,
@@ -99,6 +104,18 @@ export default function ManageApplicationsPage() {
   const handleCloseRejectionDialog = () => {
     setRejectionDialog({ isOpen: false, application: null });
   }
+
+  const handleApprove = (application: Application) => {
+    setPendingApplications(prev => prev.filter(app => app.id !== application.id));
+    setApprovedApplications(prev => [...prev, application]);
+    setSelectedApplication(null);
+  };
+
+  const handleReject = (application: Application, reason: string) => {
+    setPendingApplications(prev => prev.filter(app => app.id !== application.id));
+    setRejectedApplications(prev => [...prev, { ...application, rejectionReason: reason }]);
+    handleCloseRejectionDialog();
+  };
 
   return (
     <>
@@ -153,7 +170,7 @@ export default function ManageApplicationsPage() {
                                                                     View Credentials
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
-                                                                <DropdownMenuItem>Approve</DropdownMenuItem>
+                                                                <DropdownMenuItem onSelect={() => handleApprove(application)}>Approve</DropdownMenuItem>
                                                                 <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)}>
                                                                     Reject
                                                                 </DropdownMenuItem>
@@ -174,7 +191,30 @@ export default function ManageApplicationsPage() {
                                     <CardDescription>Applications that have been approved.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <p>Approved application content will be displayed here.</p>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Student ID</TableHead>
+                                                <TableHead>Student Name</TableHead>
+                                                <TableHead>Course</TableHead>
+                                                <TableHead>Year</TableHead>
+                                                <TableHead>Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {approvedApplications.map((application) => (
+                                                <TableRow key={application.id}>
+                                                    <TableCell>{application.studentId}</TableCell>
+                                                    <TableCell className="font-medium">{application.name}</TableCell>
+                                                    <TableCell>{application.course}</TableCell>
+                                                    <TableCell>{application.year}</TableCell>
+                                                    <TableCell>
+                                                        <Badge className="bg-green-500 hover:bg-green-600">Approved</Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -185,7 +225,32 @@ export default function ManageApplicationsPage() {
                                     <CardDescription>Applications that have been rejected.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <p>Rejected application content will be displayed here.</p>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Student ID</TableHead>
+                                                <TableHead>Student Name</TableHead>
+                                                <TableHead>Course</TableHead>
+                                                <TableHead>Year</TableHead>
+                                                <TableHead>Reason</TableHead>
+                                                <TableHead>Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {rejectedApplications.map((application) => (
+                                                <TableRow key={application.id}>
+                                                    <TableCell>{application.studentId}</TableCell>
+                                                    <TableCell className="font-medium">{application.name}</TableCell>
+                                                    <TableCell>{application.course}</TableCell>
+                                                    <TableCell>{application.year}</TableCell>
+                                                    <TableCell>{application.rejectionReason}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="destructive">Rejected</Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -225,7 +290,7 @@ export default function ManageApplicationsPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="destructive" onClick={() => handleOpenRejectionDialog(selectedApplication)}>Reject</Button>
-                        <Button className="bg-green-500 hover:bg-green-600 text-white" onClick={() => setSelectedApplication(null)}>Approve</Button>
+                        <Button className="bg-green-500 hover:bg-green-600 text-white" onClick={() => handleApprove(selectedApplication)}>Approve</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -240,24 +305,35 @@ export default function ManageApplicationsPage() {
                             Provide a reason for rejecting the application for <span className="font-semibold">{rejectionDialog.application.name}</span>.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <Label>Select a reason:</Label>
-                        <RadioGroup defaultValue={rejectionReasons[0].id}>
-                            {rejectionReasons.map((reason) => (
-                                <div key={reason.id} className="flex items-center space-x-2">
-                                    <RadioGroupItem value={reason.id} id={reason.id} />
-                                    <Label htmlFor={reason.id}>{reason.label}</Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                        <div className="grid w-full gap-1.5">
-                            <Label htmlFor="custom-reason">Or provide a custom reason:</Label>
-                            <Textarea placeholder="Type your message here." id="custom-reason" />
+                    <form id="rejection-form" onSubmit={(e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.currentTarget);
+                        const reasonId = formData.get('rejection-reason') as string;
+                        const customReason = formData.get('custom-reason') as string;
+                        const reason = customReason || rejectionReasons.find(r => r.id === reasonId)?.label || 'No reason provided.';
+                        if(rejectionDialog.application) {
+                            handleReject(rejectionDialog.application, reason);
+                        }
+                    }}>
+                        <div className="grid gap-4 py-4">
+                            <Label>Select a reason:</Label>
+                            <RadioGroup name="rejection-reason" defaultValue={rejectionReasons[0].id}>
+                                {rejectionReasons.map((reason) => (
+                                    <div key={reason.id} className="flex items-center space-x-2">
+                                        <RadioGroupItem value={reason.id} id={reason.id} />
+                                        <Label htmlFor={reason.id}>{reason.label}</Label>
+                                    </div>
+                                ))}
+                            </RadioGroup>
+                            <div className="grid w-full gap-1.5">
+                                <Label htmlFor="custom-reason">Or provide a custom reason:</Label>
+                                <Textarea placeholder="Type your message here." id="custom-reason" name="custom-reason" />
+                            </div>
                         </div>
-                    </div>
+                    </form>
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCloseRejectionDialog}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleCloseRejectionDialog}>Confirm Rejection</Button>
+                        <Button variant="destructive" type="submit" form="rejection-form">Confirm Rejection</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -265,3 +341,5 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
+
+    
