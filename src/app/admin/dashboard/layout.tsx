@@ -16,7 +16,7 @@ import {
   BookCopy,
 } from 'lucide-react';
 import Image from 'next/image';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -108,6 +108,12 @@ export default function AdminDashboardLayout({
   const pathname = usePathname();
   const schoolLogo = PlaceHolderImages.find(p => p.id === 'school-logo-sm');
   const isEnrollmentPath = pathname.startsWith('/admin/dashboard/manage-enrollment');
+  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(isEnrollmentPath);
+
+  useEffect(() => {
+    setIsEnrollmentOpen(isEnrollmentPath);
+  }, [isEnrollmentPath]);
+
 
   return (
     <SidebarProvider>
@@ -144,7 +150,7 @@ export default function AdminDashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem asChild>
-                <Collapsible open={isEnrollmentPath}>
+                <Collapsible open={isEnrollmentOpen} onOpenChange={setIsEnrollmentOpen}>
                     <CollapsibleTrigger asChild>
                         <SidebarMenuButton
                             className="justify-between"
