@@ -49,36 +49,36 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-const recentApplications = [
+const adminUsers = [
     {
-        name: 'Olivia Martin',
-        email: 'olivia.martin@email.com',
-        course: 'BSIT',
-        avatar: 'https://picsum.photos/seed/om-avatar/32/32',
+        name: 'Alice Johnson',
+        email: 'alice.j@example.com',
+        role: 'Super Admin',
+        avatar: 'https://picsum.photos/seed/aj-avatar/32/32',
     },
     {
-        name: 'Jackson Lee',
-        email: 'jackson.lee@email.com',
-        course: 'ACT',
-        avatar: 'https://picsum.photos/seed/jl-avatar/32/32',
+        name: 'Bob Williams',
+        email: 'bob.w@example.com',
+        role: 'Admin',
+        avatar: 'https://picsum.photos/seed/bw-avatar/32/32',
     },
     {
-        name: 'Isabella Nguyen',
-        email: 'isabella.nguyen@email.com',
-        course: 'BSIT',
-        avatar: 'https://picsum.photos/seed/in-avatar/32/32',
+        name: 'Charlie Brown',
+        email: 'charlie.b@example.com',
+        role: 'Admin',
+        avatar: 'https://picsum.photos/seed/cb-avatar/32/32',
     },
     {
-        name: 'William Kim',
-        email: 'will@email.com',
-        course: 'BSIT',
-        avatar: 'https://picsum.photos/seed/wk-avatar/32/32',
+        name: 'Diana Miller',
+        email: 'diana.m@example.com',
+        role: 'Admin',
+        avatar: 'https://picsum.photos/seed/dm-avatar/32/32',
     },
      {
-        name: 'Sofia Davis',
-        email: 'sofia.davis@email.com',
-        course: 'ACT',
-        avatar: 'https://picsum.photos/seed/sd-avatar/32/32',
+        name: 'Ethan Garcia',
+        email: 'ethan.g@example.com',
+        role: 'Moderator',
+        avatar: 'https://picsum.photos/seed/eg-avatar/32/32',
     },
 ]
 
@@ -160,14 +160,14 @@ export default function AdminDashboardPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center">
                     <div className="grid gap-2">
-                        <CardTitle>Recent Applications</CardTitle>
+                        <CardTitle>Administrators</CardTitle>
                         <CardDescription>
-                            You have 45 pending applications.
+                            Manage admin accounts and permissions.
                         </CardDescription>
                     </div>
                     <Button asChild size="sm" className="ml-auto gap-1">
-                        <Link href="/admin/dashboard/manage-enrollment/manage-applications">
-                        View All
+                        <Link href="#">
+                        Manage
                         <ArrowUpRight className="h-4 w-4" />
                         </Link>
                     </Button>
@@ -176,31 +176,31 @@ export default function AdminDashboardPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Student</TableHead>
-                                <TableHead className="text-right">Course</TableHead>
+                                <TableHead>Admin</TableHead>
+                                <TableHead className="text-right">Role</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {recentApplications.map((app) => (
-                                <TableRow key={app.email}>
+                            {adminUsers.map((user) => (
+                                <TableRow key={user.email}>
                                     <TableCell>
                                         <div className="flex items-center gap-4">
                                             <Avatar className="hidden h-9 w-9 sm:flex">
-                                                <AvatarImage src={app.avatar} alt="Avatar" data-ai-hint="person avatar" />
-                                                <AvatarFallback>{app.name.charAt(0)}</AvatarFallback>
+                                                <AvatarImage src={user.avatar} alt="Avatar" data-ai-hint="person avatar" />
+                                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div className="grid gap-1">
                                                 <p className="text-sm font-medium leading-none">
-                                                    {app.name}
+                                                    {user.name}
                                                 </p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {app.email}
+                                                    {user.email}
                                                 </p>
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Badge variant="outline">{app.course}</Badge>
+                                        <Badge variant="outline">{user.role}</Badge>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -213,3 +213,5 @@ export default function AdminDashboardPage() {
     </>
   );
 }
+
+    
