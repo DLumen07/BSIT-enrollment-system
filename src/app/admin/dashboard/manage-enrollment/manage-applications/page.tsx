@@ -261,7 +261,6 @@ export default function ManageApplicationsPage() {
                                                 <TableHead>Course</TableHead>
                                                 <TableHead>Year</TableHead>
                                                 <TableHead>Reason</TableHead>
-                                                <TableHead>Status</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -272,9 +271,6 @@ export default function ManageApplicationsPage() {
                                                     <TableCell>{application.course}</TableCell>
                                                     <TableCell>{application.year}</TableCell>
                                                     <TableCell>{application.rejectionReason}</TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="destructive">Rejected</Badge>
-                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
