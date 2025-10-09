@@ -44,31 +44,47 @@ const Breadcrumb = () => {
     const pathname = usePathname();
     const segments = pathname.split('/').filter(Boolean);
 
-    // Don't render breadcrumbs for the main dashboard page
-    if (pathname === '/admin/dashboard') {
+    const capitalize = (s: string) => {
+        const str = s.replace(/-/g, ' ');
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+    
+    // Don't render breadcrumbs for the main dashboard page, as it's handled in the return
+    if (segments.length <= 2) { // /admin/dashboard
         return (
              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <span className="text-foreground">Dashboard</span>
             </div>
         );
     }
-    
-    const capitalize = (s: string) => {
-        const str = s.replace(/-/g, ' ');
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    }
 
     return (
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             {segments.map((segment, index) => {
+                // Skip the first segment ('admin')
+                if (index === 0) return null;
+
                 const href = '/' + segments.slice(0, index + 1).join('/');
                 const isLast = index === segments.length - 1;
+                
+                // Capitalize and replace hyphens for display
+                const displayName = capitalize(segment);
+
+                // Don't link the last segment
+                if (isLast) {
+                    return (
+                        <React.Fragment key={href}>
+                           <ChevronRight className="h-4 w-4" />
+                           <span className="text-foreground">{displayName}</span>
+                        </React.Fragment>
+                    );
+                }
 
                 return (
                     <React.Fragment key={href}>
-                        {index > 0 && <ChevronRight className="h-4 w-4" />}
-                        <Link href={href} className={`${isLast ? 'text-foreground' : 'hover:text-foreground'}`}>
-                           {capitalize(segment)}
+                        {index > 1 && <ChevronRight className="h-4 w-4" />}
+                        <Link href={href} className={'hover:text-foreground'}>
+                           {displayName}
                         </Link>
                     </React.Fragment>
                 );
