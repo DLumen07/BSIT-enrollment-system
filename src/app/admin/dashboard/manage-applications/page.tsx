@@ -1,10 +1,20 @@
 
+'use client';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, MoreHorizontal } from 'lucide-react';
+import { ChevronRight, MoreHorizontal, CheckCircle2, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -15,12 +25,58 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const pendingApplications = [
-    { id: 1, studentId: '2024-1001', name: 'John Doe', course: 'BSIT', year: 2, date: '2024-08-01' },
-    { id: 2, studentId: '2024-1002', name: 'Jane Smith', course: 'ACT', year: 1, date: '2024-08-02' },
-    { id: 3, studentId: '2024-1003', name: 'Peter Jones', course: 'BSIT', year: 1, date: '2024-08-02' },
+    { 
+        id: 1, 
+        studentId: '2024-1001', 
+        name: 'John Doe', 
+        course: 'BSIT', 
+        year: 2, 
+        date: '2024-08-01',
+        credentials: {
+            birthCertificate: true,
+            grades: true,
+            goodMoral: false,
+        }
+    },
+    { 
+        id: 2, 
+        studentId: '2024-1002', 
+        name: 'Jane Smith', 
+        course: 'ACT', 
+        year: 1, 
+        date: '2024-08-02',
+        credentials: {
+            birthCertificate: true,
+            grades: false,
+            goodMoral: true,
+        }
+    },
+    { 
+        id: 3, 
+        studentId: '2024-1003', 
+        name: 'Peter Jones', 
+        course: 'BSIT', 
+        year: 1, 
+        date: '2024-08-02',
+        credentials: {
+            birthCertificate: true,
+            grades: true,
+            goodMoral: true,
+        }
+    },
 ];
 
+type Application = typeof pendingApplications[0];
+
 export default function ManageApplicationsPage() {
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+
+  const credentialLabels: { key: keyof Application['credentials']; label: string }[] = [
+    { key: 'birthCertificate', label: 'Birth Certificate' },
+    { key: 'grades', label: 'Form 138 / Report Card' },
+    { key: 'goodMoral', label: 'Good Moral Certificate' },
+  ];
+
   return (
     <>
         <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
@@ -83,7 +139,9 @@ export default function ManageApplicationsPage() {
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                                <DropdownMenuItem>View Credentials</DropdownMenuItem>
+                                                                <DropdownMenuItem onSelect={() => setSelectedApplication(application)}>
+                                                                    View Credentials
+                                                                </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
                                                                 <DropdownMenuItem>Approve</DropdownMenuItem>
                                                                 <DropdownMenuItem>Reject</DropdownMenuItem>
@@ -123,6 +181,42 @@ export default function ManageApplicationsPage() {
                 </CardContent>
             </Card>
         </main>
+        
+        {selectedApplication && (
+            <Dialog open={!!selectedApplication} onOpenChange={(open) => !open && setSelectedApplication(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Student Credentials</DialogTitle>
+                        <DialogDescription>Review the submitted documents for this applicant.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <p className="text-sm font-medium text-right col-span-1">Name</p>
+                            <p className="col-span-3 text-sm">{selectedApplication.name}</p>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                             <p className="text-sm font-medium text-right col-span-1">Course</p>
+                            <p className="col-span-3 text-sm">{selectedApplication.course} {selectedApplication.year}</p>
+                        </div>
+                        <div className="space-y-3 mt-4">
+                            {credentialLabels.map(({ key, label }) => (
+                                <div key={key} className="flex items-center justify-between">
+                                    <span className="text-sm">{label}</span>
+                                    {selectedApplication.credentials[key] ? (
+                                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                    ) : (
+                                        <XCircle className="h-5 w-5 text-red-500" />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setSelectedApplication(null)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        )}
     </>
   );
 }
