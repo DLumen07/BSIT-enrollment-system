@@ -53,9 +53,8 @@ export default function ManageEnrollmentPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="flex-grow flex items-end justify-end">
-                        <div className="flex items-center text-sm font-medium text-primary group-hover:underline">
-                            Go to Page
-                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        <div className="flex items-center text-sm font-medium text-primary">
+                            <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
                         </div>
                     </CardContent>
                 </Card>
