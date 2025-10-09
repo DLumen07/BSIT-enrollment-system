@@ -14,9 +14,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const pendingApplications = [
-    { id: 1, name: 'John Doe', date: '2024-08-01' },
-    { id: 2, name: 'Jane Smith', date: '2024-08-02' },
-    { id: 3, name: 'Peter Jones', date: '2024-08-02' },
+    { id: 1, studentId: '2024-1001', name: 'John Doe', course: 'BSIT', year: 2, date: '2024-08-01' },
+    { id: 2, studentId: '2024-1002', name: 'Jane Smith', course: 'ACT', year: 1, date: '2024-08-02' },
+    { id: 3, studentId: '2024-1003', name: 'Peter Jones', course: 'BSIT', year: 1, date: '2024-08-02' },
 ];
 
 export default function ManageApplicationsPage() {
@@ -56,7 +56,10 @@ export default function ManageApplicationsPage() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
+                                                <TableHead>Student ID</TableHead>
                                                 <TableHead>Student Name</TableHead>
+                                                <TableHead>Course</TableHead>
+                                                <TableHead>Year</TableHead>
                                                 <TableHead>Application Date</TableHead>
                                                 <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
@@ -64,7 +67,10 @@ export default function ManageApplicationsPage() {
                                         <TableBody>
                                             {pendingApplications.map((application) => (
                                                 <TableRow key={application.id}>
+                                                    <TableCell>{application.studentId}</TableCell>
                                                     <TableCell className="font-medium">{application.name}</TableCell>
+                                                    <TableCell>{application.course}</TableCell>
+                                                    <TableCell>{application.year}</TableCell>
                                                     <TableCell>{application.date}</TableCell>
                                                     <TableCell className="text-right">
                                                         <DropdownMenu>
