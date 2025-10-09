@@ -212,7 +212,8 @@ export default function ManageApplicationsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button onClick={() => setSelectedApplication(null)}>Close</Button>
+                        <Button variant="outline" onClick={() => setSelectedApplication(null)}>Reject</Button>
+                        <Button onClick={() => setSelectedApplication(null)}>Approve</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
