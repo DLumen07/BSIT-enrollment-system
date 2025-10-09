@@ -1,3 +1,4 @@
+
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ export default function AdminLoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4">
+              <div className="space-y-4">
                 <div className="space-y-2 text-left">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -32,16 +33,17 @@ export default function AdminLoginPage() {
                     type="email"
                     placeholder="admin@example.com"
                     required
+                    defaultValue="admin@example.com"
                   />
                 </div>
                 <div className="space-y-2 text-left">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required />
+                  <Input id="password" type="password" required defaultValue="password" />
                 </div>
-                <Button type="submit" className="w-full" variant="accent">
-                  Login
+                <Button asChild className="w-full" variant="accent">
+                  <Link href="/admin/dashboard">Login</Link>
                 </Button>
-              </form>
+              </div>
             </CardContent>
           </Card>
         </div>
