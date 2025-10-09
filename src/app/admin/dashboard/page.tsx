@@ -53,6 +53,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function AdminDashboardPage() {
   return (
@@ -131,6 +132,7 @@ export default function AdminDashboardPage() {
                 className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
               />
             </div>
+            <ThemeToggle />
             <Button variant="ghost" size="icon" className="rounded-full">
               <Bell className="h-5 w-5" />
               <span className="sr-only">Toggle notifications</span>
