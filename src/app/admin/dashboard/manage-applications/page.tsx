@@ -152,19 +152,13 @@ export default function ManageApplicationsPage() {
   return (
     <>
         <main className="flex-1 p-4 sm:p-6 space-y-6">
-             <div className="flex items-center justify-between">
+             <div className="flex items-center">
                 <div className="space-y-0.5">
                     <h1 className="text-2xl font-bold tracking-tight">Manage Applications</h1>
                     <p className="text-muted-foreground">
                         Review, approve, and reject applications for enrollment.
                     </p>
                 </div>
-                 <Button asChild variant="outline" size="icon" className="h-7 w-7">
-                    <Link href="/admin/dashboard">
-                        <ArrowLeft className="h-4 w-4" />
-                        <span className="sr-only">Back</span>
-                    </Link>
-                </Button>
             </div>
             <Tabs defaultValue="pending" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
