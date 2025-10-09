@@ -1,38 +1,15 @@
 
+
 'use client';
 import Link from 'next/link';
 import {
   Bell,
-  Home,
-  Users,
-  FileText,
-  PanelLeft,
   Search,
-  LogOut,
-  Users2,
-  ClipboardList,
-  BarChart3,
   ChevronRight,
-  ChevronDown,
-  BookCopy,
-  LayoutGrid,
-  FileSignature,
 } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
 
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-  SidebarTrigger,
-  SidebarInset,
-} from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -60,75 +37,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { usePathname } from 'next/navigation';
+
 
 export default function AdminDashboardPage() {
-  const pathname = usePathname();
-
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2">
-            <Image
-              src="https://picsum.photos/seed/school-logo/40/40"
-              alt="School Logo"
-              width={40}
-              height={40}
-              data-ai-hint="school logo"
-              className="rounded-full"
-            />
-            <span className="font-semibold text-lg">BSIT Enrollment</span>
-          </div>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard'}>
-                <Link href="/admin/dashboard">
-                  <Home />
-                  Dashboard
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton href="#">
-                <Users2 />
-                Students
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/dashboard/manage-enrollment')}>
-                  <Link href="/admin/dashboard/manage-enrollment">
-                      <ClipboardList />
-                      Manage Enrollment
-                  </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton href="#">
-                <BarChart3 />
-                Reports
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/">
-                  <LogOut />
-                  Logout
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
+    <>
         <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
-          <SidebarTrigger className="md:hidden" />
           <div className="flex-1">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <span>Admin</span>
@@ -136,7 +50,7 @@ export default function AdminDashboardPage() {
               <span className="text-foreground">Dashboard</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -257,7 +171,6 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         </main>
-      </SidebarInset>
-    </SidebarProvider>
+    </>
   );
 }
