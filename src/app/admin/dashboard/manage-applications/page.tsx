@@ -35,6 +35,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
 
 const initialPendingApplications = [
     { 
@@ -153,6 +154,7 @@ export default function ManageApplicationsPage() {
       isOpen: false,
       application: null,
   });
+  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(true);
 
   const credentialLabels: { key: keyof Application['credentials']; label: string }[] = [
     { key: 'birthCertificate', label: 'Birth Certificate' },
@@ -162,6 +164,7 @@ export default function ManageApplicationsPage() {
   ];
 
   const handleOpenRejectionDialog = (application: Application) => {
+    setSelectedApplication(null); // Close the credentials dialog if it's open
     setRejectionDialog({ isOpen: true, application });
   };
 
@@ -184,7 +187,6 @@ export default function ManageApplicationsPage() {
     }
     setRejectedApplications(prev => [...prev, { ...application, rejectionReason: reason }]);
     handleCloseRejectionDialog();
-    setSelectedApplication(null);
   };
   
   const handleRetrieve = (application: Application) => {
@@ -201,12 +203,22 @@ export default function ManageApplicationsPage() {
   return (
     <>
         <main className="flex-1 p-4 sm:p-6 space-y-6">
-             <div className="flex items-center">
+             <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                     <h1 className="text-2xl font-bold tracking-tight">Manage Applications</h1>
                     <p className="text-muted-foreground">
                         Review, approve, and reject applications for enrollment.
                     </p>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Switch 
+                        id="enrollment-status" 
+                        checked={isEnrollmentOpen} 
+                        onCheckedChange={setIsEnrollmentOpen}
+                    />
+                    <Label htmlFor="enrollment-status" className="text-sm font-medium">
+                        {isEnrollmentOpen ? 'Enrollment Open' : 'Enrollment Closed'}
+                    </Label>
                 </div>
             </div>
             <Tabs defaultValue="pending" className="w-full">
