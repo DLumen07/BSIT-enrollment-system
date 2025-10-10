@@ -211,13 +211,12 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-transparent hover:text-accent">
+                                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-transparent text-muted-foreground hover:text-accent focus:text-accent">
                                                             <span className="sr-only">Open menu</span>
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                         <DropdownMenuItem onSelect={() => setSelectedApplication(application)}>
                                                             View Credentials
                                                         </DropdownMenuItem>
@@ -265,13 +264,12 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-transparent hover:text-accent">
+                                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-transparent text-muted-foreground hover:text-accent focus:text-accent">
                                                             <span className="sr-only">Open menu</span>
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                         <DropdownMenuItem>
                                                             <Pencil className="mr-2 h-4 w-4" />
                                                             Edit
@@ -322,13 +320,12 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-transparent hover:text-accent">
+                                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-transparent text-muted-foreground hover:text-accent focus:text-accent">
                                                             <span className="sr-only">Open menu</span>
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                         <DropdownMenuItem onSelect={() => handleRetrieve(application)}>
                                                             <RotateCw className="mr-2 h-4 w-4" />
                                                             Retrieve
@@ -373,7 +370,7 @@ export default function ManageApplicationsPage() {
                         <div className="grid grid-cols-4 items-center gap-4">
                                 <p className="text-sm font-medium text-right col-span-1">Status</p>
                             <p className="col-span-3 text-sm">
-                                <Badge variant={getStatusVariant(selectedApplication.status) as any}>{selectedApplication.status}</Badge>
+                                {selectedApplication.status}
                             </p>
                         </div>
                         <div className="space-y-3 mt-4">
@@ -465,6 +462,8 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
+
+    
 
     
 
