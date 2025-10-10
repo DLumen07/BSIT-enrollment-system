@@ -72,12 +72,20 @@ export default function SchedulePage() {
                 <CardContent className="p-4 overflow-x-auto">
                     <div className="relative grid grid-cols-[auto_repeat(6,minmax(120px,1fr))] gap-x-1" style={{ minWidth: '800px' }}>
                         {/* Time column */}
-                        <div className="row-start-2 col-start-1 sticky left-0 bg-background pr-2 z-10">
-                            {timeSlots.map(time => (
-                                <div key={time} className="h-[60px] flex justify-end items-start text-xs text-muted-foreground">
-                                    <span className="-translate-y-1/2">{formatTime(time)}</span>
-                                </div>
-                            ))}
+                        <div className="row-start-1 row-span-2 col-start-1 sticky left-0 bg-background pr-2 z-10 -mr-1">
+                            <div className="relative h-full">
+                                {/* First empty slot for day headers */}
+                                <div className="h-10"></div> 
+                                {timeSlots.map((time, index) => (
+                                    <div 
+                                        key={time} 
+                                        className="absolute text-xs text-muted-foreground text-right w-full pr-2"
+                                        style={{ top: `${index * 60}px`}}
+                                    >
+                                        <span className="-translate-y-1/2">{formatTime(time)}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Day headers */}
