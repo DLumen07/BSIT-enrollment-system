@@ -457,7 +457,6 @@ export default function ManageApplicationsPage() {
                                             <TableHead>Course</TableHead>
                                             <TableHead>Year</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead>Reason</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -469,7 +468,6 @@ export default function ManageApplicationsPage() {
                                                 <TableCell>{application.course}</TableCell>
                                                 <TableCell>{application.year}</TableCell>
                                                  <TableCell>{application.status}</TableCell>
-                                                <TableCell>{application.rejectionReason}</TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
