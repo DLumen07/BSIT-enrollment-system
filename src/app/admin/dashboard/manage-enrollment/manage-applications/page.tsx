@@ -46,6 +46,7 @@ const initialPendingApplications = [
         name: 'John Doe', 
         course: 'BSIT', 
         year: 2, 
+        status: 'Old',
         credentials: {
             birthCertificate: true,
             grades: true,
@@ -59,6 +60,7 @@ const initialPendingApplications = [
         name: 'Jane Smith', 
         course: 'ACT', 
         year: 1, 
+        status: 'New',
         credentials: {
             birthCertificate: true,
             grades: false,
@@ -72,6 +74,7 @@ const initialPendingApplications = [
         name: 'Peter Jones', 
         course: 'BSIT', 
         year: 1, 
+        status: 'Transferee',
         credentials: {
             birthCertificate: true,
             grades: true,
@@ -148,6 +151,19 @@ export default function ManageApplicationsPage() {
     setDeleteDialog({ isOpen: false, application: null });
   };
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'New':
+        return 'default';
+      case 'Old':
+        return 'secondary';
+      case 'Transferee':
+        return 'outline';
+      default:
+        return 'default';
+    }
+  }
+
 
   return (
     <>
@@ -186,6 +202,7 @@ export default function ManageApplicationsPage() {
                                         <TableHead>Student Name</TableHead>
                                         <TableHead>Course</TableHead>
                                         <TableHead>Year</TableHead>
+                                        <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -196,6 +213,9 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="font-medium">{application.name}</TableCell>
                                             <TableCell>{application.course}</TableCell>
                                             <TableCell>{application.year}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={getStatusVariant(application.status) as any}>{application.status}</Badge>
+                                            </TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
@@ -238,6 +258,7 @@ export default function ManageApplicationsPage() {
                                         <TableHead>Student Name</TableHead>
                                         <TableHead>Course</TableHead>
                                         <TableHead>Year</TableHead>
+                                        <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -248,6 +269,9 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="font-medium">{application.name}</TableCell>
                                             <TableCell>{application.course}</TableCell>
                                             <TableCell>{application.year}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={getStatusVariant(application.status) as any}>{application.status}</Badge>
+                                            </TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
@@ -291,6 +315,7 @@ export default function ManageApplicationsPage() {
                                         <TableHead>Student Name</TableHead>
                                         <TableHead>Course</TableHead>
                                         <TableHead>Year</TableHead>
+                                        <TableHead>Status</TableHead>
                                         <TableHead>Reason</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
@@ -302,6 +327,9 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="font-medium">{application.name}</TableCell>
                                             <TableCell>{application.course}</TableCell>
                                             <TableCell>{application.year}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={getStatusVariant(application.status) as any}>{application.status}</Badge>
+                                            </TableCell>
                                             <TableCell>{application.rejectionReason}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
@@ -353,6 +381,12 @@ export default function ManageApplicationsPage() {
                         <div className="grid grid-cols-4 items-center gap-4">
                                 <p className="text-sm font-medium text-right col-span-1">Course</p>
                             <p className="col-span-3 text-sm">{selectedApplication.course} {selectedApplication.year}</p>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                                <p className="text-sm font-medium text-right col-span-1">Status</p>
+                            <p className="col-span-3 text-sm">
+                                <Badge variant={getStatusVariant(selectedApplication.status) as any}>{selectedApplication.status}</Badge>
+                            </p>
                         </div>
                         <div className="space-y-3 mt-4">
                             {credentialLabels.map(({ key, label }) => (
@@ -443,3 +477,5 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
+
+    
