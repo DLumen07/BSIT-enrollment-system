@@ -92,11 +92,11 @@ export default {
         glow: {
             '0%, 100%': {
                 boxShadow:
-                '0 0 20px -5px hsl(var(--primary)/0.5), 0 0 20px -5px hsl(var(--accent)/0.5)',
+                '0 0 20px 5px hsl(var(--primary)/0.2), 0 0 20px 5px hsl(var(--accent)/0.2)',
             },
             '50%': {
                 boxShadow:
-                '0 0 30px 0px hsl(var(--primary)/0.8), 0 0 30px 0px hsl(var(--accent)/0.8)',
+                '0 0 30px 10px hsl(var(--primary)/0.5), 0 0 30px 10px hsl(var(--accent)/0.5)',
             },
         },
       },
