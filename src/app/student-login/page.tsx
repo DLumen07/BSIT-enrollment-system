@@ -2,6 +2,7 @@
 'use client';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,13 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export default function StudentLoginPage() {
+  const router = useRouter();
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    router.push('/student/dashboard');
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <main className="flex-1 flex flex-col items-center justify-center p-4">
@@ -71,7 +79,7 @@ export default function StudentLoginPage() {
                   <span className="text-xs text-muted-foreground">OR</span>
                   <Separator className="flex-1" />
                 </div>
-                <form className="space-y-4" action="/student/dashboard">
+                <div className="space-y-4">
                   <div className="space-y-2 text-left">
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -85,10 +93,10 @@ export default function StudentLoginPage() {
                     <Label htmlFor="password">Password</Label>
                     <Input id="password" type="password" required />
                   </div>
-                  <Button type="submit" className="w-full">
+                  <Button onClick={handleLogin} className="w-full">
                     Login with Email
                   </Button>
-                </form>
+                </div>
                 <div className="text-center text-sm">
                   Don't have an account?{' '}
                   <Link href="/student-signup" className="underline">
