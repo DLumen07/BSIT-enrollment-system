@@ -69,31 +69,31 @@ export default function SchedulePage() {
                 </Button>
             </div>
             <Card>
-                <CardContent className="p-4">
-                    <div className="relative grid grid-cols-[auto_repeat(6,1fr)] gap-x-1">
+                <CardContent className="p-4 overflow-x-auto">
+                    <div className="relative grid grid-cols-[auto_repeat(6,minmax(120px,1fr))] gap-x-1" style={{ minWidth: '800px' }}>
                         {/* Time column */}
-                        <div className="row-start-1 col-start-1 sticky left-0 bg-background pr-2 z-10">
+                        <div className="row-start-2 col-start-1 sticky left-0 bg-background pr-2 z-10">
                             {timeSlots.map(time => (
-                                <div key={time} className="h-[60px] flex justify-end items-start text-xs text-muted-foreground -mt-2">
-                                    <span className="transform -translate-y-1/2">{formatTime(time)}</span>
+                                <div key={time} className="h-[60px] flex justify-end items-start text-xs text-muted-foreground">
+                                    <span className="-translate-y-1/2">{formatTime(time)}</span>
                                 </div>
                             ))}
                         </div>
 
                         {/* Day headers */}
                         {days.map((day, i) => (
-                            <div key={day} className="row-start-1 text-center font-semibold text-muted-foreground text-sm p-2" style={{ gridColumnStart: i + 2 }}>{day}</div>
+                            <div key={day} className="row-start-1 text-center font-semibold text-muted-foreground text-sm p-2 sticky top-0 bg-background z-10" style={{ gridColumnStart: i + 2 }}>{day}</div>
                         ))}
 
                         {/* Grid lines */}
-                        <div className="col-start-2 col-span-6 row-start-1 grid grid-cols-6 grid-rows-[repeat(11,60px)] border-l">
+                        <div className="col-start-2 col-span-6 row-start-2 grid grid-cols-6 grid-rows-[repeat(11,60px)] border-l">
                             {Array.from({ length: 66 }).map((_, i) => (
                                 <div key={i} className="border-r border-t border-dashed" />
                             ))}
                         </div>
 
                         {/* Scheduled subjects */}
-                        <div className="col-start-2 col-span-6 row-start-1 grid grid-cols-6 grid-rows-[repeat(660,minmax(0,1fr))] gap-1">
+                        <div className="col-start-2 col-span-6 row-start-2 grid grid-cols-6 grid-rows-[repeat(660,minmax(0,1fr))] gap-1">
                            {subjects.map(subject => {
                                 const top = timeToPosition(subject.startTime);
                                 const height = timeToPosition(subject.endTime) - top;
@@ -115,7 +115,7 @@ export default function SchedulePage() {
                                         <p className="truncate">{subject.description}</p>
                                         <p className="truncate text-muted-foreground">{subject.instructor}</p>
                                         
-                                        <div className="absolute bottom-1 right-1 left-1 text-muted-foreground flex items-center gap-1 bg-background/50 backdrop-blur-sm p-1 rounded-sm">
+                                        <div className="absolute bottom-1 right-1 left-1 text-muted-foreground flex items-center gap-1 bg-background/50 backdrop-blur-sm p-1 rounded-sm text-[10px]">
                                             <Clock className="h-3 w-3 shrink-0" />
                                             <span className="truncate">{formatTime(subject.startTime)} - {formatTime(subject.endTime)}</span>
                                         </div>
