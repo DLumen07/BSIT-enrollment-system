@@ -198,7 +198,10 @@ export default function YearLevelBlocksPage() {
                                                         <DropdownMenuItem onSelect={() => openEditDialog(block)}>
                                                             <Pencil className="mr-2 h-4 w-4" /> Edit
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => openDeleteDialog(block)}>
+                                                        <DropdownMenuItem 
+                                                            className="text-destructive focus:bg-destructive focus:text-destructive-foreground" 
+                                                            onSelect={() => openDeleteDialog(block)}
+                                                        >
                                                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
