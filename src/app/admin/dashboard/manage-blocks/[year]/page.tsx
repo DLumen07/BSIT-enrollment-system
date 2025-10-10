@@ -2,7 +2,7 @@
 'use client';
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 const yearLevelMap: Record<string, string> = {
     '1st-year': '1st Year',
