@@ -4,49 +4,48 @@ import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 type Subject = {
     id: number;
     code: string;
     description: string;
     day: string;
-    time: string;
+    startTime: string;
+    endTime: string;
+    instructor: string;
+    color: string;
 };
 
 const initialSubjects: Subject[] = [
-    { id: 1, code: 'IT-101', description: 'Introduction to Computing', day: 'Monday', time: '9:00 AM - 10:30 AM' },
-    { id: 2, code: 'MATH-101', description: 'Calculus I', day: 'Tuesday', time: '1:00 PM - 2:30 PM' },
-    { id: 3, code: 'ENG-101', description: 'English Composition', day: 'Wednesday', time: '11:00 AM - 12:30 PM' },
+    { id: 1, code: 'IT-101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Mr. Smith', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
+    { id: 2, code: 'MATH-101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Ms. Jones', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
+    { id: 3, code: 'ENG-101', description: 'English Composition', day: 'Wednesday', startTime: '11:00', endTime: '12:30', instructor: 'Dr. Brown', color: 'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400' },
+    { id: 4, code: 'PE-101', description: 'Physical Education', day: 'Friday', startTime: '08:00', endTime: '10:00', instructor: 'Coach Dave', color: 'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400' },
+     { id: 5, code: 'IT-102', description: 'Programming 1', day: 'Monday', startTime: '14:00', endTime: '16:00', instructor: 'Mr. Smith', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
 ];
+
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const timeSlots = Array.from({ length: 11 }, (_, i) => `${(i + 7).toString().padStart(2, '0')}:00`); // 7 AM to 5 PM
+
+const timeToPosition = (time: string) => {
+    const [hour, minute] = time.split(':').map(Number);
+    return (hour - 7) * 60 + minute;
+};
+
+const formatTime = (timeStr: string) => {
+    const [hour, minute] = timeStr.split(':').map(Number);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${formattedHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+}
 
 export default function SchedulePage() {
     const params = useParams();
@@ -69,35 +68,51 @@ export default function SchedulePage() {
                 </Button>
             </div>
             <Card>
-                <CardHeader>
-                    <CardTitle>Scheduled Subjects</CardTitle>
-                    <CardDescription>
-                        The following subjects are scheduled for this block.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Subject Code</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Day</TableHead>
-                                <TableHead>Time</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {subjects.map(subject => (
-                                <TableRow key={subject.id}>
-                                    <TableCell className="font-medium">{subject.code}</TableCell>
-                                    <TableCell>{subject.description}</TableCell>
-                                    <TableCell>{subject.day}</TableCell>
-                                    <TableCell>{subject.time}</TableCell>
-                                    <TableCell className="text-right">
+                <CardContent className="p-4">
+                    <div className="grid grid-cols-[auto,repeat(6,1fr)] gap-1">
+                        <div />
+                        {days.map(day => (
+                            <div key={day} className="text-center font-semibold text-muted-foreground text-sm p-2">{day}</div>
+                        ))}
+
+                        {timeSlots.map(time => (
+                            <React.Fragment key={time}>
+                                <div className="pr-2 text-right text-xs text-muted-foreground -mt-2">
+                                    {formatTime(time)}
+                                </div>
+                                <div className="col-span-6 border-t border-dashed" />
+                            </React.Fragment>
+                        ))}
+                        
+                        <div className="col-start-2 col-span-6 row-start-1 row-end-[13] grid grid-cols-6 grid-rows-[repeat(660,minmax(0,1fr))] gap-1">
+                           {subjects.map(subject => {
+                                const top = timeToPosition(subject.startTime);
+                                const bottom = timeToPosition(subject.endTime);
+                                const dayIndex = days.indexOf(subject.day);
+
+                                if (dayIndex === -1) return null;
+                                
+                                return (
+                                    <div
+                                        key={subject.id}
+                                        className={cn("relative rounded-lg p-2 border text-xs overflow-hidden", subject.color)}
+                                        style={{
+                                            gridColumnStart: dayIndex + 1,
+                                            gridRowStart: top + 1,
+                                            gridRowEnd: bottom + 1,
+                                        }}
+                                    >
+                                        <p className="font-bold truncate">{subject.code}</p>
+                                        <p className="truncate">{subject.description}</p>
+                                        <p className="truncate text-muted-foreground">{subject.instructor}</p>
+                                        <div className="absolute bottom-1 right-1 text-muted-foreground flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            <span>{formatTime(subject.startTime)} - {formatTime(subject.endTime)}</span>
+                                        </div>
+
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <span className="sr-only">Open menu</span>
+                                                <Button variant="ghost" className="absolute top-0 right-0 h-6 w-6 p-1 text-muted-foreground hover:bg-transparent hover:text-accent">
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -105,16 +120,16 @@ export default function SchedulePage() {
                                                 <DropdownMenuItem>
                                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                                    </div>
+                                )
+                           })}
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </main>
