@@ -1,15 +1,39 @@
 
+'use client';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function StudentDashboardPage() {
+  const [isEnrolled, setIsEnrolled] = useState(false);
+
   return (
     <main className="flex-1 p-4 sm:p-6">
         <div className="space-y-4">
             <h1 className="text-2xl font-bold tracking-tight">Welcome, Student!</h1>
-            <p className="text-muted-foreground">
-                Here's a summary of your academic status.
-            </p>
+            {!isEnrolled && (
+                 <p className="text-muted-foreground">
+                    It looks like you haven't enrolled yet. Please complete your enrollment to access all features.
+                </p>
+            )}
         </div>
+
+        {!isEnrolled && (
+            <Alert variant="destructive" className="mt-6">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Important Notice</AlertTitle>
+                <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    You are not yet officially enrolled for the current academic year. Please proceed to the enrollment page to complete the process.
+                    <Button asChild variant="secondary" className="mt-2 sm:mt-0">
+                        <Link href="/student/dashboard/enrollment">Go to Enrollment</Link>
+                    </Button>
+                </AlertDescription>
+            </Alert>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6">
             <Card>
                 <CardHeader>
@@ -17,8 +41,14 @@ export default function StudentDashboardPage() {
                     <CardDescription>Your current enrollment details.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="font-semibold text-green-500">Enrolled</p>
-                    <p className="text-sm text-muted-foreground">A.Y. 2024-2025, 1st Semester</p>
+                    {isEnrolled ? (
+                        <>
+                            <p className="font-semibold text-green-500">Enrolled</p>
+                            <p className="text-sm text-muted-foreground">A.Y. 2024-2025, 1st Semester</p>
+                        </>
+                    ) : (
+                         <p className="font-semibold text-destructive">Not Enrolled</p>
+                    )}
                 </CardContent>
             </Card>
              <Card>
@@ -27,7 +57,11 @@ export default function StudentDashboardPage() {
                     <CardDescription>Your assigned section.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="font-semibold">BSIT 2-A</p>
+                     {isEnrolled ? (
+                        <p className="font-semibold">BSIT 2-A</p>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">N/A</p>
+                    )}
                 </CardContent>
             </Card>
             <Card>

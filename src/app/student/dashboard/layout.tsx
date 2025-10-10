@@ -76,7 +76,7 @@ export default function StudentDashboardLayout({
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/enrollment'}>
-                <Link href="#">
+                <Link href="/student/dashboard/enrollment">
                   <FileSignature />
                   Enrollment
                 </Link>
