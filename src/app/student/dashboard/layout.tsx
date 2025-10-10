@@ -92,7 +92,7 @@ export default function StudentDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/grades'}>
-                <Link href="#">
+                <Link href="/student/dashboard/grades">
                   <GraduationCap />
                   Grades
                 </Link>
