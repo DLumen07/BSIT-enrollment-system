@@ -12,7 +12,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <main className="flex-1 flex flex-col items-center justify-center text-center p-4">
-        <div className="flex flex-col items-center space-y-6 border rounded-lg p-8 md:p-12 shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)]">
+        <div className="flex flex-col items-center space-y-6 border rounded-lg p-8 md:p-12 animate-glow">
           {schoolLogo && (
             <Image
               src={schoolLogo.imageUrl}
