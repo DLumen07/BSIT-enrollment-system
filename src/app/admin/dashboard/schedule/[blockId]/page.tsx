@@ -229,13 +229,13 @@ export default function SchedulePage() {
 
                         {/* Time Column and Grid */}
                         <div className="col-start-1 row-start-2 relative">
-                             {timeSlots.map((time, index) => (
-                                <div key={time} className="h-16 relative">
-                                    <span className="absolute -top-2 right-2 text-xs text-muted-foreground">{formatTime(time)}</span>
+                             {timeSlots.map((time) => (
+                                <div key={time} className="h-16 relative -z-10">
+                                    <div className="absolute -top-2.5 right-2 text-xs text-muted-foreground">{formatTime(time)}</div>
                                 </div>
                             ))}
                         </div>
-                        <div className="col-start-2 col-span-6 row-start-2 relative grid grid-cols-6 grid-rows-12">
+                        <div className="col-start-2 col-span-6 row-start-2 relative grid grid-cols-6" style={{ height: `${timeSlots.length * HOUR_HEIGHT_REM}rem`}}>
                              {/* Grid Lines */}
                             {Array.from({ length: 12 * 6 }).map((_, i) => (
                                 <div key={i} className="h-16 border-t border-r border-dashed"></div>
@@ -313,4 +313,3 @@ export default function SchedulePage() {
     );
 }
 
-    
