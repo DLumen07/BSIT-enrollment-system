@@ -75,7 +75,7 @@ export default function StudentDashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/enrollment'}>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/student/dashboard/enrollment')}>
                 <Link href="/student/dashboard/enrollment">
                   <FileSignature />
                   Enrollment
@@ -126,7 +126,7 @@ export default function StudentDashboardLayout({
           <SidebarTrigger className="md:hidden"/>
           <div className="flex-1">
             <h1 className="text-lg font-semibold">
-                {pathname.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Dashboard'}
+                Student Portal
             </h1>
           </div>
           <div className="flex items-center gap-4">
