@@ -207,9 +207,7 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="font-medium">{application.name}</TableCell>
                                             <TableCell>{application.course}</TableCell>
                                             <TableCell>{application.year}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={getStatusVariant(application.status) as any}>{application.status}</Badge>
-                                            </TableCell>
+                                            <TableCell>{application.status}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
@@ -263,9 +261,7 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="font-medium">{application.name}</TableCell>
                                             <TableCell>{application.course}</TableCell>
                                             <TableCell>{application.year}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={getStatusVariant(application.status) as any}>{application.status}</Badge>
-                                            </TableCell>
+                                            <TableCell>{application.status}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
@@ -321,9 +317,7 @@ export default function ManageApplicationsPage() {
                                             <TableCell className="font-medium">{application.name}</TableCell>
                                             <TableCell>{application.course}</TableCell>
                                             <TableCell>{application.year}</TableCell>
-                                             <TableCell>
-                                                <Badge variant={getStatusVariant(application.status) as any}>{application.status}</Badge>
-                                            </TableCell>
+                                             <TableCell>{application.status}</TableCell>
                                             <TableCell>{application.rejectionReason}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
@@ -471,5 +465,7 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
+
+    
 
     
