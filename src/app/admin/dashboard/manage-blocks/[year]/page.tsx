@@ -300,7 +300,7 @@ export default function YearLevelBlocksPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the <span className="font-semibold">{getBlockDisplayName(selectedBlock!)}</span> block.
+                            This action cannot be undone. This will permanently delete the <span className="font-semibold">{selectedBlock ? getBlockDisplayName(selectedBlock) : ''}</span> block.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -312,3 +312,5 @@ export default function YearLevelBlocksPage() {
         </>
     );
 }
+
+    
