@@ -477,6 +477,9 @@ export default function ManageApplicationsPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onSelect={() => setSelectedApplication(application)}>
+                                                                View Credentials
+                                                            </DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => handleRetrieve(application)}>
                                                                 <RotateCw className="mr-2 h-4 w-4" />
                                                                 Retrieve
@@ -530,6 +533,12 @@ export default function ManageApplicationsPage() {
                                 {selectedApplication.status}
                             </p>
                         </div>
+                         {selectedApplication.rejectionReason && (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <p className="text-sm font-medium text-right col-span-1">Reason</p>
+                                <p className="col-span-3 text-sm text-destructive">{selectedApplication.rejectionReason}</p>
+                            </div>
+                        )}
                         <div className="space-y-3 mt-4">
                             {credentialLabels.map(({ key, label }) => (
                                 <div key={key} className="flex items-center justify-between">
