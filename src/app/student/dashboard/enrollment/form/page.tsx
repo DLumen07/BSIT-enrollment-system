@@ -70,10 +70,53 @@ const academicSchema = z.object({
     course: z.string().min(1, 'Course is required'),
     yearLevel: z.string().min(1, 'Year level is required'),
     status: z.enum(['New', 'Old', 'Transferee']),
+    block: z.string().optional(),
+    subjects: z.array(z.string()).optional(),
 });
 
 
 const enrollmentSchema = personalFamilySchema.merge(additionalInfoSchema).merge(academicSchema);
+
+const blocksByYear: Record<string, { value: string; label: string }[]> = {
+    "1st Year": [{ value: 'BSIT-1A', label: 'BSIT 1-A' }, { value: 'BSIT-1B', label: 'BSIT 1-B' }],
+    "2nd Year": [{ value: 'BSIT-2A', label: 'BSIT 2-A' }, { value: 'BSIT-2B', label: 'BSIT 2-B' }],
+    "3rd Year": [{ value: 'BSIT-3A', label: 'BSIT 3-A' }, { value: 'BSIT-3B', label: 'BSIT 3-B' }],
+    "4th Year": [{ value: 'BSIT-4A', label: 'BSIT 4-A' }, { value: 'BSIT-4B', label: 'BSIT 4-B' }],
+};
+
+const subjectsByCourseAndYear: Record<string, Record<string, { id: string; label: string }[]>> = {
+    "BSIT": {
+        "1st Year": [
+            { id: 'IT101', label: 'IT 101 - Introduction to Computing' },
+            { id: 'MATH101', label: 'MATH 101 - Calculus 1' },
+            { id: 'ENG101', label: 'ENG 101 - Purposive Communication' },
+        ],
+        "2nd Year": [
+            { id: 'IT201', label: 'IT 201 - Data Structures & Algorithms' },
+            { id: 'IT202', label: 'IT 202 - Web Development' },
+            { id: 'MATH201', label: 'MATH 201 - Discrete Mathematics' },
+        ],
+        "3rd Year": [
+             { id: 'IT301', label: 'IT 301 - Software Engineering' },
+             { id: 'IT302', label: 'IT 302 - Database Management' },
+        ],
+        "4th Year": [
+            { id: 'IT401', label: 'IT 401 - Capstone Project 1' },
+            { id: 'IT402', label: 'IT 402 - Information Assurance & Security' },
+        ]
+    },
+    "ACT": {
+        "1st Year": [
+            { id: 'ACT101', label: 'ACT 101 - Fundamentals of Accounting' },
+            { id: 'ACT102', label: 'ACT 102 - Business Communication' },
+        ],
+        "2nd Year": [
+             { id: 'ACT201', label: 'ACT 201 - Intermediate Accounting' },
+             { id: 'ACT202', label: 'ACT 202 - Cost Accounting' },
+        ]
+    }
+};
+
 
 const Step1 = () => (
     <div className="space-y-6">
@@ -245,24 +288,94 @@ const Step2 = () => {
     );
 };
 
-const Step3 = () => (
-     <div className="space-y-6">
-        <h3 className="text-lg font-medium">Academic Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <FormField name="course" render={({ field }) => (
-                <FormItem><FormLabel>Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger></FormControl><SelectContent><SelectItem value="BSIT">BSIT</SelectItem><SelectItem value="ACT">ACT</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
-             <FormField name="status" render={({ field }) => (
-                <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
+const Step3 = () => {
+    const form = useFormContext();
+    const selectedYear = form.watch('yearLevel');
+    const selectedCourse = form.watch('course');
+    const selectedBlock = form.watch('block');
+
+    const availableBlocks = selectedYear ? blocksByYear[selectedYear] || [] : [];
+    const availableSubjects = selectedCourse && selectedYear ? subjectsByCourseAndYear[selectedCourse]?.[selectedYear] || [] : [];
+
+    return (
+        <div className="space-y-6">
+            <h3 className="text-lg font-medium">Academic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="course" render={({ field }) => (
+                    <FormItem><FormLabel>Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger></FormControl><SelectContent><SelectItem value="BSIT">BSIT</SelectItem><SelectItem value="ACT">ACT</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+                <FormField name="status" render={({ field }) => (
+                    <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="yearLevel" render={({ field }) => (
+                    <FormItem><FormLabel>Year Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select year level" /></SelectTrigger></FormControl><SelectContent><SelectItem value="1st Year">1st Year</SelectItem><SelectItem value="2nd Year">2nd Year</SelectItem><SelectItem value="3rd Year">3rd Year</SelectItem><SelectItem value="4th Year">4th Year</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+                {selectedYear && (
+                     <FormField name="block" render={({ field }) => (
+                        <FormItem><FormLabel>Block</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select block" /></SelectTrigger></FormControl><SelectContent>
+                            {availableBlocks.map(block => (
+                                <SelectItem key={block.value} value={block.value}>{block.label}</SelectItem>
+                            ))}
+                        </SelectContent></Select><FormMessage /></FormItem>
+                    )} />
+                )}
+            </div>
+            
+            {selectedBlock && availableSubjects.length > 0 && (
+                <div className="space-y-4 pt-4 border-t">
+                     <h3 className="text-lg font-medium">Enlist Subjects</h3>
+                     <p className="text-sm text-muted-foreground">Select the subjects you want to enroll in.</p>
+                     <FormField
+                        control={form.control}
+                        name="subjects"
+                        render={() => (
+                            <FormItem>
+                            <div className="space-y-2">
+                                {availableSubjects.map((subject) => (
+                                <FormField
+                                    key={subject.id}
+                                    control={form.control}
+                                    name="subjects"
+                                    render={({ field }) => {
+                                    return (
+                                        <FormItem
+                                        key={subject.id}
+                                        className="flex flex-row items-start space-x-3 space-y-0"
+                                        >
+                                        <FormControl>
+                                            <Checkbox
+                                            checked={field.value?.includes(subject.id)}
+                                            onCheckedChange={(checked) => {
+                                                return checked
+                                                ? field.onChange([...(field.value || []), subject.id])
+                                                : field.onChange(
+                                                    field.value?.filter(
+                                                        (value) => value !== subject.id
+                                                    )
+                                                    )
+                                            }}
+                                            />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">
+                                            {subject.label}
+                                        </FormLabel>
+                                        </FormItem>
+                                    )
+                                    }}
+                                />
+                                ))}
+                            </div>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                </div>
+            )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <FormField name="yearLevel" render={({ field }) => (
-                <FormItem><FormLabel>Year Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select year level" /></SelectTrigger></FormControl><SelectContent><SelectItem value="1st Year">1st Year</SelectItem><SelectItem value="2nd Year">2nd Year</SelectItem><SelectItem value="3rd Year">3rd Year</SelectItem><SelectItem value="4th Year">4th Year</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
-        </div>
-    </div>
-);
+    );
+};
 
 
 export default function EnrollmentFormPage() {
@@ -275,6 +388,7 @@ export default function EnrollmentFormPage() {
             sex: 'Male',
             civilStatus: 'Single',
             status: 'New',
+            subjects: [],
         }
     });
 
