@@ -53,8 +53,9 @@ const Breadcrumb = () => {
     const pathname = usePathname();
     const segments = pathname.split('/').filter(Boolean);
 
-    const capitalize = (s: string) => {
-        const str = s.replace(/-/g, ' ');
+    const formatSegment = (s: string) => {
+        const decoded = decodeURIComponent(s);
+        const str = decoded.replace(/-/g, ' ');
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
     
@@ -70,7 +71,7 @@ const Breadcrumb = () => {
                 const href = '/' + segments.slice(0, index + 1).join('/');
                 const isLast = index === segments.length - 1;
                 
-                const displayName = capitalize(segment);
+                const displayName = formatSegment(segment);
 
                  if (index === 1) { 
                     return isLast ? (
