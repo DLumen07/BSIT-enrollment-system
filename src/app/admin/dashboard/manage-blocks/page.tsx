@@ -161,34 +161,8 @@ export default function ManageBlocksPage() {
                             </CardHeader>
                             <CardContent>
                                 {blocks[yl.value]?.length > 0 ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {blocks[yl.value].map(block => (
-                                            <Card key={block.id} className="group">
-                                                <CardContent className="flex items-center justify-between p-4">
-                                                    <span className="font-medium">{block.name}</span>
-                                                        <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => handleOpenDialog('edit', yl.value, block)}>
-                                                                <Edit className="mr-2 h-4 w-4" />
-                                                                Edit
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem
-                                                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                                                onSelect={() => setDeleteDialog({ isOpen: true, block: block, year: yl.value })}
-                                                            >
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                Delete
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
+                                    <div className="text-center py-10">
+                                        <p className="text-sm text-muted-foreground">Blocks will be shown here.</p>
                                     </div>
                                 ) : (
                                     <div className="text-center py-10">
