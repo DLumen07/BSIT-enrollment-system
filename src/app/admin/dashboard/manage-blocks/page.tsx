@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 type YearLevel = '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
 
@@ -12,6 +14,14 @@ const yearLevelsConfig: {value: YearLevel, label: string, description: string}[]
     { value: '2nd-year', label: '2nd Year', description: 'Organize blocks for sophomore students.' },
     { value: '3rd-year', label: '3rd Year', description: 'Handle regular and irregular junior students.' },
     { value: '4th-year', label: '4th Year', description: 'Finalize sections for graduating students.' },
+];
+
+const recentBlocks = [
+    { name: 'BSIT 1-A', yearLevel: '1st Year', dateCreated: '2024-07-28' },
+    { name: 'BSIT 3-C', yearLevel: '3rd Year', dateCreated: '2024-07-27' },
+    { name: 'BSIT 2-B', yearLevel: '2nd Year', dateCreated: '2024-07-27' },
+    { name: 'BSIT 4-A', yearLevel: '4th Year', dateCreated: '2024-07-26' },
+    { name: 'BSIT 1-B', yearLevel: '1st Year', dateCreated: '2024-07-26' },
 ];
 
 
@@ -43,6 +53,37 @@ export default function ManageBlocksPage() {
                        </Link>
                     ))}
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Recently Created Blocks</CardTitle>
+                        <CardDescription>
+                            A list of the most recently added blocks.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Block Name</TableHead>
+                                    <TableHead>Year Level</TableHead>
+                                    <TableHead className="text-right">Date Created</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {recentBlocks.map((block) => (
+                                    <TableRow key={block.name}>
+                                        <TableCell className="font-medium">{block.name}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline">{block.yearLevel}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">{block.dateCreated}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
             </main>
         </>
     );
