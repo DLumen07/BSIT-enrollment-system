@@ -7,7 +7,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import React from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell, Legend } from "recharts"
 import Image from 'next/image';
 
 import {
@@ -45,8 +45,20 @@ const chartData = [
 const chartConfig = {
   enrollees: {
     label: "Enrollees",
-    color: "hsl(var(--primary))",
+    color: "hsl(var(--accent))",
   },
+} satisfies ChartConfig
+
+const studentStatusData = [
+    { name: 'New', value: 320, fill: 'hsl(var(--chart-1))' },
+    { name: 'Old', value: 850, fill: 'hsl(var(--chart-2))' },
+    { name: 'Transferee', value: 80, fill: 'hsl(var(--chart-3))' },
+];
+
+const studentStatusConfig = {
+    new: { label: 'New', color: 'hsl(var(--chart-1))' },
+    old: { label: 'Old', color: 'hsl(var(--chart-2))' },
+    transferee: { label: 'Transferee', color: 'hsl(var(--chart-3))' },
 } satisfies ChartConfig
 
 const adminUsers = [
@@ -125,8 +137,8 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="flex flex-col">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="flex flex-col lg:col-span-2">
                 <CardHeader>
                     <CardTitle>Enrollment Analytics</CardTitle>
                     <CardDescription>Monthly new enrollees for the first semester.</CardDescription>
@@ -157,7 +169,45 @@ export default function AdminDashboardPage() {
                 </div>
                 </CardFooter>
             </Card>
-            <Card>
+             <Card className="flex flex-col">
+              <CardHeader>
+                <CardTitle>Student Demographics</CardTitle>
+                <CardDescription>Breakdown by student status.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 flex items-center justify-center">
+                <ChartContainer config={studentStatusConfig} className="min-h-[200px] w-full max-w-[250px]">
+                  <PieChart accessibilityLayer>
+                    <ChartTooltip content={<ChartTooltipContent nameKey="value" hideLabel />} />
+                    <Pie data={studentStatusData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} strokeWidth={2}>
+                       {studentStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                    </Pie>
+                     <Legend
+                      content={({ payload }) => {
+                        return (
+                          <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                            {payload?.map((entry, index) => (
+                              <li key={`item-${index}`} className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                                <span>{entry.value}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      }}
+                      verticalAlign="bottom"
+                      align="left"
+                      wrapperStyle={{
+                        paddingTop: '1rem',
+                        boxSizing: 'content-box',
+                      }}
+                    />
+                  </PieChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+            <Card className="lg:col-span-3">
                 <CardHeader className="flex flex-row items-center">
                     <div className="grid gap-2">
                         <CardTitle>Administrators</CardTitle>
