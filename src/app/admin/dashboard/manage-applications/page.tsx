@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState, useMemo } from 'react';
-import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 
 const initialPendingApplications = [
@@ -179,7 +180,6 @@ export default function ManageApplicationsPage() {
 
   const handleCloseRejectionDialog = () => {
     setRejectionDialog({ isOpen: false, application: null });
-    // Keep the main dialog open by not setting setSelectedApplication(null) here
   };
 
   const handleApprove = (application: Application) => {
@@ -189,15 +189,14 @@ export default function ManageApplicationsPage() {
   };
 
   const handleReject = (application: Application, reason: string) => {
-    // If rejecting from approved list
     if (approvedApplications.find(app => app.id === application.id)) {
         setApprovedApplications(prev => prev.filter(app => app.id !== application.id));
-    } else { // If rejecting from pending list
+    } else {
         setPendingApplications(prev => prev.filter(app => app.id !== application.id));
     }
     setRejectedApplications(prev => [...prev, { ...application, rejectionReason: reason }]);
     handleCloseRejectionDialog();
-    setSelectedApplication(null); // Close the main dialog after rejection
+    setSelectedApplication(null);
   };
   
   const handleRetrieve = (application: Application) => {
@@ -280,37 +279,57 @@ export default function ManageApplicationsPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <Select value={filters.course} onValueChange={(value) => handleFilterChange('course', value)}>
-                                <SelectTrigger className="w-full sm:w-auto">
-                                    <SelectValue placeholder="Course" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {courses.map(course => <SelectItem key={course} value={course}>{course === 'all' ? 'All Courses' : course}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
-                                <SelectTrigger className="w-full sm:w-auto">
-                                    <SelectValue placeholder="Year" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {years.map(year => <SelectItem key={year} value={year}>{year === 'all' ? 'All Years' : `Year ${year}`}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                             <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                                <SelectTrigger className="w-full sm:w-auto">
-                                    <SelectValue placeholder="Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {statuses.map(status => <SelectItem key={status} value={status}>{status === 'all' ? 'All Statuses' : status}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                             {isFiltered && (
-                                <Button variant="ghost" onClick={clearFilters}>
-                                    <FilterX className="mr-2 h-4 w-4" />
-                                    Clear
+                        <div className="flex items-center gap-2">
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                <Button variant="outline" className="gap-2">
+                                    <Filter className="h-4 w-4" />
+                                    Filter
                                 </Button>
-                            )}
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-4" align="end">
+                                    <div className="grid gap-4">
+                                        <div className="space-y-2">
+                                            <h4 className="font-medium leading-none">Filters</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                                Narrow down your search.
+                                            </p>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Select value={filters.course} onValueChange={(value) => handleFilterChange('course', value)}>
+                                                <SelectTrigger className="w-full sm:w-48">
+                                                    <SelectValue placeholder="Course" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {courses.map(course => <SelectItem key={course} value={course}>{course === 'all' ? 'All Courses' : course}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
+                                                <SelectTrigger className="w-full sm:w-48">
+                                                    <SelectValue placeholder="Year" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {years.map(year => <SelectItem key={year} value={year}>{year === 'all' ? 'All Years' : `Year ${year}`}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                                                <SelectTrigger className="w-full sm:w-48">
+                                                    <SelectValue placeholder="Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {statuses.map(status => <SelectItem key={status} value={status}>{status === 'all' ? 'All Statuses' : status}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            {isFiltered && (
+                                                <Button variant="ghost" onClick={clearFilters}>
+                                                    <FilterX className="mr-2 h-4 w-4" />
+                                                    Clear Filters
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                     </div>
                 </CardHeader>
