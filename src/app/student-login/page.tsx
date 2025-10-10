@@ -40,14 +40,37 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
 </svg>
 );
 
-export default function StudentLoginPage() {
+function LoginForm() {
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     router.push('/student/dashboard');
   };
 
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2 text-left">
+          <Label htmlFor="email">Email</Label>
+          <Input
+              id="email"
+              type="email"
+              placeholder="student@example.com"
+              required
+          />
+      </div>
+      <div className="space-y-2 text-left">
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" type="password" required />
+      </div>
+      <Button onClick={handleLogin} className="w-full">
+          Login with Email
+      </Button>
+    </div>
+  );
+}
+
+export default function StudentLoginPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <main className="flex-1 flex flex-col items-center justify-center p-4">
@@ -80,24 +103,7 @@ export default function StudentLoginPage() {
                   <span className="text-xs text-muted-foreground">OR</span>
                   <Separator className="flex-1" />
                 </div>
-                <div className="space-y-4">
-                    <div className="space-y-2 text-left">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            placeholder="student@example.com"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-2 text-left">
-                        <Label htmlFor="password">Password</Label>
-                        <Input id="password" type="password" required />
-                    </div>
-                    <Button onClick={handleLogin} className="w-full">
-                        Login with Email
-                    </Button>
-                </div>
+                <LoginForm />
                 <div className="text-center text-sm">
                   Don't have an account?{' '}
                   <Link href="/student-signup" className="underline">
