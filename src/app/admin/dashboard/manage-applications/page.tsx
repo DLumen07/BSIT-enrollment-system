@@ -19,7 +19,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
@@ -59,7 +58,7 @@ const initialPendingApplications = [
         studentId: '2024-1002', 
         name: 'Jane Smith', 
         course: 'ACT', 
-        year: 1, 
+        year: 1,
         status: 'New',
         credentials: {
             birthCertificate: true,
@@ -69,7 +68,7 @@ const initialPendingApplications = [
         }
     },
     { 
-        id: 3, 
+        id: 3,
         studentId: '2024-1003', 
         name: 'Peter Jones', 
         course: 'BSIT', 
@@ -179,7 +178,8 @@ export default function ManageApplicationsPage() {
 
   const handleCloseRejectionDialog = () => {
     setRejectionDialog({ isOpen: false, application: null });
-  }
+    // Keep the main dialog open by not setting setSelectedApplication(null) here
+  };
 
   const handleApprove = (application: Application) => {
     setPendingApplications(prev => prev.filter(app => app.id !== application.id));
@@ -196,7 +196,7 @@ export default function ManageApplicationsPage() {
     }
     setRejectedApplications(prev => [...prev, { ...application, rejectionReason: reason }]);
     handleCloseRejectionDialog();
-    setSelectedApplication(null);
+    setSelectedApplication(null); // Close the main dialog after rejection
   };
   
   const handleRetrieve = (application: Application) => {
@@ -269,12 +269,12 @@ export default function ManageApplicationsPage() {
             <Card>
                 <CardHeader>
                     <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center">
-                        <div className="relative">
+                         <div className="relative flex-1 md:grow-0">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 type="search"
                                 placeholder="Search by name or ID..."
-                                className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                                className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[240px]"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -524,8 +524,16 @@ export default function ManageApplicationsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="destructive" onClick={() => handleOpenRejectionDialog(selectedApplication)}>Reject</Button>
-                        <Button className="bg-green-500 hover:bg-green-600 text-white" onClick={() => handleApprove(selectedApplication)}>Approve</Button>
+                        <Button variant="destructive" onClick={() => {
+                            if (selectedApplication) {
+                                handleOpenRejectionDialog(selectedApplication);
+                            }
+                        }}>Reject</Button>
+                        <Button className="bg-green-500 hover:bg-green-600 text-white" onClick={() => {
+                             if (selectedApplication) {
+                                handleApprove(selectedApplication);
+                            }
+                        }}>Approve</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
