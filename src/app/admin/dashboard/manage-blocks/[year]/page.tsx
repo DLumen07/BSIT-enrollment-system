@@ -4,15 +4,7 @@ import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle, Trash2, Pencil, Users } from 'lucide-react';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { PlusCircle, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -22,6 +14,9 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -38,8 +33,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 const yearLevelMap: Record<string, string> = {
     '1st-year': '1st Year',
@@ -55,63 +48,68 @@ type Block = {
     enrolled: number;
 };
 
-const initialBlocks: Record<string, Block[]> = {
-    '1st-year': [
-        { id: 1, name: 'BSIT 1-A', capacity: 45, enrolled: 42 },
-        { id: 2, name: 'BSIT 1-B', capacity: 45, enrolled: 44 },
-    ],
-    '2nd-year': [],
-    '3rd-year': [
-        { id: 3, name: 'BSIT 3-A (Reg)', capacity: 40, enrolled: 38 },
-        { id: 4, name: 'BSIT 3-B (Irreg)', capacity: 50, enrolled: 15 },
-    ],
-    '4th-year': [],
-};
 
 export default function YearLevelBlocksPage() {
     const params = useParams();
     const year = params.year as string;
     const yearLabel = yearLevelMap[year] || 'Unknown Year';
 
-    const [blocks, setBlocks] = useState<Block[]>(initialBlocks[year] || []);
+    const [blocks, setBlocks] = useState<Block[]>([
+        { id: 1, name: `BSIT ${year.charAt(0)}-A`, capacity: 40, enrolled: 38 },
+        { id: 2, name: `BSIT ${year.charAt(0)}-B`, capacity: 40, enrolled: 35 },
+    ]);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
+    const [blockName, setBlockName] = useState('');
+    const [blockCapacity, setBlockCapacity] = useState('');
 
-    const handleAddBlock = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        const name = formData.get('blockName') as string;
-        const capacity = parseInt(formData.get('capacity') as string, 10);
-
-        if (name && capacity > 0) {
-            setBlocks(prev => [...prev, { id: Date.now(), name, capacity, enrolled: 0 }]);
+    const handleAddBlock = () => {
+        if (blockName && blockCapacity) {
+            const newBlock: Block = {
+                id: Date.now(),
+                name: blockName,
+                capacity: parseInt(blockCapacity, 10),
+                enrolled: 0,
+            };
+            setBlocks([...blocks, newBlock]);
             setIsAddDialogOpen(false);
+            setBlockName('');
+            setBlockCapacity('');
         }
     };
 
-    const handleEditBlock = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!selectedBlock) return;
-
-        const formData = new FormData(event.currentTarget);
-        const name = formData.get('blockName') as string;
-        const capacity = parseInt(formData.get('capacity') as string, 10);
-
-        if (name && capacity > 0) {
-            setBlocks(prev => prev.map(b => b.id === selectedBlock.id ? { ...b, name, capacity } : b));
+    const handleEditBlock = () => {
+        if (selectedBlock && blockName && blockCapacity) {
+            setBlocks(blocks.map(b => b.id === selectedBlock.id ? { ...b, name: blockName, capacity: parseInt(blockCapacity, 10) } : b));
             setIsEditDialogOpen(false);
+            setSelectedBlock(null);
+            setBlockName('');
+            setBlockCapacity('');
+        }
+    };
+    
+    const handleDeleteBlock = () => {
+        if (selectedBlock) {
+            setBlocks(blocks.filter(b => b.id !== selectedBlock.id));
+            setIsDeleteDialogOpen(false);
             setSelectedBlock(null);
         }
     };
 
-    const handleDeleteBlock = () => {
-        if (!selectedBlock) return;
-        setBlocks(prev => prev.filter(b => b.id !== selectedBlock.id));
-        setIsDeleteDialogOpen(false);
-        setSelectedBlock(null);
+    const openEditDialog = (block: Block) => {
+        setSelectedBlock(block);
+        setBlockName(block.name);
+        setBlockCapacity(block.capacity.toString());
+        setIsEditDialogOpen(true);
     };
+
+    const openDeleteDialog = (block: Block) => {
+        setSelectedBlock(block);
+        setIsDeleteDialogOpen(true);
+    };
+
 
     return (
         <>
@@ -123,9 +121,9 @@ export default function YearLevelBlocksPage() {
                             Add, edit, and view blocks for {yearLabel}.
                         </p>
                     </div>
-                     <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button className="rounded-full">
+                            <Button variant="outline" className="rounded-full">
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add New Block
                             </Button>
@@ -133,24 +131,24 @@ export default function YearLevelBlocksPage() {
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Add New Block</DialogTitle>
-                                <DialogDescription>Enter the details for the new block.</DialogDescription>
+                                <DialogDescription>
+                                    Enter the name and capacity for the new block.
+                                </DialogDescription>
                             </DialogHeader>
-                            <form onSubmit={handleAddBlock} id="add-block-form">
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="blockName">Block Name</Label>
-                                        <Input id="blockName" name="blockName" placeholder="e.g., BSIT 1-A" required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="capacity">Capacity</Label>
-                                        <Input id="capacity" name="capacity" type="number" min="1" placeholder="e.g., 45" required />
-                                    </div>
+                            <div className="space-y-4 py-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="block-name">Block Name</Label>
+                                    <Input id="block-name" value={blockName} onChange={e => setBlockName(e.target.value)} placeholder="e.g., BSIT 1-A" />
                                 </div>
-                                <DialogFooter>
-                                    <Button variant="outline" type="button" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                                    <Button type="submit">Add Block</Button>
-                                </DialogFooter>
-                            </form>
+                                <div className="space-y-2">
+                                    <Label htmlFor="block-capacity">Capacity</Label>
+                                    <Input id="block-capacity" type="number" value={blockCapacity} onChange={e => setBlockCapacity(e.target.value)} placeholder="e.g., 40" />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleAddBlock}>Add Block</Button>
+                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
                 </div>
@@ -167,6 +165,7 @@ export default function YearLevelBlocksPage() {
                                 <TableRow>
                                     <TableHead>Block Name</TableHead>
                                     <TableHead>Capacity</TableHead>
+                                    <TableHead>Enrolled</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -175,14 +174,10 @@ export default function YearLevelBlocksPage() {
                                     blocks.map(block => (
                                         <TableRow key={block.id}>
                                             <TableCell className="font-medium">{block.name}</TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Users className="h-4 w-4 text-muted-foreground" />
-                                                    <span>{block.enrolled} / {block.capacity}</span>
-                                                </div>
-                                            </TableCell>
+                                            <TableCell>{block.capacity}</TableCell>
+                                            <TableCell>{block.enrolled}</TableCell>
                                             <TableCell className="text-right">
-                                                <DropdownMenu>
+                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button variant="ghost" className="h-8 w-8 p-0">
                                                             <span className="sr-only">Open menu</span>
@@ -190,15 +185,11 @@ export default function YearLevelBlocksPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => { setSelectedBlock(block); setIsEditDialogOpen(true); }}>
-                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                            Edit Block
+                                                        <DropdownMenuItem onSelect={() => openEditDialog(block)}>
+                                                            <Pencil className="mr-2 h-4 w-4" /> Edit
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem 
-                                                            className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                                            onSelect={() => { setSelectedBlock(block); setIsDeleteDialogOpen(true); }}>
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Delete Block
+                                                        <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => openDeleteDialog(block)}>
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -207,8 +198,8 @@ export default function YearLevelBlocksPage() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center">
-                                            No blocks created for this year level yet.
+                                        <TableCell colSpan={4} className="text-center h-24">
+                                            No blocks created yet.
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -218,56 +209,45 @@ export default function YearLevelBlocksPage() {
                 </Card>
             </main>
 
-            {/* Edit Dialog */}
-            {selectedBlock && (
-                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Edit Block</DialogTitle>
-                            <DialogDescription>Update the details for the block.</DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleEditBlock} id="edit-block-form">
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-blockName">Block Name</Label>
-                                    <Input id="edit-blockName" name="blockName" defaultValue={selectedBlock.name} required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-capacity">Capacity</Label>
-                                    <Input id="edit-capacity" name="capacity" type="number" min="1" defaultValue={selectedBlock.capacity} required />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="outline" type="button" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-                                <Button type="submit">Save Changes</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-            )}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Block</DialogTitle>
+                        <DialogDescription>
+                            Update the name and capacity for this block.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-block-name">Block Name</Label>
+                            <Input id="edit-block-name" value={blockName} onChange={e => setBlockName(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-block-capacity">Capacity</Label>
+                            <Input id="edit-block-capacity" type="number" value={blockCapacity} onChange={e => setBlockCapacity(e.target.value)} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleEditBlock}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-            {/* Delete Dialog */}
-            {selectedBlock && (
-                 <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the 
-                                <span className="font-semibold"> {selectedBlock.name} </span> block.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setSelectedBlock(null)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteBlock} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
+             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the <span className="font-semibold">{selectedBlock?.name}</span> block.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteBlock} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
-
-    
-
-    
