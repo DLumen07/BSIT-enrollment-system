@@ -183,7 +183,7 @@ export default function YearLevelBlocksPage() {
                                             <TableCell className="text-right">
                                                  <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent hover:text-accent focus-visible:ring-0 focus-visible:ring-offset-0 focus:text-accent data-[state=open]:text-accent">
+                                                        <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent hover:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
                                                             <span className="sr-only">Open menu</span>
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
