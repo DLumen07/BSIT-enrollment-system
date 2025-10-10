@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileSignature } from 'lucide-react';
+import Link from 'next/link';
 
 export default function EnrollmentPage() {
     return (
@@ -21,8 +22,8 @@ export default function EnrollmentPage() {
                         <p className="text-muted-foreground mb-6">
                             Click the button below to start the enrollment process. Ensure your required documents are ready for submission.
                         </p>
-                        <Button size="lg">
-                            Enroll Now
+                        <Button asChild size="lg">
+                            <Link href="/student/dashboard/enrollment/form">Enroll Now</Link>
                         </Button>
                     </div>
                 </CardContent>
