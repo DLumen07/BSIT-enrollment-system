@@ -230,7 +230,7 @@ export default function SchedulePage() {
                         {/* Time Column and Grid */}
                         <div className="col-start-1 row-start-2 relative">
                              {timeSlots.map((time) => (
-                                <div key={time} className="h-16 relative -z-10">
+                                <div key={time} className="h-16 relative">
                                     <div className="absolute -top-2.5 right-2 text-xs text-muted-foreground">{formatTime(time)}</div>
                                 </div>
                             ))}
@@ -313,3 +313,4 @@ export default function SchedulePage() {
     );
 }
 
+    
