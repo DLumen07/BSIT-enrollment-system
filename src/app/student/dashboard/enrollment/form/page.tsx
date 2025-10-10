@@ -20,12 +20,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 
 const steps = [
-    { id: 'Step 1', name: 'Personal Information' },
-    { id: 'Step 2', name: 'Academic & Family Information' },
-    { id: 'Step 3', name: 'Additional & Educational Background' },
+    { id: 'Step 1', name: 'Personal & Family Information' },
+    { id: 'Step 2', name: 'Additional & Educational Background' },
+    { id: 'Step 3', name: 'Academic Information' },
 ];
 
-const personalInfoSchema = z.object({
+const personalFamilySchema = z.object({
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
     middleName: z.string().optional(),
@@ -39,11 +39,6 @@ const personalInfoSchema = z.object({
     dialect: z.string().min(1, 'Dialect is required'),
     sex: z.enum(['Male', 'Female']),
     civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated']),
-});
-
-const academicFamilySchema = z.object({
-    course: z.string().min(1, 'Course is required'),
-    status: z.enum(['New', 'Old', 'Transferee']),
     fathersName: z.string().min(1, "Father's name is required"),
     fathersOccupation: z.string().min(1, "Father's occupation is required"),
     mothersName: z.string().min(1, "Mother's name is required"),
@@ -71,11 +66,18 @@ const additionalInfoSchema = z.object({
     collegiateYearGraduated: z.string().optional(),
 });
 
+const academicSchema = z.object({
+    course: z.string().min(1, 'Course is required'),
+    yearLevel: z.string().min(1, 'Year level is required'),
+    status: z.enum(['New', 'Old', 'Transferee']),
+});
 
-const enrollmentSchema = personalInfoSchema.merge(academicFamilySchema).merge(additionalInfoSchema);
+
+const enrollmentSchema = personalFamilySchema.merge(additionalInfoSchema).merge(academicSchema);
 
 const Step1 = () => (
     <div className="space-y-6">
+        <h3 className="text-lg font-medium">Personal Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField name="firstName" render={({ field }) => (
                 <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -132,20 +134,7 @@ const Step1 = () => (
                 <FormItem><FormLabel>Civil Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select civil status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem><SelectItem value="Widowed">Widowed</SelectItem><SelectItem value="Separated">Separated</SelectItem></SelectContent></Select><FormMessage /></FormItem>
             )} />
         </div>
-    </div>
-);
-
-const Step2 = () => (
-     <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <FormField name="course" render={({ field }) => (
-                <FormItem><FormLabel>Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger></FormControl><SelectContent><SelectItem value="BSIT">BSIT</SelectItem><SelectItem value="ACT">ACT</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
-             <FormField name="status" render={({ field }) => (
-                <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
-        </div>
-         <div className="border-t pt-6 mt-6">
+        <div className="border-t pt-6 mt-6">
             <h3 className="text-lg font-medium">Family Information</h3>
         </div>
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -178,7 +167,7 @@ const Step2 = () => (
     </div>
 );
 
-const Step3 = () => {
+const Step2 = () => {
     const form = useFormContext();
     const isDifferentlyAbled = form.watch('differentlyAbled');
     const belongsToMinority = form.watch('minorityGroup');
@@ -256,6 +245,25 @@ const Step3 = () => {
     );
 };
 
+const Step3 = () => (
+     <div className="space-y-6">
+        <h3 className="text-lg font-medium">Academic Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <FormField name="course" render={({ field }) => (
+                <FormItem><FormLabel>Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger></FormControl><SelectContent><SelectItem value="BSIT">BSIT</SelectItem><SelectItem value="ACT">ACT</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+            )} />
+             <FormField name="status" render={({ field }) => (
+                <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+            )} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <FormField name="yearLevel" render={({ field }) => (
+                <FormItem><FormLabel>Year Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select year level" /></SelectTrigger></FormControl><SelectContent><SelectItem value="1st Year">1st Year</SelectItem><SelectItem value="2nd Year">2nd Year</SelectItem><SelectItem value="3rd Year">3rd Year</SelectItem><SelectItem value="4th Year">4th Year</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+            )} />
+        </div>
+    </div>
+);
+
 
 export default function EnrollmentFormPage() {
     const [currentStep, setCurrentStep] = useState(0);
@@ -279,9 +287,9 @@ export default function EnrollmentFormPage() {
 
     const next = async () => {
         const fields: FieldName[][] = [
-            Object.keys(personalInfoSchema.shape) as FieldName[],
-            Object.keys(academicFamilySchema.shape) as FieldName[],
+            Object.keys(personalFamilySchema.shape) as FieldName[],
             Object.keys(additionalInfoSchema.shape) as FieldName[],
+            Object.keys(academicSchema.shape) as FieldName[],
         ];
         
         const output = await methods.trigger(fields[currentStep], { shouldFocus: true });
@@ -326,8 +334,8 @@ export default function EnrollmentFormPage() {
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
                     <CardTitle>Enrollment Form</CardTitle>
-                    <CardDescription>Please fill out all the necessary fields.</CardDescription>
-                    <Progress value={(currentStep / (steps.length -1)) * 100} className="mt-4" />
+                    <CardDescription>Please fill out all the necessary fields. ({steps[currentStep].name})</CardDescription>
+                    <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />
                 </CardHeader>
                 <CardContent>
                     <FormProvider {...methods}>
@@ -358,3 +366,5 @@ export default function EnrollmentFormPage() {
         </main>
     );
 }
+
+    
