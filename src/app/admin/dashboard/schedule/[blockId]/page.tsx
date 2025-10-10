@@ -74,8 +74,8 @@ export default function SchedulePage() {
                         {/* Time column */}
                         <div className="row-start-1 col-start-1 sticky left-0 bg-background pr-2 z-10">
                             {timeSlots.map(time => (
-                                <div key={time} className="h-[60px] text-right text-xs text-muted-foreground -translate-y-2">
-                                    {formatTime(time)}
+                                <div key={time} className="h-[60px] flex justify-end items-start text-xs text-muted-foreground -mt-2">
+                                    <span className="transform -translate-y-1/2">{formatTime(time)}</span>
                                 </div>
                             ))}
                         </div>
