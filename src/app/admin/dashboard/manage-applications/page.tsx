@@ -260,6 +260,7 @@ export default function ManageApplicationsPage() {
                         id="enrollment-status" 
                         checked={isEnrollmentOpen} 
                         onCheckedChange={setIsEnrollmentOpen}
+                        className="data-[state=checked]:bg-accent"
                     />
                     <Label htmlFor="enrollment-status" className="text-sm font-medium">
                         {isEnrollmentOpen ? 'Enrollment Open' : 'Enrollment Closed'}
@@ -282,7 +283,7 @@ export default function ManageApplicationsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="ghost" className="gap-2 hover:bg-transparent hover:text-accent">
+                                    <Button variant="ghost" className="gap-2 hover:bg-transparent hover:text-accent focus:text-accent">
                                         <Filter className="h-4 w-4" />
                                         Filter
                                     </Button>
