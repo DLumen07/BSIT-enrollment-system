@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -43,8 +43,6 @@ const personalInfoSchema = z.object({
 
 const academicFamilySchema = z.object({
     course: z.string().min(1, 'Course is required'),
-    yearLevel: z.string().min(1, 'Year level is required'),
-    block: z.string().optional(),
     status: z.enum(['New', 'Old', 'Transferee']),
     fathersName: z.string().min(1, "Father's name is required"),
     fathersOccupation: z.string().min(1, "Father's occupation is required"),
@@ -142,14 +140,6 @@ const Step2 = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <FormField name="course" render={({ field }) => (
                 <FormItem><FormLabel>Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger></FormControl><SelectContent><SelectItem value="BSIT">BSIT</SelectItem><SelectItem value="ACT">ACT</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
-             <FormField name="yearLevel" render={({ field }) => (
-                <FormItem><FormLabel>Year Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select year level" /></SelectTrigger></FormControl><SelectContent><SelectItem value="1">1st Year</SelectItem><SelectItem value="2">2nd Year</SelectItem><SelectItem value="3">3rd Year</SelectItem><SelectItem value="4">4th Year</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
-        </div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <FormField name="block" render={({ field }) => (
-                <FormItem><FormLabel>Block (Optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
             )} />
              <FormField name="status" render={({ field }) => (
                 <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
@@ -368,4 +358,3 @@ export default function EnrollmentFormPage() {
         </main>
     );
 }
-
