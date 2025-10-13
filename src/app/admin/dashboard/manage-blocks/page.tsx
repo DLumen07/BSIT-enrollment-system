@@ -28,7 +28,7 @@ const recentBlocks = [
 export default function ManageBlocksPage() {
     return (
         <>
-            <main className="flex-1 p-4 sm:p-6 space-y-6">
+            <main className="flex-1 p-4 sm:p-6 space-y-6 bg-red-200">
                 <div className="space-y-0.5">
                      <h1 className="text-2xl font-bold tracking-tight">Manage Blocks</h1>
                     <p className="text-muted-foreground">
