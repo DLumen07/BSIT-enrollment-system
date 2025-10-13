@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -110,10 +110,12 @@ export default function SchedulePage() {
 
     const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null);
     const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
 
-    const hasConflict = (newSubject: Omit<Subject, 'id' | 'color' | 'description'>) => {
+    const hasConflict = (newSubject: Omit<Subject, 'id' | 'color' | 'description'>, editingSubjectId: number | null = null) => {
         const toMinutes = (time: string) => {
             const [h, m] = time.split(':').map(Number);
             return h * 60 + m;
@@ -124,6 +126,7 @@ export default function SchedulePage() {
 
         for (const [blockName, schedule] of Object.entries(mockAllSchedules)) {
             for (const existingSubject of schedule) {
+                if (editingSubjectId && existingSubject.id === editingSubjectId) continue;
                 if (existingSubject.day !== newSubject.day) continue;
 
                 const existingStartTime = toMinutes(existingSubject.startTime);
@@ -131,7 +134,6 @@ export default function SchedulePage() {
                 
                 const timeOverlap = newStartTime < existingEndTime && newEndTime > existingStartTime;
 
-                // Instructor conflict check
                 if (newSubject.instructor && newSubject.instructor === existingSubject.instructor && timeOverlap) {
                      toast({
                         variant: "destructive",
@@ -141,7 +143,6 @@ export default function SchedulePage() {
                     return true;
                 }
                 
-                // Block conflict check (for the current block)
                 if (blockName === blockId && timeOverlap) {
                     toast({
                         variant: "destructive",
@@ -154,7 +155,6 @@ export default function SchedulePage() {
         }
         return false;
     }
-
 
     const handleAddSubject = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -190,7 +190,7 @@ export default function SchedulePage() {
         }
 
         if (hasConflict(newSubjectData)) {
-            return; // Stop if there's a conflict
+            return;
         }
 
         const randomColor = colorChoices[Math.floor(Math.random() * colorChoices.length)];
@@ -203,12 +203,61 @@ export default function SchedulePage() {
         };
 
         setSubjects([...subjects, newSubject]);
-        mockAllSchedules[blockId] = [...(mockAllSchedules[blockId] || []), newSubject]; // Update mock global schedule
+        mockAllSchedules[blockId] = [...(mockAllSchedules[blockId] || []), newSubject];
         setIsAddDialogOpen(false);
          toast({
             title: "Subject Added",
             description: `${newSubject.code} has been added to the schedule for ${blockId}.`,
         });
+    };
+    
+    const handleEditSubject = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!subjectToEdit) return;
+
+        const formData = new FormData(e.currentTarget);
+        const selectedSubjectId = formData.get('subject') as string;
+        const selectedSubject = allAvailableSubjects.find(s => s.id === selectedSubjectId);
+
+        if (!selectedSubject) {
+            toast({ variant: "destructive", title: "Invalid Subject", description: "Please select a valid subject." });
+            return;
+        }
+
+        const updatedSubjectData = {
+            code: selectedSubject.id,
+            instructor: formData.get('instructor') as string,
+            day: formData.get('day') as string,
+            startTime: formData.get('startTime') as string,
+            endTime: formData.get('endTime') as string,
+        };
+
+        if (hasConflict(updatedSubjectData, subjectToEdit.id)) {
+            return;
+        }
+
+        const updatedSubject: Subject = { 
+            ...subjectToEdit,
+            ...updatedSubjectData,
+            description: selectedSubject.label,
+        };
+        
+        const updatedSubjects = subjects.map(s => s.id === subjectToEdit.id ? updatedSubject : s);
+        setSubjects(updatedSubjects);
+
+        mockAllSchedules[blockId] = updatedSubjects;
+
+        setIsEditDialogOpen(false);
+        setSubjectToEdit(null);
+        toast({
+            title: "Subject Updated",
+            description: `${updatedSubject.code} has been updated.`,
+        });
+    };
+
+    const openEditDialog = (subject: Subject) => {
+        setSubjectToEdit(subject);
+        setIsEditDialogOpen(true);
     };
 
     const openDeleteDialog = (subject: Subject) => {
@@ -227,7 +276,6 @@ export default function SchedulePage() {
             });
         }
     };
-
 
     return (
         <main className="flex-1 p-4 sm:p-6 space-y-6">
@@ -387,7 +435,7 @@ export default function SchedulePage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => openEditDialog(subject)}>
                                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem 
@@ -405,6 +453,81 @@ export default function SchedulePage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Subject</DialogTitle>
+                        <DialogDescription>
+                            Update the details for {subjectToEdit?.code}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form id="edit-subject-form" onSubmit={handleEditSubject}>
+                        <div className="grid gap-4 py-4">
+                             <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="edit-subject" className="text-right">Subject</Label>
+                                <Select name="subject" defaultValue={subjectToEdit?.code} required>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Select a subject" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {allAvailableSubjects.map(sub => <SelectItem key={sub.id} value={sub.id}>{sub.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="edit-instructor" className="text-right">Instructor</Label>
+                                <Select name="instructor" defaultValue={subjectToEdit?.instructor}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Select an instructor (optional)" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {initialInstructors.map(ins => <SelectItem key={ins.id} value={ins.name}>{ins.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="edit-day" className="text-right">Day</Label>
+                                <Select name="day" defaultValue={subjectToEdit?.day} required>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Select a day" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {days.map(day => <SelectItem key={day} value={day}>{day}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="edit-startTime" className="text-right">Start Time</Label>
+                                <Select name="startTime" defaultValue={subjectToEdit?.startTime} required>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Select start time" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {detailedTimeSlots.map(ts => <SelectItem key={`edit-start-${ts.value}`} value={ts.value}>{ts.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="edit-endTime" className="text-right">End Time</Label>
+                                <Select name="endTime" defaultValue={subjectToEdit?.endTime} required>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Select end time" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {detailedTimeSlots.map(ts => <SelectItem key={`edit-end-${ts.value}`} value={ts.value}>{ts.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </form>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                        <Button type="submit" form="edit-subject-form">Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
