@@ -54,15 +54,15 @@ type Instructor = {
     id: number;
     name: string;
     email: string;
-    department: string;
+    subjects: string[];
     avatar: string;
 };
 
 const initialInstructors: Instructor[] = [
-    { id: 1, name: 'Dr. Alan Turing', email: 'alan.turing@university.edu', department: 'Computer Science', avatar: 'https://picsum.photos/seed/at-avatar/40/40' },
-    { id: 2, name: 'Prof. Ada Lovelace', email: 'ada.lovelace@university.edu', department: 'Mathematics', avatar: 'https://picsum.photos/seed/al-avatar/40/40' },
-    { id: 3, name: 'Dr. Grace Hopper', email: 'grace.hopper@university.edu', department: 'Computer Science', avatar: 'https://picsum.photos/seed/gh-avatar/40/40' },
-    { id: 4, name: 'Mr. Charles Babbage', email: 'charles.babbage@university.edu', department: 'Engineering', avatar: 'https://picsum.photos/seed/cb-avatar/40/40' },
+    { id: 1, name: 'Dr. Alan Turing', email: 'alan.turing@university.edu', subjects: ['IT 101', 'IT 201'], avatar: 'https://picsum.photos/seed/at-avatar/40/40' },
+    { id: 2, name: 'Prof. Ada Lovelace', email: 'ada.lovelace@university.edu', subjects: ['MATH 101', 'MATH 201'], avatar: 'https://picsum.photos/seed/al-avatar/40/40' },
+    { id: 3, name: 'Dr. Grace Hopper', email: 'grace.hopper@university.edu', subjects: ['IT 301', 'IT 401'], avatar: 'https://picsum.photos/seed/gh-avatar/40/40' },
+    { id: 4, name: 'Mr. Charles Babbage', email: 'charles.babbage@university.edu', subjects: ['ENG 101'], avatar: 'https://picsum.photos/seed/cb-avatar/40/40' },
 ];
 
 export default function InstructorsPage() {
@@ -89,7 +89,7 @@ export default function InstructorsPage() {
             id: Date.now(),
             name: formData.get('name') as string,
             email: formData.get('email') as string,
-            department: formData.get('department') as string,
+            subjects: (formData.get('subjects') as string).split(',').map(s => s.trim()).filter(s => s),
             avatar: `https://picsum.photos/seed/${Date.now()}/40/40`,
         };
         setInstructors([...instructors, newInstructor]);
@@ -104,7 +104,7 @@ export default function InstructorsPage() {
             ...selectedInstructor,
             name: formData.get('name') as string,
             email: formData.get('email') as string,
-            department: formData.get('department') as string,
+            subjects: (formData.get('subjects') as string).split(',').map(s => s.trim()).filter(s => s),
         };
         setInstructors(instructors.map(u => u.id === selectedInstructor.id ? updatedInstructor : u));
         setIsEditDialogOpen(false);
@@ -125,7 +125,7 @@ export default function InstructorsPage() {
                     <div className="space-y-0.5">
                         <h1 className="text-2xl font-bold tracking-tight">Instructors</h1>
                         <p className="text-muted-foreground">
-                            Manage instructor profiles and their assigned schedules.
+                            Manage instructor profiles and their assigned subjects.
                         </p>
                     </div>
                      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -153,8 +153,8 @@ export default function InstructorsPage() {
                                         <Input id="email" name="email" type="email" required />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="department">Department</Label>
-                                        <Input id="department" name="department" required />
+                                        <Label htmlFor="subjects">Subjects Handled (comma-separated)</Label>
+                                        <Input id="subjects" name="subjects" placeholder="e.g., IT 101, MATH 101" required />
                                     </div>
                                 </div>
                             </form>
@@ -178,7 +178,7 @@ export default function InstructorsPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Instructor</TableHead>
-                                    <TableHead>Department</TableHead>
+                                    <TableHead>Subjects Handled</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -198,12 +198,16 @@ export default function InstructorsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="outline">{instructor.department}</Badge>
+                                            <div className="flex flex-wrap gap-1">
+                                                {instructor.subjects.map(subject => (
+                                                    <Badge key={subject} variant="secondary">{subject}</Badge>
+                                                ))}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
+                                                    <Button variant="ghost" className="h-8 w-8 p-0 hover:text-accent">
                                                         <span className="sr-only">Open menu</span>
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
@@ -256,8 +260,8 @@ export default function InstructorsPage() {
                                 <Input id="edit-email" name="email" type="email" defaultValue={selectedInstructor?.email} required />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="edit-department">Department</Label>
-                                <Input id="edit-department" name="department" defaultValue={selectedInstructor?.department} required />
+                                <Label htmlFor="edit-subjects">Subjects Handled (comma-separated)</Label>
+                                <Input id="edit-subjects" name="subjects" defaultValue={selectedInstructor?.subjects.join(', ')} required />
                             </div>
                         </div>
                     </form>
