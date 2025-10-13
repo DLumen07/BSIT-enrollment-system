@@ -33,18 +33,16 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
-const chartData = [
-  { month: "January", enrollees: 186 },
-  { month: "February", enrollees: 305 },
-  { month: "March", enrollees: 237 },
-  { month: "April", enrollees: 73 },
-  { month: "May", enrollees: 209 },
-  { month: "June", enrollees: 214 },
+const yearLevelData = [
+  { level: "1st Year", students: 450 },
+  { level: "2nd Year", students: 380 },
+  { level: "3rd Year", students: 250 },
+  { level: "4th Year", students: 170 },
 ]
 
-const chartConfig = {
-  enrollees: {
-    label: "Enrollees",
+const yearLevelChartConfig = {
+  students: {
+    label: "Students",
     color: "hsl(var(--accent))",
   },
 } satisfies ChartConfig
@@ -140,32 +138,28 @@ export default function AdminDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="flex flex-col lg:col-span-2">
                 <CardHeader>
-                    <CardTitle>Enrollment Analytics</CardTitle>
-                    <CardDescription>Monthly new enrollees for the first semester.</CardDescription>
+                    <CardTitle>Student Population by Year Level</CardTitle>
+                    <CardDescription>Distribution of students across all year levels.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1">
-                    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-                    <BarChart accessibilityLayer data={chartData}>
+                    <ChartContainer config={yearLevelChartConfig} className="min-h-[200px] w-full">
+                    <BarChart accessibilityLayer data={yearLevelData}>
                         <CartesianGrid vertical={false} />
                         <XAxis
-                        dataKey="month"
+                        dataKey="level"
                         tickLine={false}
                         tickMargin={10}
                         axisLine={false}
-                        tickFormatter={(value) => value.slice(0, 3)}
                         />
                         <YAxis />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="enrollees" fill="var(--color-enrollees)" radius={4} />
+                        <Bar dataKey="students" fill="var(--color-students)" radius={4} />
                     </BarChart>
                     </ChartContainer>
                 </CardContent>
                 <CardFooter className="flex-col items-start gap-2 text-sm">
-                <div className="flex gap-2 font-medium leading-none">
-                    Trending up for June 2024
-                </div>
                 <div className="leading-none text-muted-foreground">
-                    Showing total enrollees for the last 6 months
+                    Showing student counts for the current academic year.
                 </div>
                 </CardFooter>
             </Card>
@@ -263,5 +257,3 @@ export default function AdminDashboardPage() {
     </>
   );
 }
-
-    
