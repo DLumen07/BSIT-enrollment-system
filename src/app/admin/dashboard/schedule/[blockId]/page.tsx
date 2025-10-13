@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { initialInstructors, availableSubjects as allAvailableSubjects, Instructor } from '../../instructors/page';
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast";
 
 type Subject = {
     id: number;
@@ -106,7 +106,7 @@ const detailedTimeSlots = Array.from({ length: 12 * 2 }, (_, i) => {
 export default function SchedulePage() {
     const params = useParams();
     const blockId = decodeURIComponent(params.blockId as string);
-    const { toast } = useToast()
+    const { toast } = useToast();
 
     const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -164,7 +164,11 @@ export default function SchedulePage() {
         const selectedSubject = allAvailableSubjects.find(s => s.id === selectedSubjectId);
 
         if (!selectedSubject) {
-             alert('Please select a valid subject');
+            toast({
+                variant: "destructive",
+                title: "Invalid Subject",
+                description: "Please select a valid subject from the list.",
+            });
             return;
         }
 
@@ -203,8 +207,8 @@ export default function SchedulePage() {
         setIsAddDialogOpen(false);
          toast({
             title: "Subject Added",
-            description: `${newSubject.code} has been added to the schedule.`,
-        })
+            description: `${newSubject.code} has been added to the schedule for ${blockId}.`,
+        });
     };
 
     const openDeleteDialog = (subject: Subject) => {
@@ -217,6 +221,10 @@ export default function SchedulePage() {
             setSubjects(subjects.filter(s => s.id !== subjectToDelete.id));
             setIsDeleteDialogOpen(false);
             setSubjectToDelete(null);
+            toast({
+                title: "Subject Removed",
+                description: `${subjectToDelete.code} has been removed from the schedule.`,
+            });
         }
     };
 
@@ -403,7 +411,7 @@ export default function SchedulePage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the subject <span className="font-semibold">{subjectToDelete?.code}</span>.
+                            This action cannot be undone. This will permanently delete the subject <span className="font-semibold">{subjectToDelete?.code}</span> from the schedule.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -415,5 +423,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
-    
