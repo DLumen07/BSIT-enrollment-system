@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock, UserX } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { initialInstructors, availableSubjects as allAvailableSubjects, Instructor } from '../../instructors/page';
 
 type Subject = {
     id: number;
@@ -42,16 +43,16 @@ type Subject = {
     day: string;
     startTime: string;
     endTime: string;
-    instructor: string;
+    instructor?: string;
     color: string;
 };
 
 const initialSubjects: Subject[] = [
-    { id: 1, code: 'IT-101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Mr. Smith', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
-    { id: 2, code: 'MATH-101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Ms. Jones', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
-    { id: 3, code: 'ENG-101', description: 'English Composition', day: 'Wednesday', startTime: '11:00', endTime: '12:30', instructor: 'Dr. Brown', color: 'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400' },
+    { id: 1, code: 'IT-101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Alan Turing', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
+    { id: 2, code: 'MATH-101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
+    { id: 3, code: 'ENG-101', description: 'English Composition', day: 'Wednesday', startTime: '11:00', endTime: '12:30', color: 'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400' },
     { id: 4, code: 'PE-101', description: 'Physical Education', day: 'Friday', startTime: '08:00', endTime: '10:00', instructor: 'Coach Dave', color: 'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400' },
-    { id: 5, code: 'IT-102', description: 'Programming 1', day: 'Monday', startTime: '14:00', endTime: '16:00', instructor: 'Mr. Smith', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
+    { id: 5, code: 'IT-102', description: 'Programming 1', day: 'Monday', startTime: '14:00', endTime: '16:00', instructor: 'Dr. Alan Turing', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
 ];
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -103,16 +104,25 @@ export default function SchedulePage() {
     const handleAddSubject = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
+        
+        const selectedSubjectId = formData.get('subject') as string;
+        const selectedSubject = allAvailableSubjects.find(s => s.id === selectedSubjectId);
+
+        if (!selectedSubject) {
+             alert('Please select a valid subject');
+            return;
+        }
+
         const newSubject: Omit<Subject, 'id' | 'color'> = {
-            code: formData.get('code') as string,
-            description: formData.get('description') as string,
+            code: selectedSubject.id,
+            description: selectedSubject.label,
             instructor: formData.get('instructor') as string,
             day: formData.get('day') as string,
             startTime: formData.get('startTime') as string,
             endTime: formData.get('endTime') as string,
         };
 
-        if (Object.values(newSubject).some(val => !val)) {
+        if (Object.values(newSubject).some(val => val === null || val === undefined)) {
             // Basic validation
             alert('Please fill all fields');
             return;
@@ -164,16 +174,26 @@ export default function SchedulePage() {
                         <form id="add-subject-form" onSubmit={handleAddSubject}>
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="code" className="text-right">Code</Label>
-                                    <Input id="code" name="code" className="col-span-3" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="description" className="text-right">Description</Label>
-                                    <Input id="description" name="description" className="col-span-3" required />
+                                    <Label htmlFor="subject" className="text-right">Subject</Label>
+                                    <Select name="subject" required>
+                                        <SelectTrigger className="col-span-3">
+                                            <SelectValue placeholder="Select a subject" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {allAvailableSubjects.map(sub => <SelectItem key={sub.id} value={sub.id}>{sub.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="instructor" className="text-right">Instructor</Label>
-                                    <Input id="instructor" name="instructor" className="col-span-3" required />
+                                     <Select name="instructor">
+                                        <SelectTrigger className="col-span-3">
+                                            <SelectValue placeholder="Select an instructor (optional)" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {initialInstructors.map(ins => <SelectItem key={ins.id} value={ins.name}>{ins.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="day" className="text-right">Day</Label>
@@ -249,10 +269,13 @@ export default function SchedulePage() {
                                 
                                 if (dayIndex === -1) return null;
 
+                                const hasInstructor = !!subject.instructor;
+                                const cardColor = hasInstructor ? subject.color : 'bg-red-200/50 dark:bg-red-900/50 border-red-500';
+
                                 return (
                                     <div
                                         key={subject.id}
-                                        className={cn("absolute rounded-lg p-2 border text-xs overflow-hidden m-px", subject.color)}
+                                        className={cn("absolute rounded-lg p-2 border text-xs overflow-hidden m-px", cardColor)}
                                         style={{
                                             top: `${top}rem`,
                                             height: `${height}rem`,
@@ -262,7 +285,14 @@ export default function SchedulePage() {
                                     >
                                         <p className="font-bold truncate">{subject.code}</p>
                                         <p className="truncate">{subject.description}</p>
-                                        <p className="truncate text-muted-foreground">{subject.instructor}</p>
+                                        {hasInstructor ? (
+                                            <p className="truncate text-muted-foreground">{subject.instructor}</p>
+                                        ) : (
+                                            <div className="flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
+                                                <UserX className="h-3 w-3 shrink-0" />
+                                                <span>No Instructor</span>
+                                            </div>
+                                        )}
                                         
                                         <div className="absolute bottom-1 right-1 left-1 text-muted-foreground flex items-center gap-1 bg-background/50 backdrop-blur-sm p-1 rounded-sm text-[10px]">
                                             <Clock className="h-3 w-3 shrink-0" />

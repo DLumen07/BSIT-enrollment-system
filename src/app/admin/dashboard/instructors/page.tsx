@@ -52,7 +52,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 
-type Instructor = {
+export type Instructor = {
     id: number;
     name: string;
     email: string;
@@ -60,14 +60,14 @@ type Instructor = {
     avatar: string;
 };
 
-const initialInstructors: Instructor[] = [
+export const initialInstructors: Instructor[] = [
     { id: 1, name: 'Dr. Alan Turing', email: 'alan.turing@university.edu', subjects: ['IT 101', 'IT 201'], avatar: 'https://picsum.photos/seed/at-avatar/40/40' },
     { id: 2, name: 'Prof. Ada Lovelace', email: 'ada.lovelace@university.edu', subjects: ['MATH 101'], avatar: 'https://picsum.photos/seed/al-avatar/40/40' },
     { id: 3, name: 'Dr. Grace Hopper', email: 'grace.hopper@university.edu', subjects: ['IT 301', 'IT 401'], avatar: 'https://picsum.photos/seed/gh-avatar/40/40' },
     { id: 4, name: 'Mr. Charles Babbage', email: 'charles.babbage@university.edu', subjects: ['ENG 101'], avatar: 'https://picsum.photos/seed/cb-avatar/40/40' },
 ];
 
-const availableSubjects = [
+export const availableSubjects = [
     { id: 'IT 101', label: 'IT 101 - Intro to Computing' },
     { id: 'IT 201', label: 'IT 201 - Data Structures' },
     { id: 'IT 301', label: 'IT 301 - Web Development' },
