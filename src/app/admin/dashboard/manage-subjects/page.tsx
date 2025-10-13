@@ -149,7 +149,7 @@ export default function ManageSubjectsPage() {
             <Card>
                 <CardContent className="p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList>
+                        <TabsList className="grid w-full grid-cols-4">
                             {yearLevels.map(yl => (
                                 <TabsTrigger key={yl.value} value={yl.value}>
                                     {yl.label}
@@ -293,6 +293,8 @@ export default function ManageSubjectsPage() {
     </>
   );
 }
+
+    
 
     
 
