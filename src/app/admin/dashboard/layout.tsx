@@ -65,6 +65,50 @@ const Breadcrumb = () => {
     if (segments.length < 2) {
       return null;
     }
+    
+    const isSchedulePath = segments[2] === 'schedule' && segments.length > 3;
+
+    if (isSchedulePath) {
+        const blockId = segments[3];
+        const blockName = decodeURIComponent(blockId);
+        // This logic is simplified. A real app would fetch block details to get the year level.
+        const yearMatch = blockName.match(/(\d)/);
+        let yearSegment = '1st-year';
+        if (yearMatch) {
+            switch(yearMatch[1]) {
+                case '2': yearSegment = '2nd-year'; break;
+                case '3': yearSegment = '3rd-year'; break;
+                case '4': yearSegment = '4th-year'; break;
+            }
+        }
+
+        const scheduleBreadcrumbs = [
+            { name: 'Dashboard', href: '/admin/dashboard' },
+            { name: 'Manage Blocks', href: '/admin/dashboard/manage-blocks' },
+            { name: formatSegment(yearSegment), href: `/admin/dashboard/manage-blocks/${yearSegment}` },
+            { name: formatSegment(blockName), href: `/admin/dashboard/schedule/${blockId}` }
+        ];
+
+        return (
+             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                {scheduleBreadcrumbs.map((crumb, index) => {
+                    const isLast = index === scheduleBreadcrumbs.length - 1;
+                    return (
+                        <React.Fragment key={crumb.href}>
+                            {index > 0 && <ChevronRight className="h-4 w-4" />}
+                            {isLast ? (
+                                <span className="text-foreground">{crumb.name}</span>
+                            ) : (
+                                <Link href={crumb.href} className="hover:text-foreground">
+                                    {crumb.name}
+                                </Link>
+                            )}
+                        </React.Fragment>
+                    )
+                })}
+            </div>
+        )
+    }
 
     return (
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
