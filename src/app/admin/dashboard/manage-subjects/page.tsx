@@ -140,10 +140,14 @@ export default function ManageSubjectsPage() {
                     <h1 className="text-2xl font-bold tracking-tight">Manage Subjects</h1>
                     <p className="text-muted-foreground">Add, edit, or remove subjects for each year level.</p>
                 </div>
+                 <Button onClick={openAddDialog}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Subject
+                </Button>
             </div>
             
             <Card>
-                <CardHeader>
+                <CardContent className="p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList>
                             {yearLevels.map(yl => (
@@ -152,69 +156,62 @@ export default function ManageSubjectsPage() {
                                 </TabsTrigger>
                             ))}
                         </TabsList>
-                    </Tabs>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex justify-end mb-4">
-                        <Button onClick={openAddDialog}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Subject
-                        </Button>
-                    </div>
-                     {yearLevels.map(yl => (
-                        <div key={yl.value} hidden={activeTab !== yl.value}>
-                             <div className="border rounded-lg">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Subject Code</TableHead>
-                                            <TableHead>Description</TableHead>
-                                            <TableHead>Units</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {subjects[yl.value].length > 0 ? (
-                                            subjects[yl.value].map(subject => (
-                                                <TableRow key={subject.id}>
-                                                    <TableCell className="font-medium">{subject.code}</TableCell>
-                                                    <TableCell>{subject.description}</TableCell>
-                                                    <TableCell>{subject.units}</TableCell>
-                                                    <TableCell className="text-right">
-                                                         <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                    <span className="sr-only">Open menu</span>
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onSelect={() => openEditDialog(subject)}>
-                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem 
-                                                                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                                                    onSelect={() => openDeleteDialog(subject)}
-                                                                >
-                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
+                    
+                         {yearLevels.map(yl => (
+                            <TabsContent key={yl.value} value={yl.value}>
+                                <div className="border rounded-lg mt-4">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Subject Code</TableHead>
+                                                <TableHead>Description</TableHead>
+                                                <TableHead>Units</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {subjects[yl.value].length > 0 ? (
+                                                subjects[yl.value].map(subject => (
+                                                    <TableRow key={subject.id}>
+                                                        <TableCell className="font-medium">{subject.code}</TableCell>
+                                                        <TableCell>{subject.description}</TableCell>
+                                                        <TableCell>{subject.units}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent hover:text-accent focus-visible:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                                                        <span className="sr-only">Open menu</span>
+                                                                        <MoreHorizontal className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem onSelect={() => openEditDialog(subject)}>
+                                                                        <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem 
+                                                                        className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                                                                        onSelect={() => openDeleteDialog(subject)}
+                                                                    >
+                                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="text-center h-24">
+                                                        No subjects created for this year level.
                                                     </TableCell>
                                                 </TableRow>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="text-center h-24">
-                                                    No subjects created for this year level.
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </div>
-                    ))}
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
                 </CardContent>
             </Card>
         </main>
@@ -296,3 +293,5 @@ export default function ManageSubjectsPage() {
     </>
   );
 }
+
+    
