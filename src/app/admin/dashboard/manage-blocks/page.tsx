@@ -10,10 +10,10 @@ import { Badge } from '@/components/ui/badge';
 type YearLevel = '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
 
 const yearLevelsConfig: {value: YearLevel, label: string, description: string}[] = [
-    { value: '1st-year', label: '1st Year', description: 'Manage sections for incoming freshmen.' },
-    { value: '2nd-year', label: '2nd Year', description: 'Organize blocks for sophomore students.' },
-    { value: '3rd-year', label: '3rd Year', description: 'Handle regular and irregular junior students.' },
-    { value: '4th-year', label: '4th Year', description: 'Finalize sections for graduating students.' },
+    { value: '1st-year', label: '1st Year', description: 'Manage sections for 1st year student for first semester.' },
+    { value: '2nd-year', label: '2nd Year', description: 'Manage sections for 2nd year student for first semester.' },
+    { value: '3rd-year', label: '3rd Year', description: 'Manage sections for 3rd year student for first semester.' },
+    { value: '4th-year', label: '4th Year', description: 'Manage sections for 4th year student for first semester.' },
 ];
 
 const recentBlocks = [
