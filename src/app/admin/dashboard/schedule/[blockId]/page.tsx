@@ -35,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { initialInstructors, availableSubjects as allAvailableSubjects, Instructor } from '../../instructors/page';
+import { useToast } from "@/hooks/use-toast"
 
 type Subject = {
     id: number;
@@ -54,6 +55,16 @@ const initialSubjects: Subject[] = [
     { id: 4, code: 'PE-101', description: 'Physical Education', day: 'Friday', startTime: '08:00', endTime: '10:00', instructor: 'Coach Dave', color: 'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400' },
     { id: 5, code: 'IT-102', description: 'Programming 1', day: 'Monday', startTime: '14:00', endTime: '16:00', instructor: 'Dr. Alan Turing', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
 ];
+
+const mockAllSchedules: Record<string, Subject[]> = {
+    "BSIT 1-A": initialSubjects,
+    "BSIT 1-B": [
+        { id: 10, code: 'IT-101', description: 'Intro to Computing', day: 'Tuesday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Grace Hopper', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
+    ],
+    "BSIT 2-A": [
+        { id: 20, code: 'IT-201', description: 'Data Structures', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
+    ]
+};
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const timeSlots = Array.from({ length: 12 }, (_, i) => `${(i + 7).toString().padStart(2, '0')}:00`); // 7 AM to 6 PM
@@ -95,11 +106,55 @@ const detailedTimeSlots = Array.from({ length: 12 * 2 }, (_, i) => {
 export default function SchedulePage() {
     const params = useParams();
     const blockId = decodeURIComponent(params.blockId as string);
+    const { toast } = useToast()
 
     const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+
+    const hasConflict = (newSubject: Omit<Subject, 'id' | 'color' | 'description'>) => {
+        const toMinutes = (time: string) => {
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        const newStartTime = toMinutes(newSubject.startTime);
+        const newEndTime = toMinutes(newSubject.endTime);
+
+        for (const [blockName, schedule] of Object.entries(mockAllSchedules)) {
+            for (const existingSubject of schedule) {
+                if (existingSubject.day !== newSubject.day) continue;
+
+                const existingStartTime = toMinutes(existingSubject.startTime);
+                const existingEndTime = toMinutes(existingSubject.endTime);
+                
+                const timeOverlap = newStartTime < existingEndTime && newEndTime > existingStartTime;
+
+                // Instructor conflict check
+                if (newSubject.instructor && newSubject.instructor === existingSubject.instructor && timeOverlap) {
+                     toast({
+                        variant: "destructive",
+                        title: "Scheduling Conflict",
+                        description: `${newSubject.instructor} is already scheduled for ${existingSubject.code} in ${blockName} at this time.`,
+                    });
+                    return true;
+                }
+                
+                // Block conflict check (for the current block)
+                if (blockName === blockId && timeOverlap) {
+                    toast({
+                        variant: "destructive",
+                        title: "Scheduling Conflict",
+                        description: `Block ${blockId} already has a class (${existingSubject.code}) scheduled at this time.`,
+                    });
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 
     const handleAddSubject = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -113,25 +168,43 @@ export default function SchedulePage() {
             return;
         }
 
-        const newSubject: Omit<Subject, 'id' | 'color'> = {
+        const newSubjectData = {
             code: selectedSubject.id,
-            description: selectedSubject.label,
             instructor: formData.get('instructor') as string,
             day: formData.get('day') as string,
             startTime: formData.get('startTime') as string,
             endTime: formData.get('endTime') as string,
         };
 
-        if (Object.values(newSubject).some(val => val === null || val === undefined)) {
-            // Basic validation
-            alert('Please fill all fields');
+        if (Object.values(newSubjectData).some(val => val === null || val === '')) {
+            toast({
+                variant: "destructive",
+                title: "Missing Information",
+                description: "Please fill out all required fields.",
+            });
             return;
+        }
+
+        if (hasConflict(newSubjectData)) {
+            return; // Stop if there's a conflict
         }
 
         const randomColor = colorChoices[Math.floor(Math.random() * colorChoices.length)];
         
-        setSubjects([...subjects, { ...newSubject, id: Date.now(), color: randomColor }]);
+        const newSubject: Subject = { 
+            ...newSubjectData, 
+            id: Date.now(), 
+            description: selectedSubject.label,
+            color: randomColor 
+        };
+
+        setSubjects([...subjects, newSubject]);
+        mockAllSchedules[blockId] = [...(mockAllSchedules[blockId] || []), newSubject]; // Update mock global schedule
         setIsAddDialogOpen(false);
+         toast({
+            title: "Subject Added",
+            description: `${newSubject.code} has been added to the schedule.`,
+        })
     };
 
     const openDeleteDialog = (subject: Subject) => {
@@ -342,3 +415,5 @@ export default function SchedulePage() {
         </main>
     );
 }
+
+    
