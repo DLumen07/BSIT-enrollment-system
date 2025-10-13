@@ -19,13 +19,15 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MoreHorizontal, PlusCircle, Trash2, Pencil, Calendar } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Pencil, Calendar, ChevronDown, Check } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuCheckboxItem,
+    DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
     Dialog,
@@ -60,10 +62,56 @@ type Instructor = {
 
 const initialInstructors: Instructor[] = [
     { id: 1, name: 'Dr. Alan Turing', email: 'alan.turing@university.edu', subjects: ['IT 101', 'IT 201'], avatar: 'https://picsum.photos/seed/at-avatar/40/40' },
-    { id: 2, name: 'Prof. Ada Lovelace', email: 'ada.lovelace@university.edu', subjects: ['MATH 101', 'MATH 201'], avatar: 'https://picsum.photos/seed/al-avatar/40/40' },
+    { id: 2, name: 'Prof. Ada Lovelace', email: 'ada.lovelace@university.edu', subjects: ['MATH 101'], avatar: 'https://picsum.photos/seed/al-avatar/40/40' },
     { id: 3, name: 'Dr. Grace Hopper', email: 'grace.hopper@university.edu', subjects: ['IT 301', 'IT 401'], avatar: 'https://picsum.photos/seed/gh-avatar/40/40' },
     { id: 4, name: 'Mr. Charles Babbage', email: 'charles.babbage@university.edu', subjects: ['ENG 101'], avatar: 'https://picsum.photos/seed/cb-avatar/40/40' },
 ];
+
+const availableSubjects = [
+    { id: 'IT 101', label: 'IT 101 - Intro to Computing' },
+    { id: 'IT 201', label: 'IT 201 - Data Structures' },
+    { id: 'IT 301', label: 'IT 301 - Web Development' },
+    { id: 'IT 401', label: 'IT 401 - Capstone Project' },
+    { id: 'MATH 101', label: 'MATH 101 - Calculus 1' },
+    { id: 'ENG 101', label: 'ENG 101 - English Composition' },
+];
+
+const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedSubjects: string[], onSelectionChange: (selected: string[]) => void }) => {
+    
+    const handleSelect = (subjectId: string) => {
+        const isSelected = selectedSubjects.includes(subjectId);
+        if (isSelected) {
+            onSelectionChange(selectedSubjects.filter(id => id !== subjectId));
+        } else {
+            onSelectionChange([...selectedSubjects, subjectId]);
+        }
+    };
+
+    return (
+         <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                    <span>{selectedSubjects.length > 0 ? `${selectedSubjects.length} selected` : 'Select subjects'}</span>
+                    <ChevronDown className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-full">
+                <DropdownMenuLabel>Available Subjects</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {availableSubjects.map(subject => (
+                    <DropdownMenuCheckboxItem
+                        key={subject.id}
+                        checked={selectedSubjects.includes(subject.id)}
+                        onSelect={(e) => { e.preventDefault(); handleSelect(subject.id); }}
+                    >
+                        {subject.label}
+                    </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+};
+
 
 export default function InstructorsPage() {
     const [instructors, setInstructors] = useState<Instructor[]>(initialInstructors);
@@ -72,8 +120,27 @@ export default function InstructorsPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
 
+    // State for form inputs
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [subjects, setSubjects] = useState<string[]>([]);
+
+    const resetForm = () => {
+        setName('');
+        setEmail('');
+        setSubjects([]);
+    };
+
+    const openAddDialog = () => {
+        resetForm();
+        setIsAddDialogOpen(true);
+    };
+
     const openEditDialog = (instructor: Instructor) => {
         setSelectedInstructor(instructor);
+        setName(instructor.name);
+        setEmail(instructor.email);
+        setSubjects(instructor.subjects);
         setIsEditDialogOpen(true);
     };
 
@@ -84,12 +151,11 @@ export default function InstructorsPage() {
     
     const handleAddInstructor = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const formData = new FormData(e.currentTarget);
         const newInstructor: Instructor = {
             id: Date.now(),
-            name: formData.get('name') as string,
-            email: formData.get('email') as string,
-            subjects: (formData.get('subjects') as string).split(',').map(s => s.trim()).filter(s => s),
+            name,
+            email,
+            subjects,
             avatar: `https://picsum.photos/seed/${Date.now()}/40/40`,
         };
         setInstructors([...instructors, newInstructor]);
@@ -99,12 +165,11 @@ export default function InstructorsPage() {
     const handleEditInstructor = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!selectedInstructor) return;
-        const formData = new FormData(e.currentTarget);
         const updatedInstructor = {
             ...selectedInstructor,
-            name: formData.get('name') as string,
-            email: formData.get('email') as string,
-            subjects: (formData.get('subjects') as string).split(',').map(s => s.trim()).filter(s => s),
+            name,
+            email,
+            subjects,
         };
         setInstructors(instructors.map(u => u.id === selectedInstructor.id ? updatedInstructor : u));
         setIsEditDialogOpen(false);
@@ -128,42 +193,10 @@ export default function InstructorsPage() {
                             Manage instructor profiles and their assigned subjects.
                         </p>
                     </div>
-                     <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="rounded-full">
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Instructor
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Add New Instructor</DialogTitle>
-                                <DialogDescription>
-                                    Enter the details for the new instructor.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form id="add-instructor-form" onSubmit={handleAddInstructor}>
-                                <div className="space-y-4 py-2">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="name">Full Name</Label>
-                                        <Input id="name" name="name" required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="email">Email Address</Label>
-                                        <Input id="email" name="email" type="email" required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="subjects">Subjects Handled (comma-separated)</Label>
-                                        <Input id="subjects" name="subjects" placeholder="e.g., IT 101, MATH 101" required />
-                                    </div>
-                                </div>
-                            </form>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                                <Button type="submit" form="add-instructor-form">Add Instructor</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    <Button onClick={openAddDialog} className="rounded-full">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Instructor
+                    </Button>
                 </div>
 
                 <Card>
@@ -240,6 +273,38 @@ export default function InstructorsPage() {
                 </Card>
             </main>
 
+            {/* Add Dialog */}
+             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add New Instructor</DialogTitle>
+                        <DialogDescription>
+                            Enter the details for the new instructor.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form id="add-instructor-form" onSubmit={handleAddInstructor}>
+                        <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Full Name</Label>
+                                <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="email">Email Address</Label>
+                                <Input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="subjects">Subjects Handled</Label>
+                                <MultiSelectSubject selectedSubjects={subjects} onSelectionChange={setSubjects} />
+                            </div>
+                        </div>
+                    </form>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                        <Button type="submit" form="add-instructor-form">Add Instructor</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent>
@@ -253,15 +318,15 @@ export default function InstructorsPage() {
                         <div className="space-y-4 py-2">
                              <div className="space-y-2">
                                 <Label htmlFor="edit-name">Full Name</Label>
-                                <Input id="edit-name" name="name" defaultValue={selectedInstructor?.name} required />
+                                <Input id="edit-name" name="name" value={name} onChange={(e) => setName(e.target.value)} required />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="edit-email">Email Address</Label>
-                                <Input id="edit-email" name="email" type="email" defaultValue={selectedInstructor?.email} required />
+                                <Input id="edit-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="edit-subjects">Subjects Handled (comma-separated)</Label>
-                                <Input id="edit-subjects" name="subjects" defaultValue={selectedInstructor?.subjects.join(', ')} required />
+                                <Label htmlFor="edit-subjects">Subjects Handled</Label>
+                                <MultiSelectSubject selectedSubjects={subjects} onSelectionChange={setSubjects} />
                             </div>
                         </div>
                     </form>
