@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState, useMemo } from 'react';
-import { MoreHorizontal, Search, Filter, FilterX, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Search, Filter, FilterX, PlusCircle, Pencil, Trash2, Files } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -66,8 +66,6 @@ const initialStudents: Student[] = [
     { id: 1, studentId: '2021-0123', name: 'Alice Johnson', avatar: 'https://picsum.photos/seed/aj-student/40/40', email: 'alice.j@student.example.com', course: 'BSIT', year: 4, status: 'Enrolled' },
     { id: 2, studentId: '2022-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40', email: 'bob.w@student.example.com', course: 'BSIT', year: 3, status: 'Enrolled' },
     { id: 3, studentId: '2023-0345', name: 'Charlie Brown', avatar: 'https://picsum.photos/seed/cb-student/40/40', email: 'charlie.b@student.example.com', course: 'ACT', year: 2, status: 'Enrolled' },
-    { id: 4, studentId: '2024-0456', name: 'Diana Miller', avatar: 'https://picsum.photos/seed/dm-student/40/40', email: 'diana.m@student.example.com', course: 'BSIT', year: 1, status: 'Not Enrolled' },
-    { id: 5, studentId: '2020-0567', name: 'Ethan Garcia', avatar: 'https://picsum.photos/seed/eg-student/40/40', email: 'ethan.g@student.example.com', course: 'BSIT', year: 4, status: 'Graduated' },
 ];
 
 export default function StudentsPage() {
@@ -121,7 +119,7 @@ export default function StudentsPage() {
     }, [students, searchTerm, filters]);
     
     const courses = ['all', ...Array.from(new Set(students.map(app => app.course)))];
-    const years = ['all', ...Array.from(new Set(students.map(app => app.year.toString())))].sort();
+    const years = ['all', ...Array from(new Set(students.map(app => app.year.toString())))].sort();
     const statuses = ['all', ...Array.from(new Set(students.map(app => app.status)))];
     
     const getStatusBadgeVariant = (status: Student['status']) => {
@@ -269,6 +267,10 @@ export default function StudentsPage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuItem>View Profile</DropdownMenuItem>
+                                                        <DropdownMenuItem>
+                                                            <Files className="mr-2 h-4 w-4" />
+                                                            Claim Green Form
+                                                        </DropdownMenuItem>
                                                         <DropdownMenuItem onSelect={() => openEditDialog(student)}>
                                                             <Pencil className="mr-2 h-4 w-4" /> Edit
                                                         </DropdownMenuItem>
@@ -299,4 +301,3 @@ export default function StudentsPage() {
         </>
     );
 }
-
