@@ -64,7 +64,7 @@ function LoginForm() {
           <Input id="password" type="password" required />
       </div>
       <Button onClick={handleLogin} className="w-full">
-          Login with Email
+          Login
       </Button>
     </div>
   );
