@@ -49,20 +49,20 @@ type Subject = {
 };
 
 const initialSubjects: Subject[] = [
-    { id: 1, code: 'IT-101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Alan Turing', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
-    { id: 2, code: 'MATH-101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
-    { id: 3, code: 'ENG-101', description: 'English Composition', day: 'Wednesday', startTime: '11:00', endTime: '12:30', color: 'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400' },
-    { id: 4, code: 'PE-101', description: 'Physical Education', day: 'Friday', startTime: '08:00', endTime: '10:00', instructor: 'Coach Dave', color: 'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400' },
-    { id: 5, code: 'IT-102', description: 'Programming 1', day: 'Monday', startTime: '14:00', endTime: '16:00', instructor: 'Dr. Alan Turing', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
+    { id: 1, code: 'IT 101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Alan Turing', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
+    { id: 2, code: 'MATH 101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
+    { id: 3, code: 'ENG 101', description: 'English Composition', day: 'Wednesday', startTime: '11:00', endTime: '12:30', color: 'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400' },
+    { id: 4, code: 'PE 101', description: 'Physical Education', day: 'Friday', startTime: '08:00', endTime: '10:00', instructor: 'Coach Dave', color: 'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400' },
+    { id: 5, code: 'IT 102', description: 'Programming 1', day: 'Monday', startTime: '14:00', endTime: '16:00', instructor: 'Dr. Alan Turing', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
 ];
 
 const mockAllSchedules: Record<string, Subject[]> = {
     "BSIT 1-A": initialSubjects,
     "BSIT 1-B": [
-        { id: 10, code: 'IT-101', description: 'Intro to Computing', day: 'Tuesday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Grace Hopper', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
+        { id: 10, code: 'IT 101', description: 'Intro to Computing', day: 'Tuesday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Grace Hopper', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
     ],
     "BSIT 2-A": [
-        { id: 20, code: 'IT-201', description: 'Data Structures', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
+        { id: 20, code: 'IT 201', description: 'Data Structures', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
     ]
 };
 
@@ -216,11 +216,12 @@ export default function SchedulePage() {
         if (!subjectToEdit) return;
 
         const formData = new FormData(e.currentTarget);
-        const selectedSubjectId = subjectToEdit.code;
-        const selectedSubject = allAvailableSubjects.find(s => s.id === selectedSubjectId);
+        const subjectCodeFromState = subjectToEdit.code;
         
+        const selectedSubject = allAvailableSubjects.find(s => s.id === subjectCodeFromState);
+
         if (!selectedSubject) {
-            toast({ variant: "destructive", title: "Invalid Subject", description: "An error occurred with the subject being edited." });
+            toast({ variant: "destructive", title: "Invalid Subject", description: "An error occurred while trying to find the subject details." });
             return;
         }
 
@@ -466,7 +467,7 @@ export default function SchedulePage() {
                         </DialogDescription>
                     </DialogHeader>
                     <form id="edit-subject-form" onSubmit={handleEditSubject}>
-                        <div className="grid gap-4 py-4">
+                         <div className="grid gap-4 py-4">
                              <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-subject-display" className="text-right">Subject</Label>
                                 <div className="col-span-3 h-10 flex items-center">
@@ -545,7 +546,3 @@ export default function SchedulePage() {
         </main>
     );
 }
-
-    
-
-    
