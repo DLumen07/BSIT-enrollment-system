@@ -56,7 +56,7 @@ const initialPendingApplications = [
         }
     },
     { 
-        id: 2, _
+        id: 2,
         studentId: '2024-1002', 
         name: 'Jane Smith', 
         course: 'ACT', 
@@ -636,7 +636,5 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
-
-    
 
     
