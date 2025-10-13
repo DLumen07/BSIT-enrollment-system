@@ -18,8 +18,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -237,4 +237,3 @@ export default function ReportsPage() {
         </>
     );
 }
-
