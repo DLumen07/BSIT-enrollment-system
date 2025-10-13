@@ -14,6 +14,7 @@ import {
   FileSignature,
   LayoutGrid,
   BookCopy,
+  Settings,
 } from 'lucide-react';
 import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
@@ -198,6 +199,14 @@ export default function AdminDashboardLayout({
               <SidebarMenuButton href="#">
                 <BarChart3 />
                 Reports
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/settings'}>
+                <Link href="/admin/dashboard/settings">
+                  <Settings />
+                  Settings
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
