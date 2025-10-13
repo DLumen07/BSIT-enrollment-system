@@ -56,7 +56,7 @@ const initialPendingApplications = [
         }
     },
     { 
-        id: 2, 
+        id: 2, _
         studentId: '2024-1002', 
         name: 'Jane Smith', 
         course: 'ACT', 
@@ -366,7 +366,7 @@ export default function ManageApplicationsPage() {
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent hover:text-accent focus-visible:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
                                                                 <span className="sr-only">Open menu</span>
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
@@ -418,7 +418,7 @@ export default function ManageApplicationsPage() {
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent hover:text-accent focus-visible:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
                                                                 <span className="sr-only">Open menu</span>
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
@@ -471,7 +471,7 @@ export default function ManageApplicationsPage() {
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent hover:text-accent focus-visible:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
                                                                 <span className="sr-only">Open menu</span>
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
@@ -636,5 +636,7 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
+
+    
 
     
