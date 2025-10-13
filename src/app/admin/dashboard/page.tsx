@@ -59,38 +59,36 @@ const studentStatusConfig = {
     transferee: { label: 'Transferee', color: 'hsl(var(--chart-3))' },
 } satisfies ChartConfig
 
-const adminUsers = [
-    {
-        name: 'Alice Johnson',
-        email: 'alice.j@example.com',
-        role: 'Super Admin',
-        avatar: 'https://picsum.photos/seed/aj-avatar/32/32',
+const instructorWorkload = [
+    { 
+        id: 1, 
+        name: 'Dr. Alan Turing', 
+        email: 'alan.turing@university.edu', 
+        subjects: ['IT 101', 'IT 201'], 
+        avatar: 'https://picsum.photos/seed/at-avatar/40/40' 
     },
-    {
-        name: 'Bob Williams',
-        email: 'bob.w@example.com',
-        role: 'Admin',
-        avatar: 'https://picsum.photos/seed/bw-avatar/32/32',
+    { 
+        id: 2, 
+        name: 'Prof. Ada Lovelace', 
+        email: 'ada.lovelace@university.edu', 
+        subjects: ['MATH 101'], 
+        avatar: 'https://picsum.photos/seed/al-avatar/40/40' 
     },
-    {
-        name: 'Charlie Brown',
-        email: 'charlie.b@example.com',
-        role: 'Admin',
-        avatar: 'https://picsum.photos/seed/cb-avatar/32/32',
+    { 
+        id: 3, 
+        name: 'Dr. Grace Hopper', 
+        email: 'grace.hopper@university.edu', 
+        subjects: ['IT 301', 'IT 401'], 
+        avatar: 'https://picsum.photos/seed/gh-avatar/40/40' 
     },
-    {
-        name: 'Diana Miller',
-        email: 'diana.m@example.com',
-        role: 'Admin',
-        avatar: 'https://picsum.photos/seed/dm-avatar/32/32',
+    { 
+        id: 4, 
+        name: 'Mr. Charles Babbage', 
+        email: 'charles.babbage@university.edu', 
+        subjects: ['ENG 101'], 
+        avatar: 'https://picsum.photos/seed/cb-avatar/40/40' 
     },
-     {
-        name: 'Ethan Garcia',
-        email: 'ethan.g@example.com',
-        role: 'Moderator',
-        avatar: 'https://picsum.photos/seed/eg-avatar/32/32',
-    },
-]
+];
 
 
 export default function AdminDashboardPage() {
@@ -204,14 +202,14 @@ export default function AdminDashboardPage() {
             <Card className="lg:col-span-3">
                 <CardHeader className="flex flex-row items-center">
                     <div className="grid gap-2">
-                        <CardTitle>Administrators</CardTitle>
+                        <CardTitle>Instructor Workload</CardTitle>
                         <CardDescription>
-                            Manage admin accounts and permissions.
+                            Overview of subjects handled by instructors.
                         </CardDescription>
                     </div>
                     <Button asChild size="sm" className="ml-auto gap-1">
-                        <Link href="/admin/dashboard/administrators">
-                        Manage
+                        <Link href="/admin/dashboard/instructors">
+                        Manage Instructors
                         <ArrowUpRight className="h-4 w-4" />
                         </Link>
                     </Button>
@@ -220,31 +218,35 @@ export default function AdminDashboardPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Admin</TableHead>
-                                <TableHead className="text-right">Role</TableHead>
+                                <TableHead>Instructor</TableHead>
+                                <TableHead className="text-right">Subjects Handled</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {adminUsers.map((user) => (
-                                <TableRow key={user.email}>
+                            {instructorWorkload.map((instructor) => (
+                                <TableRow key={instructor.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-4">
                                             <Avatar className="hidden h-9 w-9 sm:flex">
-                                                <AvatarImage src={user.avatar} alt="Avatar" data-ai-hint="person avatar" />
-                                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                                <AvatarImage src={instructor.avatar} alt="Avatar" data-ai-hint="person avatar" />
+                                                <AvatarFallback>{instructor.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div className="grid gap-1">
                                                 <p className="text-sm font-medium leading-none">
-                                                    {user.name}
+                                                    {instructor.name}
                                                 </p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {user.email}
+                                                    {instructor.email}
                                                 </p>
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Badge variant="outline">{user.role}</Badge>
+                                       <div className="flex flex-wrap gap-1 justify-end">
+                                            {instructor.subjects.map(subject => (
+                                                <Badge key={subject} variant="secondary">{subject}</Badge>
+                                            ))}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
