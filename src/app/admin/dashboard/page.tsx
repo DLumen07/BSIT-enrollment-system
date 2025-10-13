@@ -7,7 +7,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import React from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell, Legend } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip } from "recharts"
 import Image from 'next/image';
 
 import {
@@ -59,36 +59,20 @@ const studentStatusConfig = {
     transferee: { label: 'Transferee', color: 'hsl(var(--chart-3))' },
 } satisfies ChartConfig
 
-const instructorWorkload = [
-    { 
-        id: 1, 
-        name: 'Dr. Alan Turing', 
-        email: 'alan.turing@university.edu', 
-        subjects: ['IT 101', 'IT 201'], 
-        avatar: 'https://picsum.photos/seed/at-avatar/40/40' 
-    },
-    { 
-        id: 2, 
-        name: 'Prof. Ada Lovelace', 
-        email: 'ada.lovelace@university.edu', 
-        subjects: ['MATH 101'], 
-        avatar: 'https://picsum.photos/seed/al-avatar/40/40' 
-    },
-    { 
-        id: 3, 
-        name: 'Dr. Grace Hopper', 
-        email: 'grace.hopper@university.edu', 
-        subjects: ['IT 301', 'IT 401'], 
-        avatar: 'https://picsum.photos/seed/gh-avatar/40/40' 
-    },
-    { 
-        id: 4, 
-        name: 'Mr. Charles Babbage', 
-        email: 'charles.babbage@university.edu', 
-        subjects: ['ENG 101'], 
-        avatar: 'https://picsum.photos/seed/cb-avatar/40/40' 
-    },
+const instructorWorkloadData = [
+    { name: 'Dr. Turing', subjects: 2 },
+    { name: 'Prof. Lovelace', subjects: 1 },
+    { name: 'Dr. Hopper', subjects: 4 },
+    { name: 'Mr. Babbage', subjects: 1 },
+    { name: 'Prof. Curie', subjects: 3 },
 ];
+
+const instructorWorkloadConfig = {
+  subjects: {
+    label: "Subjects",
+    color: "hsl(var(--primary))",
+  },
+} satisfies ChartConfig;
 
 
 export default function AdminDashboardPage() {
@@ -204,7 +188,7 @@ export default function AdminDashboardPage() {
                     <div className="grid gap-2">
                         <CardTitle>Instructor Workload</CardTitle>
                         <CardDescription>
-                            Overview of subjects handled by instructors.
+                            Number of subjects assigned to each instructor.
                         </CardDescription>
                     </div>
                     <Button asChild size="sm" className="ml-auto gap-1">
@@ -215,43 +199,20 @@ export default function AdminDashboardPage() {
                     </Button>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Instructor</TableHead>
-                                <TableHead className="text-right">Subjects Handled</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {instructorWorkload.map((instructor) => (
-                                <TableRow key={instructor.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-4">
-                                            <Avatar className="hidden h-9 w-9 sm:flex">
-                                                <AvatarImage src={instructor.avatar} alt="Avatar" data-ai-hint="person avatar" />
-                                                <AvatarFallback>{instructor.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="grid gap-1">
-                                                <p className="text-sm font-medium leading-none">
-                                                    {instructor.name}
-                                                </p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {instructor.email}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                       <div className="flex flex-wrap gap-1 justify-end">
-                                            {instructor.subjects.map(subject => (
-                                                <Badge key={subject} variant="secondary">{subject}</Badge>
-                                            ))}
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <ChartContainer config={instructorWorkloadConfig} className="min-h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={instructorWorkloadData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                <XAxis type="number" allowDecimals={false} />
+                                <YAxis dataKey="name" type="category" width={100} tickLine={false} axisLine={false} />
+                                <Tooltip
+                                    cursor={{ fill: 'hsl(var(--muted))' }}
+                                    content={<ChartTooltipContent indicator="line" />}
+                                />
+                                <Bar dataKey="subjects" fill="var(--color-subjects)" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </ChartContainer>
                 </CardContent>
             </Card>
           </div>
