@@ -118,6 +118,7 @@ const mockAdminData = {
     enrolledApplications: initialEnrolledApplications,
     blocks: initialBlocks,
     subjects: initialSubjects,
+    schedules: initialSchedules,
     students: initialStudentsList,
     addApplication: (newApp: Application) => {}
 };

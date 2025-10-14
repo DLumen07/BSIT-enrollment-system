@@ -89,7 +89,11 @@ export default function YearLevelBlocksPage() {
                 year,
                 specialization: isUpperYear && blockSpecialization !== 'none' ? blockSpecialization : undefined,
             };
-            setAdminData(prev => ({...prev, blocks: [...prev.blocks, newBlock]}));
+            setAdminData(prev => ({
+                ...prev, 
+                blocks: [...prev.blocks, newBlock],
+                schedules: { ...prev.schedules, [newBlock.name]: [] }
+            }));
             setIsAddDialogOpen(false);
         }
     };
