@@ -1,7 +1,8 @@
 
+
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
-import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle, BadgeCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -81,7 +82,9 @@ export default function ManageApplicationsPage() {
   const [isEnrollDialogOpen, setIsEnrollDialogOpen] = useState(false);
   const [applicationToEnroll, setApplicationToEnroll] = useState<Application | null>(null);
   const [enrollBlock, setEnrollBlock] = useState('');
-  const [enlistedSubjects, setEnlistedSubjects] = useState<Subject[]>([]);
+    const [enlistedSubjects, setEnlistedSubjects] = useState<Subject[]>([]);
+    const [prerequisiteOverrides, setPrerequisiteOverrides] = useState<string[]>([]);
+
 
     // Direct Enroll State
     const [directEnrollStep, setDirectEnrollStep] = useState(1);
@@ -180,8 +183,10 @@ export default function ManageApplicationsPage() {
 
     const completedSubjectsForEnrollment = useMemo(() => {
         if (!applicationToEnroll) return [];
-        return adminData.getCompletedSubjects(applicationToEnroll.studentId);
-    }, [adminData, applicationToEnroll]);
+        const completed = adminData.getCompletedSubjects(applicationToEnroll.studentId);
+        const overridden = prerequisiteOverrides.map(code => ({ code, units: 0 })); // Units don't matter for prereq check
+        return [...completed, ...overridden];
+    }, [adminData, applicationToEnroll, prerequisiteOverrides]);
 
 
   const availableBlocksForEnrollment = useMemo(() => {
@@ -206,9 +211,21 @@ export default function ManageApplicationsPage() {
     return yearLevelSubjects[yearKey] || [];
   }, [yearLevelSubjects, applicationToEnroll]);
 
+    const allPrerequisites = useMemo(() => {
+        const prereqs = new Set<string>();
+        Object.values(yearLevelSubjects).flat().forEach(subject => {
+            if (subject.prerequisite) {
+                prereqs.add(subject.prerequisite);
+            }
+        });
+        const allSubjects = Object.values(yearLevelSubjects).flat();
+        return Array.from(prereqs).map(code => allSubjects.find(s => s.code === code)).filter(Boolean) as Subject[];
+    }, [yearLevelSubjects]);
+
   const openEnrollDialog = (application: Application) => {
     setApplicationToEnroll(application);
     setIsEnrollDialogOpen(true);
+    setPrerequisiteOverrides([]);
   };
 
   useEffect(() => {
@@ -368,7 +385,7 @@ export default function ManageApplicationsPage() {
 
     const checkbox = (
         <Checkbox
-            id={`dir-sub-${subject.id}`}
+            id={`sub-${subject.id}`}
             checked={checked}
             onCheckedChange={onCheckedChange}
             disabled={!hasPassedPrerequisite}
@@ -491,7 +508,7 @@ export default function ManageApplicationsPage() {
                                                             }}
                                                             completedSubjects={completedSubjectsForFoundStudent}
                                                         />
-                                                        <Label htmlFor={`dir-sub-${subject.id}`} className={cn("flex-1 font-normal", !(!subject.prerequisite || completedSubjectsForFoundStudent.some(cs => cs.code === subject.prerequisite)) && "text-muted-foreground")}>
+                                                        <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal", !(!subject.prerequisite || completedSubjectsForFoundStudent.some(cs => cs.code === subject.prerequisite)) && "text-muted-foreground")}>
                                                             {subject.code} - {subject.description}
                                                         </Label>
                                                         <span className="text-xs text-muted-foreground">{subject.units} units</span>
@@ -925,7 +942,7 @@ export default function ManageApplicationsPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <form id="enroll-student-form" onSubmit={handleEnroll}>
-                        <div className="space-y-4 py-2">
+                        <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-4">
                              <div className="flex items-center gap-4 p-4 border rounded-xl">
                                 <Avatar>
                                     <AvatarImage src={`https://picsum.photos/seed/${applicationToEnroll.id}/40/40`} alt={applicationToEnroll.name} />
@@ -933,7 +950,7 @@ export default function ManageApplicationsPage() {
                                 </Avatar>
                                 <div>
                                     <p className="font-semibold">{applicationToEnroll.name}</p>
-                                    <p className="text-sm text-muted-foreground">{applicationToEnroll.course} - {applicationToEnroll.year} Year</p>
+                                    <p className="text-sm text-muted-foreground">{applicationToEnroll.course} - {applicationToEnroll.year} Year ({applicationToEnroll.status})</p>
                                 </div>
                             </div>
                              <div className="space-y-2">
@@ -949,6 +966,34 @@ export default function ManageApplicationsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {(applicationToEnroll.status === 'Transferee' || applicationToEnroll.status === 'New') && allPrerequisites.length > 0 && (
+                                 <div className="space-y-3 mt-4 pt-4 border-t">
+                                    <h4 className="font-medium">Credential Override</h4>
+                                    <p className="text-xs text-muted-foreground">For transferees or new students, manually credit any prerequisites they have fulfilled.</p>
+                                    <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+                                        {allPrerequisites.map(prereq => (
+                                            <div key={`prereq-${prereq.id}`} className="flex items-center space-x-2 p-2 border rounded-md">
+                                                <Checkbox
+                                                    id={`prereq-check-${prereq.id}`}
+                                                    checked={prerequisiteOverrides.includes(prereq.code)}
+                                                    onCheckedChange={(checked) => {
+                                                        if (checked) {
+                                                            setPrerequisiteOverrides(prev => [...prev, prereq.code]);
+                                                        } else {
+                                                            setPrerequisiteOverrides(prev => prev.filter(code => code !== prereq.code));
+                                                        }
+                                                    }}
+                                                />
+                                                <Label htmlFor={`prereq-check-${prereq.id}`} className="flex-1 font-normal">
+                                                    {prereq.code} - {prereq.description}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {enrollBlock && availableSubjectsForEnrollment.length > 0 && (
                                 <div className="space-y-3 mt-4 pt-4 border-t">
                                     <h4 className="font-medium">Enlist Subjects</h4>
@@ -967,7 +1012,7 @@ export default function ManageApplicationsPage() {
                                                     }}
                                                     completedSubjects={completedSubjectsForEnrollment}
                                                 />
-                                                <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal", !(!subject.prerequisite || completedSubjectsForEnrollment.some(cs => cs.code === subject.prerequisite)) && "text-muted-foreground")}>
+                                                <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal cursor-pointer", !(!subject.prerequisite || completedSubjectsForEnrollment.some(cs => cs.code === subject.prerequisite)) && "text-muted-foreground cursor-not-allowed")}>
                                                     {subject.code} - {subject.description}
                                                 </Label>
                                                 <span className="text-xs text-muted-foreground">{subject.units} units</span>
@@ -1026,5 +1071,7 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
+
+    
 
     
