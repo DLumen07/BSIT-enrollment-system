@@ -1,10 +1,10 @@
 
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock, UserX } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock, UserX, AlertTriangle } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { useAdmin } from '../../../context/admin-context';
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 export type Subject = {
     id: number;
@@ -90,7 +91,7 @@ export default function SchedulePage() {
     const blockId = decodeURIComponent(params.blockId as string);
     const { toast } = useToast();
     const { adminData, setAdminData } = useAdmin();
-    const { schedules, instructors, availableSubjects } = adminData;
+    const { schedules, instructors, subjects: allSubjectsFromContext, students } = adminData;
 
     const subjects = schedules[blockId] || [];
 
@@ -100,6 +101,16 @@ export default function SchedulePage() {
     const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null);
     const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
     const [deleteInput, setDeleteInput] = useState('');
+
+    const studentsInBlock = useMemo(() => students.filter(s => s.block === blockId), [students, blockId]);
+    
+    const blockYear = useMemo(() => adminData.blocks.find(b => b.name === blockId)?.year, [adminData.blocks, blockId]);
+
+    const availableSubjectsForBlock = useMemo(() => {
+        if (!blockYear) return [];
+        return allSubjectsFromContext[blockYear] || [];
+    }, [allSubjectsFromContext, blockYear]);
+
 
     const hasConflict = (newSubject: Omit<Subject, 'id' | 'color' | 'description'>, editingSubjectId: number | null = null) => {
         const toMinutes = (time: string) => {
@@ -147,7 +158,7 @@ export default function SchedulePage() {
         const formData = new FormData(e.currentTarget);
         
         const selectedSubjectId = formData.get('subject') as string;
-        const selectedSubject = availableSubjects.find(s => s.id === selectedSubjectId);
+        const selectedSubject = availableSubjectsForBlock.find(s => s.code === selectedSubjectId);
 
         if (!selectedSubject) {
             toast({
@@ -159,7 +170,7 @@ export default function SchedulePage() {
         }
 
         const newSubjectData = {
-            code: selectedSubject.id,
+            code: selectedSubject.code,
             instructor: formData.get('instructor') as string,
             day: formData.get('day') as string,
             startTime: formData.get('startTime') as string,
@@ -184,7 +195,7 @@ export default function SchedulePage() {
         const newSubject: Subject = { 
             ...newSubjectData, 
             id: Date.now(), 
-            description: selectedSubject.label,
+            description: selectedSubject.description,
             color: randomColor 
         };
 
@@ -208,7 +219,7 @@ export default function SchedulePage() {
         const formData = new FormData(e.currentTarget);
         const subjectCodeFromState = subjectToEdit.code;
         
-        const selectedSubject = availableSubjects.find(s => s.id === subjectCodeFromState);
+        const selectedSubject = availableSubjectsForBlock.find(s => s.code === subjectCodeFromState);
 
         if (!selectedSubject) {
             toast({ variant: "destructive", title: "Invalid Subject", description: "An error occurred while trying to find the subject details." });
@@ -216,7 +227,7 @@ export default function SchedulePage() {
         }
 
         const updatedSubjectData = {
-            code: selectedSubject.id,
+            code: selectedSubject.code,
             instructor: formData.get('instructor') as string,
             day: formData.get('day') as string,
             startTime: formData.get('startTime') as string,
@@ -230,7 +241,7 @@ export default function SchedulePage() {
         const updatedSubject: Subject = { 
             ...subjectToEdit,
             ...updatedSubjectData,
-            description: selectedSubject.label,
+            description: selectedSubject.description,
         };
         
         const updatedSubjects = subjects.map(s => s.id === subjectToEdit.id ? updatedSubject : s);
@@ -304,7 +315,32 @@ export default function SchedulePage() {
                                             <SelectValue placeholder="Select a subject" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {availableSubjects.map(sub => <SelectItem key={sub.id} value={sub.id}>{sub.label}</SelectItem>)}
+                                            {availableSubjectsForBlock.map(sub => {
+                                                 const completedSubjectsForStudents = studentsInBlock.map(student => adminData.getCompletedSubjects(student.studentId).map(s => s.code));
+                                                 const allStudentsHavePrereq = studentsInBlock.every(student => {
+                                                     const studentCompleted = adminData.getCompletedSubjects(student.studentId).map(s => s.code);
+                                                     return !sub.prerequisite || studentCompleted.includes(sub.prerequisite);
+                                                 });
+
+                                                if (!sub.prerequisite || allStudentsHavePrereq) {
+                                                    return <SelectItem key={sub.id} value={sub.code}>{sub.description}</SelectItem>;
+                                                }
+                                                
+                                                return (
+                                                    <TooltipProvider key={sub.id}>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <div className="relative flex w-full cursor-not-allowed select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm text-muted-foreground opacity-50 outline-none">
+                                                                    {sub.description}
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Some students in this block have not passed the prerequisite ({sub.prerequisite}).</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                );
+                                            })}
                                         </SelectContent>
                                     </Select>
                                 </div>

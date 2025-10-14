@@ -111,6 +111,30 @@ const initialStudentsList: Student[] = [
 
 const initialEnrolledApplications: Application[] = [];
 
+// --- Academic Records ---
+type Grade = { subjectCode: string; grade: number; };
+type StudentGrades = {
+    [studentId: string]: Grade[];
+};
+const initialGrades: StudentGrades = {
+    '21-00-0123': [
+        { subjectCode: 'IT 101', grade: 1.5 },
+        { subjectCode: 'MATH 101', grade: 2.0 },
+        { subjectCode: 'IT 201', grade: 1.75 },
+    ],
+    '22-00-0234': [
+        { subjectCode: 'IT 101', grade: 1.25 },
+        { subjectCode: 'MATH 101', grade: 1.5 },
+    ],
+    '23-00-0345': [
+        { subjectCode: 'IT 101', grade: 3.0 },
+    ],
+    '23-00-0456': [ // David Wilson, not enrolled
+         { subjectCode: 'IT 101', grade: 1.0 },
+         { subjectCode: 'MATH 101', grade: 1.25 },
+    ]
+};
+
 // --- Main Admin Data Structure ---
 const mockAdminData = {
     instructors: initialInstructors,
@@ -125,6 +149,18 @@ const mockAdminData = {
     subjects: initialSubjects,
     schedules: initialSchedules,
     students: initialStudentsList,
+    grades: initialGrades,
+    getCompletedSubjects(studentId: string): { code: string, units: number }[] {
+        const studentGrades = this.grades[studentId] || [];
+        const passedGrades = studentGrades.filter(g => g.grade <= 3.0);
+        
+        const allSubjects: Subject[] = Object.values(this.subjects).flat();
+
+        return passedGrades.map(g => {
+            const subjectDetails = allSubjects.find(s => s.code === g.subjectCode);
+            return { code: g.subjectCode, units: subjectDetails?.units || 0 };
+        }).filter(s => s.units > 0);
+    },
 };
 
 type AdminDataType = typeof mockAdminData;

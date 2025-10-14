@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
-import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,6 +44,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Student, Subject } from '../../context/admin-context';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+const UNITS_FOR_2ND_YEAR = 36;
+const UNITS_FOR_3RD_YEAR = 72;
+const UNITS_FOR_4TH_YEAR = 108;
+
 
 export default function ManageApplicationsPage() {
   const { adminData, setAdminData } = useAdmin();
@@ -82,6 +89,15 @@ export default function ManageApplicationsPage() {
     const [foundStudent, setFoundStudent] = useState<Student | null>(null);
     const [directEnrollBlock, setDirectEnrollBlock] = useState('');
     const [directEnlistedSubjects, setDirectEnlistedSubjects] = useState<Subject[]>([]);
+
+    const completedSubjectsForFoundStudent = useMemo(() => {
+        if (!foundStudent) return [];
+        return adminData.getCompletedSubjects(foundStudent.studentId);
+    }, [adminData, foundStudent]);
+
+    const totalUnitsForFoundStudent = useMemo(() => {
+        return completedSubjectsForFoundStudent.reduce((acc, subj) => acc + subj.units, 0);
+    }, [completedSubjectsForFoundStudent]);
     
     const handleDirectEnrollSearch = () => {
         const student = students.find(s => s.studentId === directEnrollSearchId && s.status !== 'Enrolled');
@@ -160,6 +176,12 @@ export default function ManageApplicationsPage() {
         else if (foundStudent.year === 4) yearKey = '4th-year';
         return yearLevelSubjects[yearKey] || [];
     }, [yearLevelSubjects, foundStudent]);
+
+
+    const completedSubjectsForEnrollment = useMemo(() => {
+        if (!applicationToEnroll) return [];
+        return adminData.getCompletedSubjects(applicationToEnroll.studentId);
+    }, [adminData, applicationToEnroll]);
 
 
   const availableBlocksForEnrollment = useMemo(() => {
@@ -340,6 +362,37 @@ export default function ManageApplicationsPage() {
   const statuses = ['all', ...Array.from(new Set(allAppsForFilters.map(app => app.status)))];
   const isFiltered = searchTerm || filters.course !== 'all' || filters.year !== 'all' || filters.status !== 'all';
 
+  const SubjectCheckbox = ({ subject, checked, onCheckedChange, completedSubjects }: { subject: Subject; checked: boolean; onCheckedChange: (checked: boolean) => void; completedSubjects: { code: string, units: number }[] }) => {
+    const prerequisite = subject.prerequisite;
+    const hasPassedPrerequisite = !prerequisite || completedSubjects.some(cs => cs.code === prerequisite);
+
+    const checkbox = (
+        <Checkbox
+            id={`dir-sub-${subject.id}`}
+            checked={checked}
+            onCheckedChange={onCheckedChange}
+            disabled={!hasPassedPrerequisite}
+        />
+    );
+
+    if (hasPassedPrerequisite) {
+        return checkbox;
+    }
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span>{checkbox}</span>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Prerequisite not met: {prerequisite}</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+};
+
   return (
     <>
         <main className="flex-1 p-4 sm:p-6 space-y-6">
@@ -405,6 +458,7 @@ export default function ManageApplicationsPage() {
                                                 <p><span className="text-muted-foreground">Phone:</span> {foundStudent.phoneNumber}</p>
                                                 <p><span className="text-muted-foreground">Sex:</span> {foundStudent.sex}</p>
                                                 <p><span className="text-muted-foreground">Current Level:</span> {foundStudent.course} - {foundStudent.year} Year</p>
+                                                 <p><span className="text-muted-foreground">Units Earned:</span> {totalUnitsForFoundStudent}</p>
                                             </div>
                                         </div>
                                     </Card>
@@ -424,9 +478,9 @@ export default function ManageApplicationsPage() {
                                             <h4 className="font-medium">Enlist Subjects</h4>
                                             <div className="space-y-2">
                                                 {availableSubjectsForDirectEnroll.map(subject => (
-                                                    <div key={subject.id} className="flex items-center space-x-2 p-2 border rounded-md">
-                                                        <Checkbox
-                                                            id={`dir-sub-${subject.id}`}
+                                                    <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md", !subject.prerequisite || completedSubjectsForFoundStudent.some(cs => cs.code === subject.prerequisite) ? "" : "bg-muted/50")}>
+                                                        <SubjectCheckbox
+                                                            subject={subject}
                                                             checked={directEnlistedSubjects.some(s => s.id === subject.id)}
                                                             onCheckedChange={(checked) => {
                                                                 if (checked) {
@@ -435,8 +489,9 @@ export default function ManageApplicationsPage() {
                                                                     setDirectEnlistedSubjects(prev => prev.filter(s => s.id !== subject.id));
                                                                 }
                                                             }}
+                                                            completedSubjects={completedSubjectsForFoundStudent}
                                                         />
-                                                        <Label htmlFor={`dir-sub-${subject.id}`} className="flex-1 font-normal">
+                                                        <Label htmlFor={`dir-sub-${subject.id}`} className={cn("flex-1 font-normal", !(!subject.prerequisite || completedSubjectsForFoundStudent.some(cs => cs.code === subject.prerequisite)) && "text-muted-foreground")}>
                                                             {subject.code} - {subject.description}
                                                         </Label>
                                                         <span className="text-xs text-muted-foreground">{subject.units} units</span>
@@ -899,9 +954,10 @@ export default function ManageApplicationsPage() {
                                     <h4 className="font-medium">Enlist Subjects</h4>
                                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
                                         {availableSubjectsForEnrollment.map(subject => (
-                                            <div key={subject.id} className="flex items-center space-x-2 p-2 border rounded-md">
-                                                <Checkbox
-                                                    id={`sub-${subject.id}`}
+                                            <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md", !subject.prerequisite || completedSubjectsForEnrollment.some(cs => cs.code === subject.prerequisite) ? "" : "bg-muted/50")}>
+                                                <SubjectCheckbox
+                                                    subject={subject}
+                                                    checked={enlistedSubjects.some(s => s.id === subject.id)}
                                                     onCheckedChange={(checked) => {
                                                         if (checked) {
                                                             setEnlistedSubjects(prev => [...prev, subject]);
@@ -909,8 +965,9 @@ export default function ManageApplicationsPage() {
                                                             setEnlistedSubjects(prev => prev.filter(s => s.id !== subject.id));
                                                         }
                                                     }}
+                                                    completedSubjects={completedSubjectsForEnrollment}
                                                 />
-                                                <Label htmlFor={`sub-${subject.id}`} className="flex-1 font-normal">
+                                                <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal", !(!subject.prerequisite || completedSubjectsForEnrollment.some(cs => cs.code === subject.prerequisite)) && "text-muted-foreground")}>
                                                     {subject.code} - {subject.description}
                                                 </Label>
                                                 <span className="text-xs text-muted-foreground">{subject.units} units</span>
