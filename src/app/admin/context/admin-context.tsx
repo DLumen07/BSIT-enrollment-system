@@ -24,12 +24,6 @@ export const rejectionReasons = [
     { id: 'not_qualified', label: 'Does not meet the minimum qualifications.' },
     { id: 'slots_full', label: 'All available slots for the course are filled.' },
 ];
-export const credentialLabels: { key: keyof Application['credentials']; label: string }[] = [
-    { key: 'birthCertificate', label: 'Birth Certificate' },
-    { key: 'grades', label: 'Form 138 / Report Card' },
-    { key: 'goodMoral', label: 'Good Moral Certificate' },
-    { key: 'registrationForm', label: 'Finished Registration Form' },
-];
 
 
 // --- Data from manage-blocks ---

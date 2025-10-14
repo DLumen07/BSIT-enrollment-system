@@ -40,7 +40,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useAdmin, Application, credentialLabels, rejectionReasons } from '../../context/admin-context';
+import { useAdmin, Application, rejectionReasons } from '../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -51,6 +51,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 const UNITS_FOR_2ND_YEAR = 36;
 const UNITS_FOR_3RD_YEAR = 72;
 const UNITS_FOR_4TH_YEAR = 108;
+
+const credentialLabels: { key: keyof Application['credentials']; label: string; requiredFor: Array<Application['status']> }[] = [
+    { key: 'birthCertificate', label: 'Birth Certificate', requiredFor: ['New', 'Transferee'] },
+    { key: 'grades', label: 'Form 138 / Report Card', requiredFor: ['New', 'Transferee'] },
+    { key: 'goodMoral', label: 'Good Moral Certificate', requiredFor: ['New', 'Transferee'] },
+    { key: 'registrationForm', label: 'Finished Registration Form', requiredFor: ['New', 'Old', 'Transferee'] },
+];
 
 
 export default function ManageApplicationsPage() {
@@ -858,7 +865,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             </div>
                         )}
                         <div className="space-y-3 mt-4">
-                            {credentialLabels.map(({ key, label }) => (
+                            {credentialLabels.filter(cred => cred.requiredFor.includes(selectedApplication.status)).map(({ key, label }) => (
                                 <div key={key} className="flex items-center justify-between">
                                     <span className="text-sm">{label}</span>
                                      {key === 'registrationForm' && selectedApplication.credentials[key] ? (
