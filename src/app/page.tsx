@@ -16,13 +16,13 @@ export default function Home() {
         "animate-background-pan"
     )}>
       <main className="flex-1 flex flex-col items-center justify-center text-center p-4">
-        <div className="flex flex-col items-center space-y-6 border rounded-3xl p-8 md:p-12 bg-background/50 backdrop-blur-sm shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)]">
+        <div className="flex flex-col items-center space-y-4 border rounded-3xl p-8 md:p-12 bg-background/50 backdrop-blur-sm shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)]">
           {schoolLogo && (
             <Image
               src={schoolLogo.imageUrl}
               alt={schoolLogo.description}
-              width={200}
-              height={200}
+              width={250}
+              height={250}
               data-ai-hint={schoolLogo.imageHint}
               className="rounded-full"
             />
