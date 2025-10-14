@@ -298,7 +298,7 @@ export default function ManageApplicationsPage() {
                             Add Student
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="rounded-xl">
                         <DialogHeader>
                             <DialogTitle>Add New Student Application</DialogTitle>
                             <DialogDescription>
@@ -309,25 +309,25 @@ export default function ManageApplicationsPage() {
                             <div className="space-y-4 py-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="studentId">Student ID</Label>
-                                    <Input id="studentId" name="studentId" required />
+                                    <Input id="studentId" name="studentId" required className="rounded-xl" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="name">Full Name</Label>
-                                    <Input id="name" name="name" required />
+                                    <Input id="name" name="name" required className="rounded-xl" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="course">Course</Label>
                                         <Select name="course" required>
-                                            <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
-                                            <SelectContent><SelectItem value="BSIT">BSIT</SelectItem><SelectItem value="ACT">ACT</SelectItem></SelectContent>
+                                            <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select course" /></SelectTrigger>
+                                            <SelectContent className="rounded-xl"><SelectItem value="BSIT">BSIT</SelectItem><SelectItem value="ACT">ACT</SelectItem></SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="year">Year Level</Label>
                                         <Select name="year" required>
-                                            <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
-                                            <SelectContent>
+                                            <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select year" /></SelectTrigger>
+                                            <SelectContent className="rounded-xl">
                                                 <SelectItem value="1">1st Year</SelectItem>
                                                 <SelectItem value="2">2nd Year</SelectItem>
                                                 <SelectItem value="3">3rd Year</SelectItem>
@@ -339,8 +339,8 @@ export default function ManageApplicationsPage() {
                                  <div className="space-y-2">
                                     <Label htmlFor="status">Status</Label>
                                     <Select name="status" required>
-                                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                                        <SelectContent>
+                                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select status" /></SelectTrigger>
+                                        <SelectContent className="rounded-xl">
                                             <SelectItem value="New">New</SelectItem>
                                             <SelectItem value="Old">Old</SelectItem>
                                             <SelectItem value="Transferee">Transferee</SelectItem>
@@ -350,13 +350,13 @@ export default function ManageApplicationsPage() {
                             </div>
                         </form>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsAddStudentDialogOpen(false)}>Cancel</Button>
-                            <Button type="submit" form="add-student-form">Add Application</Button>
+                            <Button variant="outline" onClick={() => setIsAddStudentDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                            <Button type="submit" form="add-student-form" className="rounded-xl">Add Application</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div>
-            <Card>
+            <Card className="rounded-xl">
                 <CardHeader>
                     <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center">
                          <div className="relative flex-1 md:grow-0">
@@ -364,7 +364,7 @@ export default function ManageApplicationsPage() {
                             <Input
                                 type="search"
                                 placeholder="Search by name or ID..."
-                                className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[240px]"
+                                className="w-full rounded-xl bg-background pl-8 md:w-[200px] lg:w-[240px]"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -385,7 +385,7 @@ export default function ManageApplicationsPage() {
                                                 <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl">
                                                     <SelectValue placeholder="All Courses" />
                                                 </SelectTrigger>
-                                                <SelectContent>
+                                                <SelectContent className="rounded-xl">
                                                     {courses.map(course => <SelectItem key={course} value={course}>{course === 'all' ? 'All Courses' : course}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
@@ -396,7 +396,7 @@ export default function ManageApplicationsPage() {
                                                 <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl">
                                                     <SelectValue placeholder="All Years" />
                                                 </SelectTrigger>
-                                                <SelectContent>
+                                                <SelectContent className="rounded-xl">
                                                     {years.map(year => <SelectItem key={year} value={year}>{year === 'all' ? 'All Years' : `Year ${year}`}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
@@ -407,7 +407,7 @@ export default function ManageApplicationsPage() {
                                                 <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl">
                                                     <SelectValue placeholder="All Statuses" />
                                                 </SelectTrigger>
-                                                <SelectContent>
+                                                <SelectContent className="rounded-xl">
                                                     {statuses.map(status => <SelectItem key={status} value={status}>{status === 'all' ? 'All Statuses' : status}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
@@ -426,10 +426,10 @@ export default function ManageApplicationsPage() {
                 </CardHeader>
                 <CardContent>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="pending">Pending</TabsTrigger>
-                            <TabsTrigger value="approved">Approved</TabsTrigger>
-                            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-3 rounded-xl">
+                            <TabsTrigger value="pending" className="rounded-lg">Pending</TabsTrigger>
+                            <TabsTrigger value="approved" className="rounded-lg">Approved</TabsTrigger>
+                            <TabsTrigger value="rejected" className="rounded-lg">Rejected</TabsTrigger>
                         </TabsList>
                         <TabsContent value="pending">
                             <div className="border rounded-lg mt-4">
@@ -609,7 +609,7 @@ export default function ManageApplicationsPage() {
         
         {selectedApplication && (
             <Dialog open={!!selectedApplication} onOpenChange={(open) => !open && setSelectedApplication(null)}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Student Credentials</DialogTitle>
                         <DialogDescription>Review the submitted documents for this applicant.</DialogDescription>
@@ -649,12 +649,12 @@ export default function ManageApplicationsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="destructive" onClick={() => {
+                        <Button variant="destructive" className="rounded-xl" onClick={() => {
                             if (selectedApplication) {
                                 handleOpenRejectionDialog(selectedApplication);
                             }
                         }}>Reject</Button>
-                        <Button className="bg-green-500 hover:bg-green-600 text-white" onClick={() => {
+                        <Button className="bg-green-500 hover:bg-green-600 text-white rounded-xl" onClick={() => {
                              if (selectedApplication) {
                                 handleApprove(selectedApplication);
                             }
@@ -666,7 +666,7 @@ export default function ManageApplicationsPage() {
 
         {rejectionDialog.isOpen && rejectionDialog.application && (
             <Dialog open={rejectionDialog.isOpen} onOpenChange={(open) => !open && handleCloseRejectionDialog()}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Reject Application</DialogTitle>
                         <DialogDescription>
@@ -695,13 +695,13 @@ export default function ManageApplicationsPage() {
                             </RadioGroup>
                             <div className="grid w-full gap-1.5">
                                 <Label htmlFor="custom-reason">Or provide a custom reason:</Label>
-                                <Textarea placeholder="Type your message here." id="custom-reason" name="custom-reason" />
+                                <Textarea placeholder="Type your message here." id="custom-reason" name="custom-reason" className="rounded-xl"/>
                             </div>
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleCloseRejectionDialog}>Cancel</Button>
-                        <Button variant="destructive" type="submit" form="rejection-form">Confirm Rejection</Button>
+                        <Button variant="outline" onClick={handleCloseRejectionDialog} className="rounded-xl">Cancel</Button>
+                        <Button variant="destructive" type="submit" form="rejection-form" className="rounded-xl">Confirm Rejection</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -709,7 +709,7 @@ export default function ManageApplicationsPage() {
 
         {isEnrollDialogOpen && applicationToEnroll && (
             <Dialog open={isEnrollDialogOpen} onOpenChange={setIsEnrollDialogOpen}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Enroll Student</DialogTitle>
                         <DialogDescription>
@@ -734,7 +734,7 @@ export default function ManageApplicationsPage() {
                                     <SelectTrigger id="block" className="rounded-xl">
                                         <SelectValue placeholder="Select a block" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="rounded-xl">
                                         {availableBlocksForEnrollment.map(b => (
                                             <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
                                         ))}
@@ -769,8 +769,8 @@ export default function ManageApplicationsPage() {
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEnrollDialogOpen(false)}>Cancel</Button>
-                        <Button type="submit" form="enroll-student-form">Confirm Enrollment</Button>
+                        <Button variant="outline" onClick={() => setIsEnrollDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                        <Button type="submit" form="enroll-student-form" className="rounded-xl">Confirm Enrollment</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -783,7 +783,7 @@ export default function ManageApplicationsPage() {
                     setDeleteInput('');
                 }
             }}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -796,14 +796,14 @@ export default function ManageApplicationsPage() {
                             name="delete-confirm"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
-                            className="mt-4"
+                            className="mt-4 rounded-xl"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')} className="rounded-xl">Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             disabled={deleteInput !== 'delete'}
-                            className="bg-destructive hover:bg-destructive/90"
+                            className="bg-destructive hover:bg-destructive/90 rounded-xl"
                             onClick={() => handleDelete(deleteDialog.application!)}
                         >
                             Delete
@@ -816,3 +816,5 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
+
+    
