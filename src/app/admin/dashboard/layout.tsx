@@ -51,7 +51,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { AdminProvider } from '../context/admin-context';
+import { useAdmin } from '../context/admin-context';
 
 const Breadcrumb = () => {
     const pathname = usePathname();
@@ -163,9 +163,10 @@ export default function AdminDashboardLayout({
     setIsEnrollmentOpen(pathname.startsWith('/admin/dashboard/manage-'));
   }, [pathname]);
 
+  const { adminData } = useAdmin();
+  const currentUser = adminData.adminUsers[1]; // Using 'Admin' role for demo
 
   return (
-    <AdminProvider>
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader>
@@ -253,22 +254,26 @@ export default function AdminDashboardLayout({
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/instructors'}>
-                  <Link href="/admin/dashboard/instructors">
-                    <BookUser />
-                    Instructors
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/administrators'}>
-                  <Link href="/admin/dashboard/administrators">
-                    <Shield />
-                    Administrators
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {currentUser.role !== 'Moderator' && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/instructors'}>
+                    <Link href="/admin/dashboard/instructors">
+                      <BookUser />
+                      Instructors
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {currentUser.role === 'Super Admin' && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/administrators'}>
+                    <Link href="/admin/dashboard/administrators">
+                      <Shield />
+                      Administrators
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
                <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/settings'}>
                   <Link href="/admin/dashboard/settings">
@@ -346,6 +351,5 @@ export default function AdminDashboardLayout({
           {children}
         </SidebarInset>
       </SidebarProvider>
-    </AdminProvider>
   );
 }

@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from "@/components/ui/toaster"
+import { AdminProvider } from './admin/context/admin-context';
 
 export const metadata: Metadata = {
   title: 'Firebase Studio App',
@@ -34,12 +35,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AdminProvider>
+            {children}
+          </AdminProvider>
           <Toaster />
         </ThemeProvider>
       </body>
     </html>
   );
 }
-
-    
