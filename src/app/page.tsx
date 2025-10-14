@@ -9,8 +9,14 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
 const AnimatedSubtitle = () => {
-  const subtitles = ["Seamless, simple, and secure enrollment for the new academic year."];
-  const [currentSubtitle, setCurrentSubtitle] = useState('');
+  const subtitles = [
+    {
+      line1: "Seamless, simple, and secure enrollment",
+      line2: "for the new academic year."
+    }
+  ];
+  const [currentLine1, setCurrentLine1] = useState('');
+  const [currentLine2, setCurrentLine2] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [loopNum, setLoopNum] = useState(0);
   const [typingSpeed, setTypingSpeed] = useState(100);
@@ -18,21 +24,30 @@ const AnimatedSubtitle = () => {
   useEffect(() => {
     const handleTyping = () => {
       const i = loopNum % subtitles.length;
-      const fullTxt = subtitles[i];
+      const { line1: fullLine1, line2: fullLine2 } = subtitles[i];
+      const isTypingLine1 = currentLine1.length < fullLine1.length;
 
       if (isDeleting) {
-        setCurrentSubtitle(fullTxt.substring(0, currentSubtitle.length - 1));
-        setTypingSpeed(50);
+        if (currentLine2.length > 0) {
+          setCurrentLine2(fullLine2.substring(0, currentLine2.length - 1));
+          setTypingSpeed(30);
+        } else if (currentLine1.length > 0) {
+          setCurrentLine1(fullLine1.substring(0, currentLine1.length - 1));
+          setTypingSpeed(30);
+        } else {
+          setIsDeleting(false);
+          setLoopNum(loopNum + 1);
+        }
       } else {
-        setCurrentSubtitle(fullTxt.substring(0, currentSubtitle.length + 1));
-        setTypingSpeed(100);
-      }
-
-      if (!isDeleting && currentSubtitle === fullTxt) {
-        setTimeout(() => setIsDeleting(true), 1500);
-      } else if (isDeleting && currentSubtitle === '') {
-        setIsDeleting(false);
-        setLoopNum(loopNum + 1);
+        if (isTypingLine1) {
+          setCurrentLine1(fullLine1.substring(0, currentLine1.length + 1));
+          setTypingSpeed(50);
+        } else if (currentLine2.length < fullLine2.length) {
+          setCurrentLine2(fullLine2.substring(0, currentLine2.length + 1));
+          setTypingSpeed(50);
+        } else {
+          setTimeout(() => setIsDeleting(true), 1200);
+        }
       }
     };
 
@@ -41,12 +56,19 @@ const AnimatedSubtitle = () => {
     }, typingSpeed);
 
     return () => clearTimeout(ticker);
-  }, [currentSubtitle, isDeleting, loopNum, subtitles, typingSpeed]);
+  }, [currentLine1, currentLine2, isDeleting, loopNum, subtitles, typingSpeed]);
 
   return (
-    <p className="text-sm text-muted-foreground max-w-md font-mono h-12">
-      {currentSubtitle}
-      <span className="animate-pulse">|</span>
+    <p className="text-sm text-muted-foreground font-mono h-12 flex flex-col items-center">
+      <span>
+        {currentLine1}
+        {currentLine1.length < subtitles[0].line1.length && <span className="animate-pulse">|</span>}
+      </span>
+      <span>
+        {currentLine2}
+        {currentLine1.length === subtitles[0].line1.length && currentLine2.length < subtitles[0].line2.length && <span className="animate-pulse">|</span>}
+        {isDeleting && <span className="animate-pulse">|</span>}
+      </span>
     </p>
   );
 };
