@@ -80,6 +80,7 @@ function LoginForm() {
 export default function StudentLoginPage() {
   return (
     <div className={cn(
+        "dark",
         "flex flex-col min-h-screen bg-background",
         "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.3),hsl(var(--background)))]",
     )}>
