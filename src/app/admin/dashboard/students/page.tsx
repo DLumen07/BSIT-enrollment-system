@@ -318,7 +318,7 @@ export default function StudentsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className="gap-2 text-muted-foreground border-dashed hover:border-accent hover:text-accent focus:text-accent focus:border-accent">
+                                    <Button variant="outline" className="gap-2 text-muted-foreground border-dashed hover:border-accent hover:text-accent focus:text-accent focus:border-accent focus:ring-accent">
                                         <Filter className="h-4 w-4" />
                                         Filter
                                     </Button>
@@ -328,7 +328,7 @@ export default function StudentsPage() {
                                         <div className="space-y-2">
                                             <Label>Course</Label>
                                             <Select value={filters.course} onValueChange={(value) => handleFilterChange('course', value)}>
-                                                <SelectTrigger className="focus:border-accent">
+                                                <SelectTrigger className="focus:border-accent focus:ring-accent">
                                                     <SelectValue placeholder="All Courses" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -339,7 +339,7 @@ export default function StudentsPage() {
                                          <div className="space-y-2">
                                             <Label>Year</Label>
                                             <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
-                                                <SelectTrigger className="focus:border-accent">
+                                                <SelectTrigger className="focus:border-accent focus:ring-accent">
                                                     <SelectValue placeholder="All Years" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -350,7 +350,7 @@ export default function StudentsPage() {
                                         <div className="space-y-2">
                                             <Label>Status</Label>
                                             <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                                                <SelectTrigger className="focus:border-accent">
+                                                <SelectTrigger className="focus:border-accent focus:ring-accent">
                                                     <SelectValue placeholder="All Statuses" />
                                                 </SelectTrigger>
                                                 <SelectContent>
