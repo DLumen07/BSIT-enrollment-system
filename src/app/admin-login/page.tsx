@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = React.useState('');
@@ -18,7 +19,10 @@ export default function AdminLoginPage() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className={cn(
+        "flex flex-col min-h-screen bg-background",
+        "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--accent)/0.3),hsl(var(--background)))]",
+    )}>
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md relative">
            <Button asChild variant="ghost" size="icon" className="absolute top-4 left-4 hover:text-accent">
