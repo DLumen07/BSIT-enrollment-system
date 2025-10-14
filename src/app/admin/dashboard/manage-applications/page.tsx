@@ -233,8 +233,13 @@ export default function ManageApplicationsPage() {
   };
 
   useEffect(() => {
-    setEnrollBlock('');
-  }, [applicationToEnroll]);
+    if (applicationToEnroll && availableBlocksForEnrollment.length > 0) {
+      // Auto-select the first available block
+      setEnrollBlock(availableBlocksForEnrollment[0].name);
+    } else {
+      setEnrollBlock('');
+    }
+  }, [applicationToEnroll, availableBlocksForEnrollment]);
 
   useEffect(() => {
     setEnlistedSubjects([]);
@@ -312,7 +317,7 @@ export default function ManageApplicationsPage() {
         toast({
             variant: 'destructive',
             title: 'Enrollment Failed',
-            description: 'Please select a valid block.',
+            description: 'No available block for this student.',
         });
         return;
     }
@@ -940,35 +945,28 @@ export default function ManageApplicationsPage() {
                     <DialogHeader>
                         <DialogTitle>Enroll Student</DialogTitle>
                         <DialogDescription>
-                            Assign a block and subjects for {applicationToEnroll.name}.
+                            Assign subjects for {applicationToEnroll.name}. The block is automatically assigned.
                         </DialogDescription>
                     </DialogHeader>
                     <form id="enroll-student-form" onSubmit={handleEnroll}>
                         <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-4">
-                             <div className="flex items-center gap-4 p-4 border rounded-xl">
-                                <Avatar>
-                                    <AvatarImage src={`https://picsum.photos/seed/${applicationToEnroll.id}/40/40`} alt={applicationToEnroll.name} />
-                                    <AvatarFallback>{applicationToEnroll.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="font-semibold">{applicationToEnroll.name}</p>
-                                    <p className="text-sm text-muted-foreground">{applicationToEnroll.course} - {applicationToEnroll.year} Year ({applicationToEnroll.status})</p>
+                             <div className="flex items-center justify-between gap-4 p-4 border rounded-xl">
+                                <div className="flex items-center gap-4">
+                                     <Avatar>
+                                        <AvatarImage src={`https://picsum.photos/seed/${applicationToEnroll.id}/40/40`} alt={applicationToEnroll.name} />
+                                        <AvatarFallback>{applicationToEnroll.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-semibold">{applicationToEnroll.name}</p>
+                                        <p className="text-sm text-muted-foreground">{applicationToEnroll.course} - {applicationToEnroll.year} Year ({applicationToEnroll.status})</p>
+                                    </div>
                                 </div>
+                                 <div className="text-right">
+                                    <Label className="text-xs">Assigned Block</Label>
+                                    <p className="font-semibold">{enrollBlock || 'N/A'}</p>
+                                 </div>
                             </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="block">Block</Label>
-                                <Select value={enrollBlock} onValueChange={setEnrollBlock} required>
-                                    <SelectTrigger id="block" className="rounded-xl">
-                                        <SelectValue placeholder="Select a block" />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                        {availableBlocksForEnrollment.map(b => (
-                                            <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
+                            
                             {(applicationToEnroll.status === 'Transferee' || applicationToEnroll.status === 'New') && allPrerequisites.length > 0 && (
                                  <div className="space-y-3 mt-4 pt-4 border-t">
                                     <h4 className="font-medium">Credential Override</h4>
@@ -1077,5 +1075,6 @@ export default function ManageApplicationsPage() {
     
 
     
+
 
 
