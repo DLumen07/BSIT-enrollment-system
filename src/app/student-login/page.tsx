@@ -87,7 +87,7 @@ export default function StudentLoginPage() {
               <span className="sr-only">Back to Home</span>
             </Link>
           </Button>
-          <Card className="shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)] rounded-2xl hover:border-primary transition-colors">
+          <Card className="shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)] rounded-2xl">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl">Student Login</CardTitle>
               <CardDescription>
