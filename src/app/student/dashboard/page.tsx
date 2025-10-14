@@ -22,12 +22,12 @@ export default function StudentDashboardPage() {
         </div>
 
         {!isEnrolled && (
-            <Alert className="mt-6 border-accent">
+            <Alert className="mt-6 border-accent rounded-xl">
                 <Info className="h-4 w-4" />
                 <AlertTitle>Important Notice</AlertTitle>
                 <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     You are not yet officially enrolled for the current academic year. Please proceed to the enrollment page to complete the process.
-                    <Button asChild variant="accent" className="mt-2 sm:mt-0">
+                    <Button asChild variant="accent" className="mt-2 sm:mt-0 rounded-lg">
                         <Link href="/student/dashboard/enrollment">Go to Enrollment</Link>
                     </Button>
                 </AlertDescription>
@@ -35,7 +35,7 @@ export default function StudentDashboardPage() {
         )}
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6">
-            <Card>
+            <Card className="rounded-xl">
                 <CardHeader>
                     <CardTitle>Enrollment Status</CardTitle>
                     <CardDescription>Your current enrollment details.</CardDescription>
@@ -51,7 +51,7 @@ export default function StudentDashboardPage() {
                     )}
                 </CardContent>
             </Card>
-             <Card>
+             <Card className="rounded-xl">
                 <CardHeader>
                     <CardTitle>Current Block</CardTitle>
                     <CardDescription>Your assigned section.</CardDescription>
@@ -64,7 +64,7 @@ export default function StudentDashboardPage() {
                     )}
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="rounded-xl">
                 <CardHeader>
                     <CardTitle>Announcements</CardTitle>
                     <CardDescription>Latest news and updates.</CardDescription>
