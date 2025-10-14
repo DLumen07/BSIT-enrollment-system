@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const studentData = {
     personal: {
@@ -72,14 +73,28 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
 
 export default function StudentProfilePage() {
     const { toast } = useToast();
-    const [email, setEmail] = useState(studentData.contact.email);
-    const [contactNumber, setContactNumber] = useState(studentData.contact.phoneNumber);
-    const [currentAddress, setCurrentAddress] = useState(studentData.address.currentAddress);
     
-    const handleSaveChanges = () => {
+    // State for editable fields
+    const [religion, setReligion] = useState(studentData.personal.religion);
+    const [dialect, setDialect] = useState(studentData.personal.dialect);
+    const [email, setEmail] = useState(studentData.contact.email);
+    const [phoneNumber, setPhoneNumber] = useState(studentData.contact.phoneNumber);
+    const [currentAddress, setCurrentAddress] = useState(studentData.address.currentAddress);
+    const [permanentAddress, setPermanentAddress] = useState(studentData.address.permanentAddress);
+    const [fathersName, setFathersName] = useState(studentData.family.fathersName);
+    const [fathersOccupation, setFathersOccupation] = useState(studentData.family.fathersOccupation);
+    const [mothersName, setMothersName] = useState(studentData.family.mothersName);
+    const [mothersOccupation, setMothersOccupation] = useState(studentData.family.mothersOccupation);
+    const [guardiansName, setGuardiansName] = useState(studentData.family.guardiansName);
+    const [emergencyContactName, setEmergencyContactName] = useState(studentData.additional.emergencyContactName);
+    const [emergencyContactAddress, setEmergencyContactAddress] = useState(studentData.additional.emergencyContactAddress);
+    const [emergencyContactNumber, setEmergencyContactNumber] = useState(studentData.additional.emergencyContactNumber);
+    
+
+    const handleSaveChanges = (tab: string) => {
         toast({
-            title: "Contact Info Updated",
-            description: "Your contact information has been successfully updated.",
+            title: `${tab} Info Updated`,
+            description: `Your ${tab.toLowerCase()} information has been successfully updated.`,
         });
     };
 
@@ -138,22 +153,30 @@ export default function StudentProfilePage() {
                                         <InfoField label="Sex" value={studentData.personal.sex} />
                                         <InfoField label="Civil Status" value={studentData.personal.civilStatus} />
                                         <InfoField label="Nationality" value={studentData.personal.nationality} />
-                                        <InfoField label="Religion" value={studentData.personal.religion} />
-                                        <InfoField label="Dialect" value={studentData.personal.dialect} />
                                     </div>
                                     <div className="border-t pt-4 space-y-4">
+                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                             <div className="space-y-2">
+                                                <Label htmlFor="religion">Religion</Label>
+                                                <Input id="religion" value={religion} onChange={(e) => setReligion(e.target.value)} className="rounded-xl" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="dialect">Dialect</Label>
+                                                <Input id="dialect" value={dialect} onChange={(e) => setDialect(e.target.value)} className="rounded-xl" />
+                                            </div>
+                                        </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="email">Email Address</Label>
                                             <Input id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl" />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="contact-number">Contact Number</Label>
-                                            <Input id="contact-number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} className="rounded-xl" />
+                                            <Input id="contact-number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="rounded-xl" />
                                         </div>
                                     </div>
                                 </CardContent>
                                 <CardFooter>
-                                    <Button onClick={handleSaveChanges} className="rounded-xl">Save Contact Info</Button>
+                                    <Button onClick={() => handleSaveChanges('Personal')} className="rounded-xl">Save Personal Info</Button>
                                 </CardFooter>
                             </Card>
                         </TabsContent>
@@ -169,17 +192,35 @@ export default function StudentProfilePage() {
                                         <Label htmlFor="current-address">Current Address</Label>
                                         <Input id="current-address" value={currentAddress} onChange={(e) => setCurrentAddress(e.target.value)} className="rounded-xl" />
                                     </div>
-                                    <InfoField label="Permanent Address" value={studentData.address.permanentAddress} />
+                                    <div className="space-y-2">
+                                        <Label htmlFor="permanent-address">Permanent Address</Label>
+                                        <Input id="permanent-address" value={permanentAddress} onChange={(e) => setPermanentAddress(e.target.value)} className="rounded-xl" />
+                                    </div>
                                     <div className="border-t pt-4 space-y-4">
-                                        <InfoField label="Father's Name" value={studentData.family.fathersName} />
-                                        <InfoField label="Father's Occupation" value={studentData.family.fathersOccupation} />
-                                        <InfoField label="Mother's Name" value={studentData.family.mothersName} />
-                                        <InfoField label="Mother's Occupation" value={studentData.family.mothersOccupation} />
-                                        <InfoField label="Guardian's Name" value={studentData.family.guardiansName} />
+                                        <div className="space-y-2">
+                                            <Label htmlFor="fathers-name">Father's Name</Label>
+                                            <Input id="fathers-name" value={fathersName} onChange={(e) => setFathersName(e.target.value)} className="rounded-xl" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="fathers-occupation">Father's Occupation</Label>
+                                            <Input id="fathers-occupation" value={fathersOccupation} onChange={(e) => setFathersOccupation(e.target.value)} className="rounded-xl" />
+                                        </div>
+                                         <div className="space-y-2">
+                                            <Label htmlFor="mothers-name">Mother's Name</Label>
+                                            <Input id="mothers-name" value={mothersName} onChange={(e) => setMothersName(e.target.value)} className="rounded-xl" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="mothers-occupation">Mother's Occupation</Label>
+                                            <Input id="mothers-occupation" value={mothersOccupation} onChange={(e) => setMothersOccupation(e.target.value)} className="rounded-xl" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="guardians-name">Guardian's Name</Label>
+                                            <Input id="guardians-name" value={guardiansName} onChange={(e) => setGuardiansName(e.target.value)} className="rounded-xl" />
+                                        </div>
                                     </div>
                                 </CardContent>
                                  <CardFooter>
-                                    <Button onClick={handleSaveChanges} className="rounded-xl">Save Address</Button>
+                                    <Button onClick={() => handleSaveChanges('Address & Family')} className="rounded-xl">Save Address & Family Info</Button>
                                 </CardFooter>
                             </Card>
                         </TabsContent>
@@ -190,10 +231,22 @@ export default function StudentProfilePage() {
                                     <CardTitle>Additional Information</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <InfoField label="Emergency Contact" value={studentData.additional.emergencyContactName} />
-                                    <InfoField label="Emergency Address" value={studentData.additional.emergencyContactAddress} />
-                                    <InfoField label="Emergency Number" value={studentData.additional.emergencyContactNumber} />
+                                    <div className="space-y-2">
+                                        <Label htmlFor="emergency-contact">Emergency Contact Name</Label>
+                                        <Input id="emergency-contact" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} className="rounded-xl" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="emergency-address">Emergency Address</Label>
+                                        <Input id="emergency-address" value={emergencyContactAddress} onChange={(e) => setEmergencyContactAddress(e.target.value)} className="rounded-xl" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="emergency-number">Emergency Number</Label>
+                                        <Input id="emergency-number" value={emergencyContactNumber} onChange={(e) => setEmergencyContactNumber(e.target.value)} className="rounded-xl" />
+                                    </div>
                                 </CardContent>
+                                <CardFooter>
+                                     <Button onClick={() => handleSaveChanges('Additional')} className="rounded-xl">Save Additional Info</Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
 
