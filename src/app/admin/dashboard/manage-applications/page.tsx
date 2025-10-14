@@ -285,6 +285,8 @@ export default function ManageApplicationsPage() {
         status: 'Enrolled',
         block: enrollBlock,
         enlistedSubjects: enlistedSubjects,
+        sex: 'Male', // Default, should be from application data if available
+        phoneNumber: '09' + Math.floor(100000000 + Math.random() * 900000000), // Placeholder
     };
 
     setAdminData(prev => {
@@ -391,16 +393,21 @@ export default function ManageApplicationsPage() {
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-4">
-                                    <div className="flex items-center gap-4 p-4 border rounded-xl bg-secondary/50">
-                                        <Avatar>
-                                            <AvatarImage src={foundStudent.avatar} alt={foundStudent.name} />
-                                            <AvatarFallback>{foundStudent.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-semibold">{foundStudent.name}</p>
-                                            <p className="text-sm text-muted-foreground">{foundStudent.course} - {foundStudent.year} Year</p>
+                                    <Card className="p-4 rounded-xl bg-secondary/50 border-none">
+                                        <div className="flex items-start gap-4">
+                                            <Avatar className="h-16 w-16">
+                                                <AvatarImage src={foundStudent.avatar} alt={foundStudent.name} />
+                                                <AvatarFallback>{foundStudent.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="grid gap-0.5 text-sm">
+                                                <p className="font-semibold text-base">{foundStudent.name}</p>
+                                                <p><span className="text-muted-foreground">Email:</span> {foundStudent.email}</p>
+                                                <p><span className="text-muted-foreground">Phone:</span> {foundStudent.phoneNumber}</p>
+                                                <p><span className="text-muted-foreground">Sex:</span> {foundStudent.sex}</p>
+                                                <p><span className="text-muted-foreground">Current Level:</span> {foundStudent.course} - {foundStudent.year} Year</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </Card>
                                     <div className="space-y-2">
                                         <Label htmlFor="block">Block</Label>
                                         <Select value={directEnrollBlock} onValueChange={setDirectEnrollBlock} required>
@@ -907,9 +914,3 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
-
-    
-
-    
-
-    
