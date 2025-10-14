@@ -191,18 +191,6 @@ export default function ManageApplicationsPage() {
     }, [adminData, applicationToEnroll, prerequisiteOverrides]);
 
 
-  const availableBlocksForEnrollment = useMemo(() => {
-    if (!applicationToEnroll) return [];
-    let yearKey: '1st-year' | '2nd-year' | '3rd-year' | '4th-year' = '1st-year';
-    if (applicationToEnroll.year === 1) yearKey = '1st-year';
-    else if (applicationToEnroll.year === 2) yearKey = '2nd-year';
-    else if (applicationToEnroll.year === 3) yearKey = '3rd-year';
-    else if (applicationToEnroll.year === 4) yearKey = '4th-year';
-
-    const courseForYear = (applicationToEnroll.year <= 2) ? 'ACT' : 'BSIT';
-    return blocks.filter(b => b.year === yearKey && b.course === courseForYear);
-  }, [blocks, applicationToEnroll]);
-
   const availableSubjectsForEnrollment = useMemo(() => {
     if (!applicationToEnroll) return [];
     
@@ -228,18 +216,10 @@ export default function ManageApplicationsPage() {
 
   const openEnrollDialog = (application: Application) => {
     setApplicationToEnroll(application);
+    setEnrollBlock(application.block || ''); // Use block from application
     setIsEnrollDialogOpen(true);
     setPrerequisiteOverrides([]);
   };
-
-  useEffect(() => {
-    if (applicationToEnroll && availableBlocksForEnrollment.length > 0) {
-      // Auto-select the first available block
-      setEnrollBlock(availableBlocksForEnrollment[0].name);
-    } else {
-      setEnrollBlock('');
-    }
-  }, [applicationToEnroll, availableBlocksForEnrollment]);
 
   useEffect(() => {
     setEnlistedSubjects([]);
@@ -317,7 +297,7 @@ export default function ManageApplicationsPage() {
         toast({
             variant: 'destructive',
             title: 'Enrollment Failed',
-            description: 'No available block for this student.',
+            description: 'No block assigned to this application.',
         });
         return;
     }
@@ -945,7 +925,7 @@ export default function ManageApplicationsPage() {
                     <DialogHeader>
                         <DialogTitle>Enroll Student</DialogTitle>
                         <DialogDescription>
-                            Assign subjects for {applicationToEnroll.name}. The block is automatically assigned.
+                            Confirm block and enlist subjects for {applicationToEnroll.name}.
                         </DialogDescription>
                     </DialogHeader>
                     <form id="enroll-student-form" onSubmit={handleEnroll}>
@@ -1071,10 +1051,3 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
-
-    
-
-    
-
-
-
