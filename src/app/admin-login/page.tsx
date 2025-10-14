@@ -21,13 +21,13 @@ export default function AdminLoginPage() {
     <div className="flex flex-col min-h-screen bg-background">
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md relative">
-           <Button asChild variant="ghost" size="icon" className="absolute top-4 left-4">
+           <Button asChild variant="ghost" size="icon" className="absolute top-4 left-4 hover:text-accent">
             <Link href="/">
               <ArrowLeft />
               <span className="sr-only">Back to Home</span>
             </Link>
           </Button>
-          <Card className="shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)]">
+          <Card className="shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)] rounded-2xl">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl">Administrator Login</CardTitle>
               <CardDescription>
@@ -45,6 +45,7 @@ export default function AdminLoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className="rounded-xl hover:border-accent focus:border-accent hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] focus:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-all"
                   />
                 </div>
                 <div className="space-y-2 text-left">
@@ -55,9 +56,10 @@ export default function AdminLoginPage() {
                     required 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="rounded-xl hover:border-accent focus:border-accent hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] focus:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-all"
                   />
                 </div>
-                <Button asChild className="w-full" variant="accent">
+                <Button asChild className="w-full rounded-xl hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-shadow" variant="accent">
                   <Link href="/admin/dashboard">Login</Link>
                 </Button>
               </div>
