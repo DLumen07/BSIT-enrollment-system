@@ -1,23 +1,19 @@
 
 'use client';
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileSignature, CheckCircle, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-
-const registeredSubjects = [
-    { code: 'IT 201', description: 'Data Structures & Algorithms', units: 3, schedule: 'M 09:00-10:30', instructor: 'Prof. Ada Lovelace' },
-    { code: 'IT 202', description: 'Web Development', units: 3, schedule: 'T 13:00-14:30', instructor: 'Dr. Grace Hopper' },
-    { code: 'MATH 201', description: 'Discrete Mathematics', units: 3, schedule: 'W 11:00-12:30', instructor: 'Dr. Alan Turing' },
-    { code: 'FIL 102', description: 'Filipino sa Iba\'t Ibang Disiplina', units: 3, schedule: 'Th 14:00-15:30', instructor: 'G. Jose Rizal' },
-    { code: 'PE 104', description: 'Physical Education 4', units: 2, schedule: 'F 08:00-10:00', instructor: 'Coach Dave' },
-];
+import { useStudent } from '@/app/student/context/student-context';
 
 export default function EnrollmentPage() {
-    const [isEnrolled, setIsEnrolled] = useState(true);
+    const { studentData } = useStudent();
+    const { isEnrolled, registeredSubjects } = studentData.enrollment;
+    const { studentId, course, yearLevel, dateEnrolled, status } = studentData.academic;
+    const { firstName, lastName } = studentData.personal;
+
 
     const handlePrint = () => {
         window.print();
@@ -87,27 +83,27 @@ export default function EnrollmentPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6 text-sm">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Student Name:</span>
-                            <span className="font-medium">Student Name</span>
+                            <span className="font-medium">{firstName} {lastName}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Student ID:</span>
-                            <span className="font-medium">2022-0001</span>
+                            <span className="font-medium">{studentId}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Program:</span>
-                            <span className="font-medium">BS in Information Technology</span>
+                            <span className="font-medium">{course}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Year Level:</span>
-                            <span className="font-medium">2nd Year</span>
+                            <span className="font-medium">{yearLevel}</span>
                         </div>
                          <div className="flex justify-between">
                             <span className="text-muted-foreground">Status:</span>
-                            <Badge variant="default">Enrolled</Badge>
+                            <Badge variant="default">{status}</Badge>
                         </div>
                          <div className="flex justify-between">
                             <span className="text-muted-foreground">Date Enrolled:</span>
-                            <span className="font-medium">August 15, 2024</span>
+                            <span className="font-medium">{dateEnrolled}</span>
                         </div>
                     </div>
 

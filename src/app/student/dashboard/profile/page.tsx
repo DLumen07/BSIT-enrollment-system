@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,55 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const studentData = {
-    personal: {
-        firstName: 'Student',
-        lastName: 'Name',
-        middleName: 'Dela Cruz',
-        birthdate: 'January 1, 2004',
-        sex: 'Male',
-        civilStatus: 'Single',
-        nationality: 'Filipino',
-        religion: 'Roman Catholic',
-        dialect: 'Tagalog',
-    },
-    contact: {
-        email: 'student.name@example.com',
-        phoneNumber: '09123456789',
-    },
-    address: {
-        currentAddress: '123 Main St, Quezon City, Metro Manila',
-        permanentAddress: '456 Provincial Rd, Cebu City, Cebu',
-    },
-    family: {
-        fathersName: "Father's Name",
-        fathersOccupation: "Father's Occupation",
-        mothersName: "Mother's Name",
-        mothersOccupation: "Mother's Occupation",
-        guardiansName: "Guardian's Name",
-    },
-    additional: {
-        emergencyContactName: 'Emergency Contact',
-        emergencyContactAddress: 'Emergency Address',
-        emergencyContactNumber: '09876543210',
-    },
-    education: {
-        elementarySchool: 'Central Elementary School',
-        elemYearGraduated: '2016',
-        secondarySchool: 'National High School',
-        secondaryYearGraduated: '2022',
-        collegiateSchool: 'Previous University (if transferee)',
-    },
-    academic: {
-        studentId: '2022-0001',
-        course: 'BS in Information Technology',
-        yearLevel: '2nd Year',
-        block: 'BSIT 2-A',
-        status: 'Enrolled'
-    }
-};
+import { useStudent } from '@/app/student/context/student-context';
 
 
 const InfoField = ({ label, value }: { label: string; value?: string | null }) => {
@@ -73,25 +25,67 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
 
 export default function StudentProfilePage() {
     const { toast } = useToast();
+    const { studentData, setStudentData } = useStudent();
     
-    // State for editable fields
-    const [religion, setReligion] = useState(studentData.personal.religion);
-    const [dialect, setDialect] = useState(studentData.personal.dialect);
-    const [email, setEmail] = useState(studentData.contact.email);
-    const [phoneNumber, setPhoneNumber] = useState(studentData.contact.phoneNumber);
-    const [currentAddress, setCurrentAddress] = useState(studentData.address.currentAddress);
-    const [permanentAddress, setPermanentAddress] = useState(studentData.address.permanentAddress);
-    const [fathersName, setFathersName] = useState(studentData.family.fathersName);
-    const [fathersOccupation, setFathersOccupation] = useState(studentData.family.fathersOccupation);
-    const [mothersName, setMothersName] = useState(studentData.family.mothersName);
-    const [mothersOccupation, setMothersOccupation] = useState(studentData.family.mothersOccupation);
-    const [guardiansName, setGuardiansName] = useState(studentData.family.guardiansName);
-    const [emergencyContactName, setEmergencyContactName] = useState(studentData.additional.emergencyContactName);
-    const [emergencyContactAddress, setEmergencyContactAddress] = useState(studentData.additional.emergencyContactAddress);
-    const [emergencyContactNumber, setEmergencyContactNumber] = useState(studentData.additional.emergencyContactNumber);
-    
+    // Create a temporary state for editing
+    const [editableData, setEditableData] = React.useState({
+        religion: studentData.personal.religion,
+        dialect: studentData.personal.dialect,
+        email: studentData.contact.email,
+        phoneNumber: studentData.contact.phoneNumber,
+        currentAddress: studentData.address.currentAddress,
+        permanentAddress: studentData.address.permanentAddress,
+        fathersName: studentData.family.fathersName,
+        fathersOccupation: studentData.family.fathersOccupation,
+        mothersName: studentData.family.mothersName,
+        mothersOccupation: studentData.family.mothersOccupation,
+        guardiansName: studentData.family.guardiansName,
+        emergencyContactName: studentData.additional.emergencyContactName,
+        emergencyContactAddress: studentData.additional.emergencyContactAddress,
+        emergencyContactNumber: studentData.additional.emergencyContactNumber,
+    });
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setEditableData(prev => ({ ...prev, [id]: value }));
+    }
 
     const handleSaveChanges = (tab: string) => {
+        // In a real app, you'd send this to your backend.
+        // For now, we update the context state.
+        setStudentData(prev => ({
+            ...prev,
+            personal: {
+                ...prev.personal,
+                religion: editableData.religion,
+                dialect: editableData.dialect,
+            },
+            contact: {
+                ...prev.contact,
+                email: editableData.email,
+                phoneNumber: editableData.phoneNumber,
+            },
+            address: {
+                ...prev.address,
+                currentAddress: editableData.currentAddress,
+                permanentAddress: editableData.permanentAddress,
+            },
+            family: {
+                ...prev.family,
+                fathersName: editableData.fathersName,
+                fathersOccupation: editableData.fathersOccupation,
+                mothersName: editableData.mothersName,
+                mothersOccupation: editableData.mothersOccupation,
+                guardiansName: editableData.guardiansName,
+            },
+            additional: {
+                 ...prev.additional,
+                 emergencyContactName: editableData.emergencyContactName,
+                 emergencyContactAddress: editableData.emergencyContactAddress,
+                 emergencyContactNumber: editableData.emergencyContactNumber,
+            }
+        }));
+
         toast({
             title: `${tab} Info Updated`,
             description: `Your ${tab.toLowerCase()} information has been successfully updated.`,
@@ -170,20 +164,20 @@ export default function StudentProfilePage() {
                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                              <div className="space-y-2">
                                                 <Label htmlFor="religion">Religion</Label>
-                                                <Input id="religion" value={religion} onChange={(e) => setReligion(e.target.value)} className="rounded-xl" />
+                                                <Input id="religion" value={editableData.religion} onChange={handleInputChange} className="rounded-xl" />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="dialect">Dialect</Label>
-                                                <Input id="dialect" value={dialect} onChange={(e) => setDialect(e.target.value)} className="rounded-xl" />
+                                                <Input id="dialect" value={editableData.dialect} onChange={handleInputChange} className="rounded-xl" />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="email">Email Address</Label>
-                                            <Input id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl" />
+                                            <Input id="email" value={editableData.email} onChange={handleInputChange} className="rounded-xl" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="contact-number">Contact Number</Label>
-                                            <Input id="contact-number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="rounded-xl" />
+                                            <Label htmlFor="phoneNumber">Contact Number</Label>
+                                            <Input id="phoneNumber" value={editableData.phoneNumber} onChange={handleInputChange} className="rounded-xl" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -201,33 +195,33 @@ export default function StudentProfilePage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="current-address">Current Address</Label>
-                                        <Input id="current-address" value={currentAddress} onChange={(e) => setCurrentAddress(e.target.value)} className="rounded-xl" />
+                                        <Label htmlFor="currentAddress">Current Address</Label>
+                                        <Input id="currentAddress" value={editableData.currentAddress} onChange={handleInputChange} className="rounded-xl" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="permanent-address">Permanent Address</Label>
-                                        <Input id="permanent-address" value={permanentAddress} onChange={(e) => setPermanentAddress(e.target.value)} className="rounded-xl" />
+                                        <Label htmlFor="permanentAddress">Permanent Address</Label>
+                                        <Input id="permanentAddress" value={editableData.permanentAddress} onChange={handleInputChange} className="rounded-xl" />
                                     </div>
                                     <div className="border-t pt-4 space-y-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="fathers-name">Father's Name</Label>
-                                            <Input id="fathers-name" value={fathersName} onChange={(e) => setFathersName(e.target.value)} className="rounded-xl" />
+                                            <Label htmlFor="fathersName">Father's Name</Label>
+                                            <Input id="fathersName" value={editableData.fathersName} onChange={handleInputChange} className="rounded-xl" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="fathers-occupation">Father's Occupation</Label>
-                                            <Input id="fathers-occupation" value={fathersOccupation} onChange={(e) => setFathersOccupation(e.target.value)} className="rounded-xl" />
+                                            <Label htmlFor="fathersOccupation">Father's Occupation</Label>
+                                            <Input id="fathersOccupation" value={editableData.fathersOccupation} onChange={handleInputChange} className="rounded-xl" />
                                         </div>
                                          <div className="space-y-2">
-                                            <Label htmlFor="mothers-name">Mother's Name</Label>
-                                            <Input id="mothers-name" value={mothersName} onChange={(e) => setMothersName(e.target.value)} className="rounded-xl" />
+                                            <Label htmlFor="mothersName">Mother's Name</Label>
+                                            <Input id="mothersName" value={editableData.mothersName} onChange={handleInputChange} className="rounded-xl" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="mothers-occupation">Mother's Occupation</Label>
-                                            <Input id="mothers-occupation" value={mothersOccupation} onChange={(e) => setMothersOccupation(e.target.value)} className="rounded-xl" />
+                                            <Label htmlFor="mothersOccupation">Mother's Occupation</Label>
+                                            <Input id="mothersOccupation" value={editableData.mothersOccupation} onChange={handleInputChange} className="rounded-xl" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="guardians-name">Guardian's Name</Label>
-                                            <Input id="guardians-name" value={guardiansName} onChange={(e) => setGuardiansName(e.target.value)} className="rounded-xl" />
+                                            <Label htmlFor="guardiansName">Guardian's Name</Label>
+                                            <Input id="guardiansName" value={editableData.guardiansName} onChange={handleInputChange} className="rounded-xl" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -244,16 +238,16 @@ export default function StudentProfilePage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="emergency-contact">Emergency Contact Name</Label>
-                                        <Input id="emergency-contact" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} className="rounded-xl" />
+                                        <Label htmlFor="emergencyContactName">Emergency Contact Name</Label>
+                                        <Input id="emergencyContactName" value={editableData.emergencyContactName} onChange={handleInputChange} className="rounded-xl" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="emergency-address">Emergency Address</Label>
-                                        <Input id="emergency-address" value={emergencyContactAddress} onChange={(e) => setEmergencyContactAddress(e.target.value)} className="rounded-xl" />
+                                        <Label htmlFor="emergencyContactAddress">Emergency Address</Label>
+                                        <Input id="emergencyContactAddress" value={editableData.emergencyContactAddress} onChange={handleInputChange} className="rounded-xl" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="emergency-number">Emergency Number</Label>
-                                        <Input id="emergency-number" value={emergencyContactNumber} onChange={(e) => setEmergencyContactNumber(e.target.value)} className="rounded-xl" />
+                                        <Label htmlFor="emergencyContactNumber">Emergency Number</Label>
+                                        <Input id="emergencyContactNumber" value={editableData.emergencyContactNumber} onChange={handleInputChange} className="rounded-xl" />
                                     </div>
                                 </CardContent>
                                 <CardFooter>

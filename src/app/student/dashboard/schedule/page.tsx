@@ -1,9 +1,10 @@
 
 'use client';
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useStudent } from '@/app/student/context/student-context';
 
 type Subject = {
     id: number;
@@ -16,14 +17,6 @@ type Subject = {
     color: string;
     room: string;
 };
-
-export const studentSchedule: Subject[] = [
-    { id: 1, code: 'IT 201', description: 'Data Structures & Algorithms', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', room: 'Lab 501', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
-    { id: 2, code: 'IT 202', description: 'Web Development', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Dr. Grace Hopper', room: 'Lab 502', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
-    { id: 3, code: 'MATH 201', description: 'Discrete Mathematics', day: 'Wednesday', startTime: '11:00', endTime: '12:30', instructor: 'Dr. Alan Turing', room: 'Room 301', color: 'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400' },
-    { id: 4, code: 'FIL 102', description: 'Filipino sa Iba\'t Ibang Disiplina', day: 'Thursday', startTime: '14:00', endTime: '15:30', instructor: 'G. Jose Rizal', room: 'Room 305', color: 'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400' },
-    { id: 5, code: 'PE 104', description: 'Physical Education 4', day: 'Friday', startTime: '08:00', endTime: '10:00', instructor: 'Coach Dave', room: 'Gymnasium', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
-];
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const timeSlots = Array.from({ length: 12 }, (_, i) => `${(i + 7).toString().padStart(2, '0')}:00`); // 7 AM to 6 PM
@@ -45,13 +38,16 @@ const formatTime = (timeStr: string) => {
 }
 
 export default function StudentSchedulePage() {
+    const { studentData } = useStudent();
+    const studentSchedule = studentData.schedule;
+    const { block } = studentData.academic;
 
     return (
         <main className="flex-1 p-4 sm:p-6 space-y-6">
             <div className="space-y-0.5">
                 <h1 className="text-2xl font-bold tracking-tight">My Class Schedule</h1>
                 <p className="text-muted-foreground">
-                    A.Y. 2024-2025, 1st Semester | Block: BSIT 2-A
+                    A.Y. 2024-2025, 1st Semester | Block: {block}
                 </p>
             </div>
             <Card className="rounded-xl">

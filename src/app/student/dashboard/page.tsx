@@ -24,9 +24,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { studentSchedule as allStudentSchedule } from './schedule/page';
 import { PieChart, Pie, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
+import { useStudent } from '@/app/student/context/student-context';
 
 
 const mockClassmates = [
@@ -45,7 +45,11 @@ const profileCompletionConfig = {
 
 
 export default function StudentDashboardPage() {
-  const [isEnrolled, setIsEnrolled] = useState(true);
+  const { studentData } = useStudent();
+  const { isEnrolled } = studentData.enrollment;
+  const { block } = studentData.academic;
+  const allStudentSchedule = studentData.schedule;
+
   const [isClassmatesDialogOpen, setIsClassmatesDialogOpen] = useState(false);
   const [todaysSchedule, setTodaysSchedule] = useState<typeof allStudentSchedule>([]);
 
@@ -54,7 +58,7 @@ export default function StudentDashboardPage() {
     const scheduleForToday = allStudentSchedule.filter(subject => subject.day === dayOfWeek)
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
     setTodaysSchedule(scheduleForToday);
-  }, []);
+  }, [allStudentSchedule]);
 
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
@@ -67,7 +71,7 @@ export default function StudentDashboardPage() {
   return (
     <main className="flex-1 p-4 sm:p-6">
         <div className="space-y-4">
-            <h1 className="text-2xl font-bold tracking-tight">Welcome, Student!</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Welcome, {studentData.personal.firstName}!</h1>
             {isEnrolled && (
                  <p className="text-muted-foreground">
                     Here's a summary of your current academic status.
@@ -156,7 +160,7 @@ export default function StudentDashboardPage() {
                         </CardHeader>
                         <CardContent className="flex-grow">
                             {isEnrolled ? (
-                                <p className="font-semibold">BSIT 2-A</p>
+                                <p className="font-semibold">{block}</p>
                             ) : (
                                 <p className="text-sm text-muted-foreground">N/A</p>
                             )}
@@ -172,7 +176,7 @@ export default function StudentDashboardPage() {
                                     </DialogTrigger>
                                     <DialogContent className="max-w-md">
                                         <DialogHeader>
-                                            <DialogTitle>Classmates in BSIT 2-A</DialogTitle>
+                                            <DialogTitle>Classmates in {block}</DialogTitle>
                                             <DialogDescription>
                                                 List of all students enrolled in this block.
                                             </DialogDescription>
