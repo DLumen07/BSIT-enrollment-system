@@ -9,13 +9,13 @@
     {
       "id": "school-logo",
       "description": "A logo for the school.",
-      "imageUrl": "https://raw.githubusercontent.com/DLumen07/Images/main/ASCOT%20BSIT%20ENROLLMENT%20SYSTEM.png",
+      "imageUrl": "https://raw.githubusercontent.com/DLumen07/Images/main/BSIT%20ENROLLMENT%20SYSTEM.png",
       "imageHint": "school logo"
     },
     {
       "id": "school-logo-sm",
       "description": "A small logo for the school.",
-      "imageUrl": "https://raw.githubusercontent.com/DLumen07/Images/main/ASCOT%20BSIT%20ENROLLMENT%20SYSTEM.png",
+      "imageUrl": "https://raw.githubusercontent.com/DLumen07/Images/main/BSIT%20ENROLLMENT%20SYSTEM.png",
       "imageHint": "school logo"
     }
   ]
