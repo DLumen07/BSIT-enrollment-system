@@ -610,13 +610,13 @@ export default function ManageApplicationsPage() {
                                             </Select>
                                         </div>
                                          <div className="space-y-2">
-                                            <Label>Status</Label>
+                                            <Label>Type</Label>
                                             <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
                                                 <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl">
-                                                    <SelectValue placeholder="All Statuses" />
+                                                    <SelectValue placeholder="All Types" />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl">
-                                                    {statuses.map(status => <SelectItem key={status} value={status}>{status === 'all' ? 'All Statuses' : status}</SelectItem>)}
+                                                    {statuses.map(status => <SelectItem key={status} value={status}>{status === 'all' ? 'All Types' : status}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -648,7 +648,7 @@ export default function ManageApplicationsPage() {
                                             <TableHead>Student Name</TableHead>
                                             <TableHead>Course</TableHead>
                                             <TableHead>Year</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <TableHead>Type</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -700,7 +700,7 @@ export default function ManageApplicationsPage() {
                                             <TableHead>Student Name</TableHead>
                                             <TableHead>Course</TableHead>
                                             <TableHead>Year</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <TableHead>Type</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -757,7 +757,7 @@ export default function ManageApplicationsPage() {
                                             <TableHead>Student Name</TableHead>
                                             <TableHead>Course</TableHead>
                                             <TableHead>Year</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <TableHead>Type</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -832,7 +832,7 @@ export default function ManageApplicationsPage() {
                             <p className="col-span-3 text-sm">{selectedApplication.course} {selectedApplication.year}</p>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                                <p className="text-sm font-medium text-right col-span-1">Status</p>
+                                <p className="text-sm font-medium text-right col-span-1">Type</p>
                             <p className="col-span-3 text-sm">
                                 {selectedApplication.status}
                             </p>
@@ -1026,3 +1026,5 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
+
+    
