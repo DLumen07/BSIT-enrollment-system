@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, Users, Clock, BookOpen } from 'lucide-react';
+import { Info, Users, Clock, BookOpen, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { studentSchedule as allStudentSchedule } from './schedule/page';
+import { PieChart, Pie, Cell } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 
 
 const mockClassmates = [
@@ -34,6 +36,12 @@ const mockClassmates = [
     { id: '2022-1111', name: 'Emily Davis', avatar: 'https://picsum.photos/seed/ed-student/40/40' },
      { id: '2022-0001', name: 'You', avatar: 'https://picsum.photos/seed/student-avatar/40/40' },
 ];
+
+const profileCompletionData = [{ name: 'Completed', value: 75, fill: 'hsl(var(--primary))' }, { name: 'Remaining', value: 25, fill: 'hsl(var(--muted))' }];
+const profileCompletionConfig = {
+    completed: { label: 'Completed', color: 'hsl(var(--primary))' },
+    remaining: { label: 'Remaining', color: 'hsl(var(--muted))' },
+} satisfies ChartConfig
 
 
 export default function StudentDashboardPage() {
@@ -202,6 +210,53 @@ export default function StudentDashboardPage() {
                                 </Dialog>
                             </CardFooter>
                         )}
+                    </Card>
+                    <Card className="rounded-xl sm:col-span-2">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div className="space-y-1.5">
+                                <CardTitle>Profile Completion</CardTitle>
+                                <CardDescription>Keep your information up to date.</CardDescription>
+                            </div>
+                            <Button asChild size="sm" variant="ghost">
+                                <Link href="/student/dashboard/profile">
+                                    <UserCheck className="mr-2 h-4 w-4" /> Go to Profile
+                                </Link>
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="flex items-center justify-center">
+                            <ChartContainer
+                                config={profileCompletionConfig}
+                                className="mx-auto aspect-square w-full max-w-[200px]"
+                            >
+                                <PieChart>
+                                    <ChartTooltip
+                                        cursor={false}
+                                        content={<ChartTooltipContent hideLabel />}
+                                    />
+                                    <Pie
+                                        data={profileCompletionData}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        innerRadius={60}
+                                        strokeWidth={5}
+                                        cornerRadius={40}
+                                    >
+                                        {profileCompletionData.map((entry) => (
+                                            <Cell key={entry.name} fill={entry.fill} />
+                                        ))}
+                                    </Pie>
+                                     <text
+                                        x="50%"
+                                        y="50%"
+                                        textAnchor="middle"
+                                        dominantBaseline="middle"
+                                        className="fill-foreground text-2xl font-bold"
+                                    >
+                                        {profileCompletionData[0].value}%
+                                    </text>
+                                </PieChart>
+                            </ChartContainer>
+                        </CardContent>
                     </Card>
                 </div>
                  <Card className="rounded-xl sm:col-span-2">
