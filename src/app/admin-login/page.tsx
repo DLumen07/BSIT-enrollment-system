@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     setEmail('admin@example.com');
     setPassword('password');
   }, []);

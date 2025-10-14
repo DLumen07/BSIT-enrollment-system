@@ -6,15 +6,16 @@ import Link from 'next/link';
 import { User, UserCog } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const AnimatedSubtitle = () => {
-  const subtitles = [
+  const subtitles = useCallback(() => [
     {
       line1: "Seamless, simple, and secure enrollment",
       line2: "for the new academic year."
     }
-  ];
+  ], []);
+
   const [currentLine1, setCurrentLine1] = useState('');
   const [currentLine2, setCurrentLine2] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -23,8 +24,8 @@ const AnimatedSubtitle = () => {
 
   useEffect(() => {
     const handleTyping = () => {
-      const i = loopNum % subtitles.length;
-      const { line1: fullLine1, line2: fullLine2 } = subtitles[i];
+      const i = loopNum % subtitles().length;
+      const { line1: fullLine1, line2: fullLine2 } = subtitles()[i];
       const isTypingLine1 = currentLine1.length < fullLine1.length;
 
       if (isDeleting) {
@@ -58,8 +59,8 @@ const AnimatedSubtitle = () => {
     return () => clearTimeout(ticker);
   }, [currentLine1, currentLine2, isDeleting, loopNum, subtitles, typingSpeed]);
 
-  const showLine1Cursor = currentLine1.length < subtitles[0].line1.length && !isDeleting && currentLine2.length === 0;
-  const showLine2Cursor = currentLine2.length < subtitles[0].line2.length && !isDeleting && currentLine1.length === subtitles[0].line1.length;
+  const showLine1Cursor = currentLine1.length < subtitles()[0].line1.length && !isDeleting && currentLine2.length === 0;
+  const showLine2Cursor = currentLine2.length < subtitles()[0].line2.length && !isDeleting && currentLine1.length === subtitles()[0].line1.length;
   
   const showDeletingCursor1 = isDeleting && currentLine2.length === 0 && currentLine1.length > 0;
   const showDeletingCursor2 = isDeleting && currentLine2.length > 0;
