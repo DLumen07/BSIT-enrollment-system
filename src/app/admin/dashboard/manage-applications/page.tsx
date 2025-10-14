@@ -427,6 +427,7 @@ export default function ManageApplicationsPage() {
                                                     <div key={subject.id} className="flex items-center space-x-2 p-2 border rounded-md">
                                                         <Checkbox
                                                             id={`dir-sub-${subject.id}`}
+                                                            checked={directEnlistedSubjects.some(s => s.id === subject.id)}
                                                             onCheckedChange={(checked) => {
                                                                 if (checked) {
                                                                     setDirectEnlistedSubjects(prev => [...prev, subject]);
@@ -447,6 +448,60 @@ export default function ManageApplicationsPage() {
                                 </div>
                                 <DialogFooter>
                                     <Button variant="outline" onClick={() => setDirectEnrollStep(1)} className="rounded-xl">Back</Button>
+                                    <Button onClick={() => setDirectEnrollStep(3)} className="rounded-xl">Review Enrollment</Button>
+                                </DialogFooter>
+                            </>
+                        )}
+                        {directEnrollStep === 3 && foundStudent && (
+                             <>
+                                <DialogHeader>
+                                    <DialogTitle>Review Enrollment</DialogTitle>
+                                    <DialogDescription>
+                                        Please review the details below before finalizing the enrollment for {foundStudent.name}.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-6 py-2 max-h-[60vh] overflow-y-auto pr-4">
+                                     <Card className="p-4 rounded-xl bg-secondary/50 border-none">
+                                        <div className="grid gap-1 text-sm">
+                                            <p className="font-semibold text-base">{foundStudent.name}</p>
+                                            <p><span className="text-muted-foreground">ID:</span> {foundStudent.studentId}</p>
+                                            <p><span className="text-muted-foreground">Course:</span> {foundStudent.course} - {foundStudent.year} Year</p>
+                                        </div>
+                                    </Card>
+                                    <div>
+                                        <h4 className="font-semibold mb-2">Enrollment Details</h4>
+                                        <div className="grid gap-1 text-sm p-3 border rounded-lg">
+                                            <p><span className="text-muted-foreground">Assigned Block:</span> <span className="font-medium">{directEnrollBlock}</span></p>
+                                        </div>
+                                    </div>
+                                     <div>
+                                        <h4 className="font-semibold mb-2">Enlisted Subjects ({directEnlistedSubjects.length})</h4>
+                                        <div className="border rounded-lg max-h-40 overflow-y-auto">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Code</TableHead>
+                                                        <TableHead>Description</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                {directEnlistedSubjects.length > 0 ? directEnlistedSubjects.map(sub => (
+                                                    <TableRow key={sub.id}>
+                                                        <TableCell>{sub.code}</TableCell>
+                                                        <TableCell>{sub.description}</TableCell>
+                                                    </TableRow>
+                                                )) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={2} className="text-center">No subjects enlisted.</TableCell>
+                                                    </TableRow>
+                                                )}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setDirectEnrollStep(2)} className="rounded-xl">Back</Button>
                                     <Button onClick={handleDirectEnrollSubmit} className="rounded-xl">Confirm Enrollment</Button>
                                 </DialogFooter>
                             </>
