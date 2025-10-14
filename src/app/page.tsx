@@ -58,11 +58,12 @@ const AnimatedSubtitle = () => {
     return () => clearTimeout(ticker);
   }, [currentLine1, currentLine2, isDeleting, loopNum, subtitles, typingSpeed]);
 
-  const showLine1Cursor = currentLine1.length < subtitles[0].line1.length && !isDeleting;
-  const showLine2Cursor = currentLine1.length === subtitles[0].line1.length && currentLine2.length < subtitles[0].line2.length && !isDeleting;
+  const showLine1Cursor = currentLine1.length < subtitles[0].line1.length && !isDeleting && currentLine2.length === 0;
+  const showLine2Cursor = currentLine2.length < subtitles[0].line2.length && !isDeleting && currentLine1.length === subtitles[0].line1.length;
   
   const showDeletingCursor1 = isDeleting && currentLine2.length === 0 && currentLine1.length > 0;
   const showDeletingCursor2 = isDeleting && currentLine2.length > 0;
+
 
   return (
     <p className="text-sm text-muted-foreground font-mono h-12 flex flex-col items-center">
@@ -104,13 +105,13 @@ export default function Home() {
           </h1>
           <AnimatedSubtitle />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-xs pt-4">
-            <Button asChild size="lg" className="rounded-full">
+            <Button asChild size="lg" className="rounded-full transition-shadow duration-300 hover:shadow-[0_0_20px_hsl(var(--primary)/0.8)]">
               <Link href="/student-login">
                 <User />
                 Students
               </Link>
             </Button>
-            <Button asChild variant="accent" size="lg" className="rounded-full">
+            <Button asChild variant="accent" size="lg" className="rounded-full transition-shadow duration-300 hover:shadow-[0_0_20px_hsl(var(--accent)/0.8)]">
               <Link href="/admin-login">
                 <UserCog />
                 Administrator
