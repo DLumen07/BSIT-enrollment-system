@@ -29,11 +29,11 @@ const AnimatedSubtitle = () => {
 
       if (isDeleting) {
         if (currentLine2.length > 0) {
-          setCurrentLine2(fullLine2.substring(0, currentLine2.length - 1));
-          setTypingSpeed(30);
+          setCurrentLine2(current => current.substring(0, current.length - 1));
+          setTypingSpeed(50);
         } else if (currentLine1.length > 0) {
-          setCurrentLine1(fullLine1.substring(0, currentLine1.length - 1));
-          setTypingSpeed(30);
+          setCurrentLine1(current => current.substring(0, current.length - 1));
+          setTypingSpeed(50);
         } else {
           setIsDeleting(false);
           setLoopNum(loopNum + 1);
@@ -41,12 +41,12 @@ const AnimatedSubtitle = () => {
       } else {
         if (isTypingLine1) {
           setCurrentLine1(fullLine1.substring(0, currentLine1.length + 1));
-          setTypingSpeed(50);
+          setTypingSpeed(100);
         } else if (currentLine2.length < fullLine2.length) {
           setCurrentLine2(fullLine2.substring(0, currentLine2.length + 1));
-          setTypingSpeed(50);
+          setTypingSpeed(100);
         } else {
-          setTimeout(() => setIsDeleting(true), 1200);
+          setTimeout(() => setIsDeleting(true), 2000);
         }
       }
     };
@@ -67,7 +67,8 @@ const AnimatedSubtitle = () => {
       <span>
         {currentLine2}
         {currentLine1.length === subtitles[0].line1.length && currentLine2.length < subtitles[0].line2.length && <span className="animate-pulse">|</span>}
-        {isDeleting && <span className="animate-pulse">|</span>}
+        {isDeleting && currentLine2.length === 0 && currentLine1.length > 0 && <span className="animate-pulse">|</span>}
+        {isDeleting && currentLine2.length > 0 && <span className="animate-pulse">|</span>}
       </span>
     </p>
   );
