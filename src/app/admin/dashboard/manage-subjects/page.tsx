@@ -161,12 +161,12 @@ export default function ManageSubjectsPage() {
                 </Button>
             </div>
             
-            <Card>
+            <Card className="rounded-xl">
                 <CardContent className="p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className="grid w-full grid-cols-4 rounded-xl">
                             {yearLevels.map(yl => (
-                                <TabsTrigger key={yl.value} value={yl.value}>
+                                <TabsTrigger key={yl.value} value={yl.value} className="rounded-lg">
                                     {yl.label}
                                 </TabsTrigger>
                             ))}
@@ -234,7 +234,7 @@ export default function ManageSubjectsPage() {
         </main>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogContent>
+            <DialogContent className="rounded-xl">
                 <DialogHeader>
                     <DialogTitle>Add New Subject</DialogTitle>
                     <DialogDescription>
@@ -245,23 +245,23 @@ export default function ManageSubjectsPage() {
                     <div className="space-y-4 py-2">
                         <div className="space-y-2">
                             <Label htmlFor="code">Subject Code</Label>
-                            <Input id="code" name="code" placeholder="e.g., IT 102" required />
+                            <Input id="code" name="code" placeholder="e.g., IT 102" required  className="rounded-xl"/>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="description">Description</Label>
-                            <Input id="description" name="description" placeholder="e.g., Computer Programming 1" required />
+                            <Input id="description" name="description" placeholder="e.g., Computer Programming 1" required className="rounded-xl"/>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="units">Units</Label>
-                            <Input id="units" name="units" type="number" placeholder="e.g., 3" required />
+                            <Input id="units" name="units" type="number" placeholder="e.g., 3" required className="rounded-xl"/>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="prerequisite">Prerequisite</Label>
                             <Select name="prerequisite" defaultValue="none">
-                                <SelectTrigger id="prerequisite">
+                                <SelectTrigger id="prerequisite" className="rounded-xl">
                                     <SelectValue placeholder="Select a prerequisite" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="rounded-xl">
                                     <SelectItem value="none">None</SelectItem>
                                     {prerequisiteOptions.map(sub => (
                                         <SelectItem key={sub.id} value={sub.code}>
@@ -274,14 +274,14 @@ export default function ManageSubjectsPage() {
                     </div>
                 </form>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                    <Button type="submit" form="add-subject-form">Create Subject</Button>
+                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                    <Button type="submit" form="add-subject-form" className="rounded-xl">Create Subject</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent>
+            <DialogContent className="rounded-xl">
                 <DialogHeader>
                     <DialogTitle>Edit Subject</DialogTitle>
                     <DialogDescription>Update the details for {currentSubject?.code}.</DialogDescription>
@@ -290,23 +290,23 @@ export default function ManageSubjectsPage() {
                      <div className="space-y-4 py-2">
                         <div className="space-y-2">
                             <Label htmlFor="edit-code">Subject Code</Label>
-                            <Input id="edit-code" name="code" defaultValue={currentSubject?.code} required />
+                            <Input id="edit-code" name="code" defaultValue={currentSubject?.code} required className="rounded-xl"/>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="edit-description">Description</Label>
-                            <Input id="edit-description" name="description" defaultValue={currentSubject?.description} required />
+                            <Input id="edit-description" name="description" defaultValue={currentSubject?.description} required className="rounded-xl"/>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="edit-units">Units</Label>
-                            <Input id="edit-units" name="units" type="number" defaultValue={currentSubject?.units} required />
+                            <Input id="edit-units" name="units" type="number" defaultValue={currentSubject?.units} required className="rounded-xl"/>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="edit-prerequisite">Prerequisite</Label>
                             <Select name="prerequisite" defaultValue={currentSubject?.prerequisite || 'none'}>
-                                <SelectTrigger id="edit-prerequisite">
+                                <SelectTrigger id="edit-prerequisite" className="rounded-xl">
                                     <SelectValue placeholder="Select a prerequisite" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="rounded-xl">
                                     <SelectItem value="none">None</SelectItem>
                                     {prerequisiteOptions.map(sub => (
                                         <SelectItem key={sub.id} value={sub.code}>
@@ -319,14 +319,14 @@ export default function ManageSubjectsPage() {
                     </div>
                 </form>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-                    <Button type="submit" form="edit-subject-form">Save Changes</Button>
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                    <Button type="submit" form="edit-subject-form" className="rounded-xl">Save Changes</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogContent>
+            <AlertDialogContent className="rounded-xl">
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -339,15 +339,15 @@ export default function ManageSubjectsPage() {
                         name="delete-confirm"
                         value={deleteInput}
                         onChange={(e) => setDeleteInput(e.target.value)}
-                        className="mt-4"
+                        className="mt-4 rounded-xl"
                     />
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel className="rounded-xl" onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
                     <AlertDialogAction 
                         disabled={deleteInput !== 'delete'}
                         onClick={handleDeleteSubject} 
-                        className="bg-destructive hover:bg-destructive/90"
+                        className="bg-destructive hover:bg-destructive/90 rounded-xl"
                     >
                         Delete
                     </AlertDialogAction>
@@ -357,3 +357,5 @@ export default function ManageSubjectsPage() {
     </>
   );
 }
+
+    
