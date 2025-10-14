@@ -84,7 +84,7 @@ export default function StudentDashboardLayout({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/schedule'}>
-                <Link href="#">
+                <Link href="/student/dashboard/schedule">
                   <CalendarCheck2 />
                   Schedule
                 </Link>
