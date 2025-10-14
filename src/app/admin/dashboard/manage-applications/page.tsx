@@ -177,9 +177,9 @@ export default function ManageApplicationsPage() {
         if (!foundStudent) return [];
         let yearKey: '1st-year' | '2nd-year' | '3rd-year' | '4th-year' = '1st-year';
         if (foundStudent.year === 1) yearKey = '1st-year';
-        else if (foundStudent.year === 2) yearKey = '2nd-year';
-        else if (foundStudent.year === 3) yearKey = '3rd-year';
-        else if (foundStudent.year === 4) yearKey = '4th-year';
+        if (foundStudent.year === 2) yearKey = '2nd-year';
+        if (foundStudent.year === 3) yearKey = '3rd-year';
+        if (foundStudent.year === 4) yearKey = '4th-year';
         return yearLevelSubjects[yearKey] || [];
     }, [yearLevelSubjects, foundStudent]);
 
@@ -1107,4 +1107,3 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
     </>
   );
 }
-
