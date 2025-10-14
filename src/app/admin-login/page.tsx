@@ -8,15 +8,37 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { useAdmin } from '@/app/admin/context/admin-context';
 
-export default function AdminLoginPage() {
+export default function StaffLoginPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const { adminData } = useAdmin();
+  const { adminUsers, instructors } = adminData;
+
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  useEffect(() => {
-    setEmail('admin@example.com');
-    setPassword('password');
-  }, []);
+  const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+
+    const isAdmin = adminUsers.some(user => user.email === email);
+    const isInstructor = instructors.some(user => user.email === email);
+
+    if (isAdmin) {
+      router.push('/admin/dashboard');
+    } else if (isInstructor) {
+      router.push('/instructor/dashboard');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: 'No account found with that email address. Please check your credentials.',
+      });
+    }
+  };
 
   return (
     <div className={cn(
@@ -34,19 +56,19 @@ export default function AdminLoginPage() {
           </Button>
           <Card className="shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)] rounded-2xl">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Administrator Login</CardTitle>
+              <CardTitle className="text-2xl">Faculty & Admin Login</CardTitle>
               <CardDescription>
-                Enter your credentials to access the admin dashboard.
+                Enter your credentials to access your dashboard.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <form className="space-y-4">
                 <div className="space-y-2 text-left">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@example.com"
+                    placeholder="staff@example.com"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -64,10 +86,10 @@ export default function AdminLoginPage() {
                     className="rounded-xl hover:border-accent focus-visible:ring-accent hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] focus-visible:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-all"
                   />
                 </div>
-                <Button asChild className="w-full rounded-xl hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-shadow" variant="accent">
-                  <Link href="/admin/dashboard">Login</Link>
+                <Button onClick={handleLogin} className="w-full rounded-xl hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-shadow" variant="accent">
+                  Login
                 </Button>
-              </div>
+              </form>
             </CardContent>
           </Card>
         </div>
