@@ -208,7 +208,7 @@ export default function AdminDashboardPage() {
                                     </TableCell>
                                     <TableCell>{issue.details}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button asChild variant="outline" size="sm" className="rounded-full">
+                                        <Button asChild variant="outline" size="sm" className="rounded-full hover:border-accent hover:text-accent">
                                             <Link href={`/admin/dashboard/schedule/${encodeURIComponent(issue.block)}`}>
                                                 View Schedule
                                             </Link>
