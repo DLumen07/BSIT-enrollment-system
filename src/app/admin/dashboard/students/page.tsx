@@ -80,6 +80,7 @@ export default function StudentsPage() {
     const [studentYear, setStudentYear] = useState(1);
 
     // State for enrollment form
+    const [enrollSearchTerm, setEnrollSearchTerm] = useState('');
     const [enrollStudentId, setEnrollStudentId] = useState('');
     const [enrollYearLevel, setEnrollYearLevel] = useState('');
     const [enrollBlock, setEnrollBlock] = useState('');
@@ -89,13 +90,13 @@ export default function StudentsPage() {
 
     const availableBlocks = useMemo(() => {
         if (!enrollYearLevel) return [];
-        const yearKey = `${enrollYearLevel.toString()}-year`;
+        const yearKey = `${enrollYearLevel}-year`;
         return blocks.filter(b => b.year === yearKey);
     }, [blocks, enrollYearLevel]);
 
     const availableSubjects = useMemo(() => {
         if (!enrollYearLevel) return [];
-        const yearKey = `${enrollYearLevel.toString()}-year`;
+        const yearKey = `${enrollYearLevel}-year`;
         return yearLevelSubjects[yearKey] || [];
     }, [yearLevelSubjects, enrollYearLevel]);
     
@@ -105,9 +106,15 @@ export default function StudentsPage() {
         } else {
             setEnrollYearLevel('');
         }
-        setEnrollBlock('');
-        setEnlistedSubjects([]);
     }, [studentToEnroll]);
+    
+    useEffect(() => {
+        setEnrollBlock('');
+    }, [enrollYearLevel]);
+
+    useEffect(() => {
+        setEnlistedSubjects([]);
+    }, [enrollBlock]);
 
 
     const openAddDialog = () => {
@@ -184,7 +191,7 @@ export default function StudentsPage() {
         setAdminData(prev => {
             const updatedStudents = prev.students.map(s => 
                 s.id === studentToEnroll.id 
-                ? { ...s, status: 'Enrolled' as const, block: enrollBlock, enlistedSubjects } 
+                ? { ...s, status: 'Enrolled' as const, year: parseInt(enrollYearLevel, 10), block: enrollBlock, enlistedSubjects } 
                 : s
             );
             const updatedBlocks = prev.blocks.map(b => 
@@ -200,6 +207,7 @@ export default function StudentsPage() {
 
         setIsEnrollDialogOpen(false);
         setEnrollStudentId('');
+        setEnrollSearchTerm('');
     };
 
      const handleDeleteStudent = () => {
@@ -289,13 +297,17 @@ export default function StudentsPage() {
                                 <form id="enroll-student-form" onSubmit={handleEnrollStudent}>
                                     <div className="space-y-4 py-2">
                                         <div className="space-y-2">
-                                            <Label htmlFor="studentId">Student ID</Label>
+                                            <Label htmlFor="studentId">Search Student (Name or ID)</Label>
                                             <Input 
                                                 id="studentId" 
                                                 name="studentId" 
-                                                value={enrollStudentId}
-                                                onChange={(e) => setEnrollStudentId(e.target.value)}
-                                                placeholder="Enter student ID to search..." 
+                                                value={enrollSearchTerm}
+                                                onChange={(e) => {
+                                                    setEnrollSearchTerm(e.target.value);
+                                                    const foundStudent = students.find(s => s.name.toLowerCase().includes(e.target.value.toLowerCase()) || s.studentId.includes(e.target.value));
+                                                    setEnrollStudentId(foundStudent ? foundStudent.studentId : '');
+                                                }}
+                                                placeholder="Enter student name or ID to search..." 
                                                 required 
                                             />
                                         </div>
@@ -316,11 +328,21 @@ export default function StudentsPage() {
                                                     <div className="grid grid-cols-2 gap-4 mt-4">
                                                         <div className="space-y-2">
                                                             <Label htmlFor="year-level">Year Level</Label>
-                                                            <Input id="year-level" value={`${enrollYearLevel}${enrollYearLevel === '1' ? 'st' : enrollYearLevel === '2' ? 'nd' : enrollYearLevel === '3' ? 'rd' : 'th'} Year`} disabled />
+                                                            <Select value={enrollYearLevel} onValueChange={setEnrollYearLevel}>
+                                                                <SelectTrigger id="year-level">
+                                                                    <SelectValue placeholder="Select Year" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="1">1st Year</SelectItem>
+                                                                    <SelectItem value="2">2nd Year</SelectItem>
+                                                                    <SelectItem value="3">3rd Year</SelectItem>
+                                                                    <SelectItem value="4">4th Year</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
                                                         </div>
                                                         <div className="space-y-2">
                                                             <Label htmlFor="block">Block</Label>
-                                                            <Select value={enrollBlock} onValueChange={setEnrollBlock} required>
+                                                            <Select value={enrollBlock} onValueChange={setEnrollBlock} required disabled={!enrollYearLevel}>
                                                                 <SelectTrigger id="block">
                                                                     <SelectValue placeholder="Select a block" />
                                                                 </SelectTrigger>
@@ -598,3 +620,5 @@ export default function StudentsPage() {
         </>
     );
 }
+
+    
