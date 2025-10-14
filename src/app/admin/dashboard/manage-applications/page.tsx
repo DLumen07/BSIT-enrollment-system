@@ -192,7 +192,7 @@ export default function ManageApplicationsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className="gap-2 text-muted-foreground border-dashed hover:border-accent hover:text-accent focus:text-accent focus:border-accent focus:ring-accent rounded-xl">
+                                    <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-accent focus:text-accent rounded-xl">
                                         <Filter className="h-4 w-4" />
                                         Filter
                                     </Button>
@@ -545,5 +545,3 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
-
-    
