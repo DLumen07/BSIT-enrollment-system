@@ -6,10 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 export default function StudentSignupPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className={cn(
+        "dark",
+        "flex flex-col min-h-screen bg-background",
+        "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.3),hsl(var(--background)))]",
+    )}>
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md relative">
            <Button asChild variant="ghost" size="icon" className="absolute top-4 left-4">
@@ -18,7 +23,7 @@ export default function StudentSignupPage() {
               <span className="sr-only">Back to Login</span>
             </Link>
           </Button>
-          <Card className="shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)]">
+          <Card className="shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)] rounded-2xl">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl">Create Student Account</CardTitle>
               <CardDescription>
@@ -34,6 +39,7 @@ export default function StudentSignupPage() {
                     type="text"
                     placeholder="Juan Dela Cruz"
                     required
+                    className="rounded-xl"
                   />
                 </div>
                 <div className="space-y-2 text-left">
@@ -43,17 +49,18 @@ export default function StudentSignupPage() {
                     type="email"
                     placeholder="student@example.com"
                     required
+                    className="rounded-xl"
                   />
                 </div>
                 <div className="space-y-2 text-left">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required />
+                  <Input id="password" type="password" required className="rounded-xl" />
                 </div>
                 <div className="space-y-2 text-left">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input id="confirmPassword" type="password" required />
+                  <Input id="confirmPassword" type="password" required className="rounded-xl" />
                 </div>
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full rounded-xl">
                   Create Account
                 </Button>
               </form>
