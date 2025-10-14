@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg role="img" viewBox="0 0 24 24" {...props}>
@@ -78,7 +79,10 @@ function LoginForm() {
 
 export default function StudentLoginPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className={cn(
+        "flex flex-col min-h-screen bg-background",
+        "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.3),hsl(var(--background)))]",
+    )}>
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md relative">
           <Button asChild variant="ghost" size="icon" className="absolute top-4 left-4 hover:text-primary">
@@ -96,11 +100,11 @@ export default function StudentLoginPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <Button variant="outline" className="w-full rounded-xl hover:bg-transparent hover:border-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-shadow">
+                <Button variant="outline" className="w-full rounded-xl hover:border-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-shadow">
                   <GoogleIcon className="mr-2 h-5 w-5" />
                   Sign in with Google
                 </Button>
-                <Button variant="outline" className="w-full rounded-xl hover:bg-transparent hover:border-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-shadow">
+                <Button variant="outline" className="w-full rounded-xl hover:border-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-shadow">
                   <FacebookIcon className="mr-2 h-5 w-5 text-[#1877F2]" />
                   Sign in with Facebook
                 </Button>
