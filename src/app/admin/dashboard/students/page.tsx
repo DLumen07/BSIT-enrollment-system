@@ -60,7 +60,6 @@ export default function StudentsPage() {
         status: 'all',
     });
 
-    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -71,16 +70,6 @@ export default function StudentsPage() {
     const [studentId, setStudentId] = useState('');
     const [studentCourse, setStudentCourse] = useState<'BSIT' | 'ACT'>('BSIT');
     const [studentYear, setStudentYear] = useState(1);
-
-    const openAddDialog = () => {
-        setSelectedStudent(null);
-        setStudentName('');
-        setStudentEmail('');
-        setStudentId('');
-        setStudentCourse('BSIT');
-        setStudentYear(1);
-        setIsAddDialogOpen(true);
-    };
 
     const openEditDialog = (student: Student) => {
         setSelectedStudent(student);
@@ -97,22 +86,6 @@ export default function StudentsPage() {
         setIsDeleteDialogOpen(true);
     };
     
-    const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const newStudent: Student = {
-            id: Date.now(),
-            name: studentName,
-            email: studentEmail,
-            studentId,
-            course: studentCourse,
-            year: studentYear,
-            status: 'Not Enrolled',
-            avatar: `https://picsum.photos/seed/${Date.now()}/40/40`,
-        };
-        setAdminData(prev => ({...prev, students: [...prev.students, newStudent]}));
-        setIsAddDialogOpen(false);
-    };
-
      const handleEditStudent = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!selectedStudent) return;
@@ -196,12 +169,6 @@ export default function StudentsPage() {
                         <p className="text-muted-foreground">
                             Manage and view all student records in the system.
                         </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button onClick={openAddDialog} className="rounded-full">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Student
-                        </Button>
                     </div>
                 </div>
 
@@ -347,16 +314,16 @@ export default function StudentsPage() {
                 </Card>
             </main>
 
-            {/* Add/Edit Dialog */}
-            <Dialog open={isAddDialogOpen || isEditDialogOpen} onOpenChange={isAddDialogOpen ? setIsAddDialogOpen : setIsEditDialogOpen}>
+            {/* Edit Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{selectedStudent ? 'Edit Student' : 'Add New Student'}</DialogTitle>
+                        <DialogTitle>Edit Student</DialogTitle>
                         <DialogDescription>
-                            {selectedStudent ? `Update the details for ${selectedStudent.name}.` : 'Enter the details for the new student.'}
+                            Update the details for {selectedStudent?.name}.
                         </DialogDescription>
                     </DialogHeader>
-                    <form id="student-form" onSubmit={selectedStudent ? handleEditStudent : handleAddStudent}>
+                    <form id="student-form" onSubmit={handleEditStudent}>
                         <div className="space-y-4 py-2">
                              <div className="space-y-2">
                                 <Label htmlFor="studentName">Full Name</Label>
@@ -401,9 +368,9 @@ export default function StudentsPage() {
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { isAddDialogOpen ? setIsAddDialogOpen(false) : setIsEditDialogOpen(false); }}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
                         <Button type="submit" form="student-form">
-                            {selectedStudent ? 'Save Changes' : 'Add Student'}
+                            Save Changes
                         </Button>
                     </DialogFooter>
                 </DialogContent>

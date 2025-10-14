@@ -289,6 +289,70 @@ export default function ManageApplicationsPage() {
                         Review, approve, and reject applications for enrollment.
                     </p>
                 </div>
+                 <Dialog open={isAddStudentDialogOpen} onOpenChange={setIsAddStudentDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="rounded-full">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Student
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Add New Student Application</DialogTitle>
+                            <DialogDescription>
+                                Manually enter the details for a new student application.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form id="add-student-form" onSubmit={handleAddStudent}>
+                            <div className="space-y-4 py-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="studentId">Student ID</Label>
+                                    <Input id="studentId" name="studentId" required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Full Name</Label>
+                                    <Input id="name" name="name" required />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="course">Course</Label>
+                                        <Select name="course" required>
+                                            <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
+                                            <SelectContent><SelectItem value="BSIT">BSIT</SelectItem><SelectItem value="ACT">ACT</SelectItem></SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="year">Year Level</Label>
+                                        <Select name="year" required>
+                                            <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="1">1st Year</SelectItem>
+                                                <SelectItem value="2">2nd Year</SelectItem>
+                                                <SelectItem value="3">3rd Year</SelectItem>
+                                                <SelectItem value="4">4th Year</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="status">Status</Label>
+                                    <Select name="status" required>
+                                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="New">New</SelectItem>
+                                            <SelectItem value="Old">Old</SelectItem>
+                                            <SelectItem value="Transferee">Transferee</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </form>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsAddStudentDialogOpen(false)}>Cancel</Button>
+                            <Button type="submit" form="add-student-form">Add Application</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
             <Card>
                 <CardHeader>
@@ -732,5 +796,3 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
-
-    
