@@ -103,11 +103,11 @@ export default function AdminDashboardPage() {
             </Card>
              <Card className="rounded-xl">
               <CardHeader>
-                <CardTitle>Total Courses</CardTitle>
-                <CardDescription>Offered by the department</CardDescription>
+                <CardTitle>Total Users</CardTitle>
+                <CardDescription>All users of the system</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">28</p>
+                <p className="text-3xl font-bold">13</p>
               </CardContent>
             </Card>
           </div>
