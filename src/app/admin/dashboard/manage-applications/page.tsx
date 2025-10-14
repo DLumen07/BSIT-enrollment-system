@@ -43,7 +43,7 @@ import { useAdmin, Application, credentialLabels, rejectionReasons } from '../..
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Subject } from '../../context/admin-context';
+import type { Student, Subject } from '../../context/admin-context';
 
 export default function ManageApplicationsPage() {
   const { adminData, setAdminData } = useAdmin();
@@ -346,10 +346,9 @@ export default function ManageApplicationsPage() {
                 </CardHeader>
                 <CardContent>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="pending">Pending</TabsTrigger>
                             <TabsTrigger value="approved">Approved</TabsTrigger>
-                            <TabsTrigger value="enrolled">Enrolled</TabsTrigger>
                             <TabsTrigger value="rejected">Rejected</TabsTrigger>
                         </TabsList>
                         <TabsContent value="pending">
@@ -457,37 +456,6 @@ export default function ManageApplicationsPage() {
                                 {filteredApplications.length === 0 && (
                                     <div className="text-center p-4 text-muted-foreground">
                                         No approved applications match the current filters.
-                                    </div>
-                                )}
-                            </div>
-                        </TabsContent>
-                         <TabsContent value="enrolled">
-                             <div className="border rounded-lg mt-4">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Student ID</TableHead>
-                                            <TableHead>Student Name</TableHead>
-                                            <TableHead>Course</TableHead>
-                                            <TableHead>Year</TableHead>
-                                            <TableHead>Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredApplications.map((application) => (
-                                            <TableRow key={application.id}>
-                                                <TableCell>{application.studentId}</TableCell>
-                                                <TableCell className="font-medium">{application.name}</TableCell>
-                                                <TableCell>{application.course}</TableCell>
-                                                <TableCell>{application.year}</TableCell>
-                                                <TableCell>{application.status}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                {filteredApplications.length === 0 && (
-                                    <div className="text-center p-4 text-muted-foreground">
-                                        No students have been enrolled from applications yet.
                                     </div>
                                 )}
                             </div>
