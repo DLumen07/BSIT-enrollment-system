@@ -57,13 +57,19 @@ function LoginForm() {
               type="email"
               placeholder="student@example.com"
               required
+              className="rounded-xl hover:border-primary focus:border-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] focus:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all"
           />
       </div>
       <div className="space-y-2 text-left">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" required />
+          <Input 
+              id="password" 
+              type="password" 
+              required 
+              className="rounded-xl hover:border-primary focus:border-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] focus:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all"
+          />
       </div>
-      <Button onClick={handleLogin} className="w-full">
+      <Button onClick={handleLogin} className="w-full rounded-xl hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-shadow">
           Login
       </Button>
     </div>
