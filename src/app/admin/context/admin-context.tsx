@@ -1,6 +1,6 @@
 
 'use client';
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Instructor, initialInstructors, availableSubjects as initialAvailableSubjects } from '../dashboard/instructors/page';
 import { AdminUser, initialAdminUsers, roles as adminRoles } from '../dashboard/administrators/page';
 import { Subject as ScheduleSubject } from '../dashboard/schedule/[blockId]/page';
@@ -167,6 +167,24 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
   const [adminData, setAdminData] = useState<AdminDataType>(mockAdminData);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    try {
+      const storedUser = sessionStorage.getItem('currentUser');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        setAdminData(prev => ({ ...prev, currentUser: user }));
+      }
+    } catch (error) {
+      console.error("Failed to parse user from sessionStorage", error);
+    }
+    setLoading(false);
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>; // Or a proper loading spinner
+  }
 
   return (
     <AdminContext.Provider value={{ adminData, setAdminData }}>

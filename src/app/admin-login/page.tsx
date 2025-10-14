@@ -28,6 +28,7 @@ function LoginForm() {
     const admin = adminUsers.find(user => user.email === email);
     if (admin) {
         setAdminData(prev => ({ ...prev, currentUser: admin }));
+        sessionStorage.setItem('currentUser', JSON.stringify(admin));
         router.push('/admin/dashboard');
         return;
     }

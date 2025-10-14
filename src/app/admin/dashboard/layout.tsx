@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 import {
@@ -157,6 +157,7 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { toast } = useToast();
   const schoolLogo = PlaceHolderImages.find(p => p.id === 'school-logo-sm');
   const isEnrollmentPath = pathname.startsWith('/admin/dashboard/manage-');
@@ -166,11 +167,22 @@ export default function AdminDashboardLayout({
     setIsEnrollmentOpen(pathname.startsWith('/admin/dashboard/manage-'));
   }, [pathname]);
 
-  const { adminData } = useAdmin();
+  const { adminData, setAdminData } = useAdmin();
   const { currentUser } = adminData;
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('currentUser');
+    setAdminData(prev => ({ ...prev, currentUser: null }));
+    router.push('/admin-login');
+  };
+
+  React.useEffect(() => {
+    if (!currentUser) {
+      router.push('/admin-login');
+    }
+  }, [currentUser, router]);
+
   if (!currentUser) {
-    // You can render a loading state or redirect to login
     return <div>Loading user or redirecting...</div>;
   }
 
@@ -295,11 +307,9 @@ export default function AdminDashboardLayout({
           <SidebarFooter>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/">
-                    <LogOut />
-                    Logout
-                  </Link>
+                <SidebarMenuButton onClick={handleLogout}>
+                  <LogOut />
+                  Logout
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -349,8 +359,8 @@ export default function AdminDashboardLayout({
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => toast({ title: 'Feature in progress', description: 'Support page is not yet implemented.' })}>Support</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/">Logout</Link>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
