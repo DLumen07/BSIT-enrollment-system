@@ -10,8 +10,8 @@ import {
   CalendarCheck2,
 } from 'lucide-react';
 import Image from 'next/image';
-import React from 'react';
-import { usePathname, useSearchParams, Suspense } from 'next/navigation';
+import React, { Suspense } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { InstructorProvider, useInstructor } from '@/app/instructor/context/instructor-context';
 import {
   SidebarProvider,
