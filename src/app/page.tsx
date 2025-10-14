@@ -13,7 +13,7 @@ const AnimatedSubtitle = () => {
   const [currentSubtitle, setCurrentSubtitle] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [loopNum, setLoopNum] = useState(0);
-  const [typingSpeed, setTypingSpeed] = useState(150);
+  const [typingSpeed, setTypingSpeed] = useState(100);
 
   useEffect(() => {
     const handleTyping = () => {
@@ -22,14 +22,14 @@ const AnimatedSubtitle = () => {
 
       if (isDeleting) {
         setCurrentSubtitle(fullTxt.substring(0, currentSubtitle.length - 1));
-        setTypingSpeed(75);
+        setTypingSpeed(50);
       } else {
         setCurrentSubtitle(fullTxt.substring(0, currentSubtitle.length + 1));
-        setTypingSpeed(150);
+        setTypingSpeed(100);
       }
 
       if (!isDeleting && currentSubtitle === fullTxt) {
-        setTimeout(() => setIsDeleting(true), 2000);
+        setTimeout(() => setIsDeleting(true), 1500);
       } else if (isDeleting && currentSubtitle === '') {
         setIsDeleting(false);
         setLoopNum(loopNum + 1);
@@ -44,7 +44,7 @@ const AnimatedSubtitle = () => {
   }, [currentSubtitle, isDeleting, loopNum, subtitles, typingSpeed]);
 
   return (
-    <p className="text-md text-muted-foreground max-w-md font-mono h-12">
+    <p className="text-sm text-muted-foreground max-w-md font-mono h-12">
       {currentSubtitle}
       <span className="animate-pulse">|</span>
     </p>
