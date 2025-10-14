@@ -55,7 +55,7 @@ const UNITS_FOR_4TH_YEAR = 108;
 
 export default function ManageApplicationsPage() {
   const { adminData, setAdminData } = useAdmin();
-  const { pendingApplications, approvedApplications, rejectedApplications, enrolledApplications, blocks, subjects: yearLevelSubjects, students } = adminData;
+  const { pendingApplications, approvedApplications, rejectedApplications, blocks, subjects: yearLevelSubjects, students } = adminData;
   const { toast } = useToast();
 
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
@@ -340,7 +340,6 @@ export default function ManageApplicationsPage() {
         return {
             ...prev,
             approvedApplications: prev.approvedApplications.filter(app => app.id !== applicationToEnroll.id),
-            enrolledApplications: [...prev.enrolledApplications, applicationToEnroll],
             students: updatedStudents,
             blocks: updatedBlocks,
         };
@@ -361,7 +360,6 @@ export default function ManageApplicationsPage() {
         if (activeTab === 'pending') applications = pendingApplications;
         else if (activeTab === 'approved') applications = approvedApplications;
         else if (activeTab === 'rejected') applications = rejectedApplications;
-        else if (activeTab === 'enrolled') applications = enrolledApplications;
 
         return applications.filter(app => {
             const searchTermLower = searchTerm.toLowerCase();
@@ -375,9 +373,9 @@ export default function ManageApplicationsPage() {
 
             return matchesSearch && matchesCourse && matchesYear && matchesStatus;
         });
-    }, [activeTab, pendingApplications, approvedApplications, rejectedApplications, enrolledApplications, searchTerm, filters]);
+    }, [activeTab, pendingApplications, approvedApplications, rejectedApplications, searchTerm, filters]);
 
-  const allAppsForFilters = [...pendingApplications, ...approvedApplications, ...rejectedApplications, ...enrolledApplications];
+  const allAppsForFilters = [...pendingApplications, ...approvedApplications, ...rejectedApplications];
   const courses = ['all', ...Array.from(new Set(allAppsForFilters.map(app => app.course)))];
   const years = ['all', ...Array.from(new Set(allAppsForFilters.map(app => app.year.toString())))].sort();
   const statuses = ['all', ...Array.from(new Set(allAppsForFilters.map(app => app.status)))];
@@ -655,11 +653,10 @@ export default function ManageApplicationsPage() {
                 </CardHeader>
                 <CardContent>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-4 rounded-xl">
+                        <TabsList className="grid w-full grid-cols-3 rounded-xl">
                             <TabsTrigger value="pending" className="rounded-lg">Pending</TabsTrigger>
                             <TabsTrigger value="approved" className="rounded-lg">Approved</TabsTrigger>
                             <TabsTrigger value="rejected" className="rounded-lg">Rejected</TabsTrigger>
-                            <TabsTrigger value="enrolled" className="rounded-lg">Enrolled</TabsTrigger>
                         </TabsList>
                         <TabsContent value="pending">
                             <div className="border rounded-lg mt-4">
@@ -828,44 +825,6 @@ export default function ManageApplicationsPage() {
                                 {filteredApplications.length === 0 && (
                                     <div className="text-center p-4 text-muted-foreground">
                                         No rejected applications match the current filters.
-                                    </div>
-                                )}
-                            </div>
-                        </TabsContent>
-                         <TabsContent value="enrolled">
-                             <div className="border rounded-lg mt-4">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Student ID</TableHead>
-                                            <TableHead>Student Name</TableHead>
-                                            <TableHead>Course</TableHead>
-                                            <TableHead>Year</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead className="text-right">Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredApplications.map((application) => (
-                                            <TableRow key={application.id}>
-                                                <TableCell>{application.studentId}</TableCell>
-                                                <TableCell className="font-medium">{application.name}</TableCell>
-                                                <TableCell>{application.course}</TableCell>
-                                                <TableCell>{application.year}</TableCell>
-                                                <TableCell>{application.status}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-2 text-green-600">
-                                                        <BadgeCheck className="h-4 w-4" />
-                                                        <span>Enrolled</span>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                {filteredApplications.length === 0 && (
-                                    <div className="text-center p-4 text-muted-foreground">
-                                        No enrolled students match the current filters.
                                     </div>
                                 )}
                             </div>
@@ -1118,4 +1077,5 @@ export default function ManageApplicationsPage() {
     
 
     
+
 
