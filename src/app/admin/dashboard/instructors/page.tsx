@@ -36,7 +36,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,6 +49,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useAdmin } from '../../context/admin-context';
 
 
 export type Instructor = {
@@ -77,6 +77,8 @@ export const availableSubjects = [
 ];
 
 const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedSubjects: string[], onSelectionChange: (selected: string[]) => void }) => {
+    const { adminData } = useAdmin();
+    const { availableSubjects } = adminData;
     
     const handleSelect = (subjectId: string) => {
         const isSelected = selectedSubjects.includes(subjectId);
@@ -114,7 +116,9 @@ const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedS
 
 
 export default function InstructorsPage() {
-    const [instructors, setInstructors] = useState<Instructor[]>(initialInstructors);
+    const { adminData, setAdminData } = useAdmin();
+    const { instructors } = adminData;
+
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -158,7 +162,7 @@ export default function InstructorsPage() {
             subjects,
             avatar: `https://picsum.photos/seed/${Date.now()}/40/40`,
         };
-        setInstructors([...instructors, newInstructor]);
+        setAdminData(prev => ({...prev, instructors: [...prev.instructors, newInstructor]}));
         setIsAddDialogOpen(false);
     };
 
@@ -171,14 +175,20 @@ export default function InstructorsPage() {
             email,
             subjects,
         };
-        setInstructors(instructors.map(u => u.id === selectedInstructor.id ? updatedInstructor : u));
+        setAdminData(prev => ({
+            ...prev,
+            instructors: prev.instructors.map(u => u.id === selectedInstructor.id ? updatedInstructor : u)
+        }));
         setIsEditDialogOpen(false);
         setSelectedInstructor(null);
     };
 
     const handleDeleteInstructor = () => {
         if (!selectedInstructor) return;
-        setInstructors(instructors.filter(u => u.id !== selectedInstructor.id));
+        setAdminData(prev => ({
+            ...prev,
+            instructors: prev.instructors.filter(u => u.id !== selectedInstructor.id)
+        }));
         setIsDeleteDialogOpen(false);
         setSelectedInstructor(null);
     };

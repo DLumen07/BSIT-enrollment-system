@@ -18,7 +18,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import {
     AlertDialog,
@@ -34,10 +33,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { initialInstructors, availableSubjects as allAvailableSubjects, Instructor } from '../../instructors/page';
+import { useAdmin } from '../../../context/admin-context';
 import { useToast } from "@/hooks/use-toast";
 
-type Subject = {
+export type Subject = {
     id: number;
     code: string;
     description: string;
@@ -46,24 +45,6 @@ type Subject = {
     endTime: string;
     instructor?: string;
     color: string;
-};
-
-const initialSubjects: Subject[] = [
-    { id: 1, code: 'IT 101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Alan Turing', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
-    { id: 2, code: 'MATH 101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
-    { id: 3, code: 'ENG 101', description: 'English Composition', day: 'Wednesday', startTime: '11:00', endTime: '12:30', color: 'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400' },
-    { id: 4, code: 'PE 101', description: 'Physical Education', day: 'Friday', startTime: '08:00', endTime: '10:00', instructor: 'Coach Dave', color: 'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400' },
-    { id: 5, code: 'IT 102', description: 'Programming 1', day: 'Monday', startTime: '14:00', endTime: '16:00', instructor: 'Dr. Alan Turing', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
-];
-
-const mockAllSchedules: Record<string, Subject[]> = {
-    "BSIT 1-A": initialSubjects,
-    "BSIT 1-B": [
-        { id: 10, code: 'IT 101', description: 'Intro to Computing', day: 'Tuesday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Grace Hopper', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
-    ],
-    "BSIT 2-A": [
-        { id: 20, code: 'IT 201', description: 'Data Structures', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
-    ]
 };
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -107,8 +88,11 @@ export default function SchedulePage() {
     const params = useParams();
     const blockId = decodeURIComponent(params.blockId as string);
     const { toast } = useToast();
+    const { adminData, setAdminData } = useAdmin();
+    const { schedules, instructors, availableSubjects } = adminData;
 
-    const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
+    const subjects = schedules[blockId] || [];
+
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -124,7 +108,7 @@ export default function SchedulePage() {
         const newStartTime = toMinutes(newSubject.startTime);
         const newEndTime = toMinutes(newSubject.endTime);
 
-        for (const [blockName, schedule] of Object.entries(mockAllSchedules)) {
+        for (const [blockName, schedule] of Object.entries(schedules)) {
             for (const existingSubject of schedule) {
                 if (editingSubjectId && existingSubject.id === editingSubjectId) continue;
                 if (existingSubject.day !== newSubject.day) continue;
@@ -161,7 +145,7 @@ export default function SchedulePage() {
         const formData = new FormData(e.currentTarget);
         
         const selectedSubjectId = formData.get('subject') as string;
-        const selectedSubject = allAvailableSubjects.find(s => s.id === selectedSubjectId);
+        const selectedSubject = availableSubjects.find(s => s.id === selectedSubjectId);
 
         if (!selectedSubject) {
             toast({
@@ -202,8 +186,12 @@ export default function SchedulePage() {
             color: randomColor 
         };
 
-        setSubjects([...subjects, newSubject]);
-        mockAllSchedules[blockId] = [...(mockAllSchedules[blockId] || []), newSubject];
+        const newSchedules = {
+            ...schedules,
+            [blockId]: [...(schedules[blockId] || []), newSubject]
+        };
+
+        setAdminData(prev => ({...prev, schedules: newSchedules}));
         setIsAddDialogOpen(false);
          toast({
             title: "Subject Added",
@@ -218,7 +206,7 @@ export default function SchedulePage() {
         const formData = new FormData(e.currentTarget);
         const subjectCodeFromState = subjectToEdit.code;
         
-        const selectedSubject = allAvailableSubjects.find(s => s.id === subjectCodeFromState);
+        const selectedSubject = availableSubjects.find(s => s.id === subjectCodeFromState);
 
         if (!selectedSubject) {
             toast({ variant: "destructive", title: "Invalid Subject", description: "An error occurred while trying to find the subject details." });
@@ -244,9 +232,9 @@ export default function SchedulePage() {
         };
         
         const updatedSubjects = subjects.map(s => s.id === subjectToEdit.id ? updatedSubject : s);
-        setSubjects(updatedSubjects);
+        const updatedSchedules = {...schedules, [blockId]: updatedSubjects };
 
-        mockAllSchedules[blockId] = updatedSubjects;
+        setAdminData(prev => ({...prev, schedules: updatedSchedules}));
 
         setIsEditDialogOpen(false);
         setSubjectToEdit(null);
@@ -269,8 +257,9 @@ export default function SchedulePage() {
     const handleDeleteSubject = () => {
         if (subjectToDelete) {
             const updatedSubjects = subjects.filter(s => s.id !== subjectToDelete.id);
-            setSubjects(updatedSubjects);
-            mockAllSchedules[blockId] = updatedSubjects;
+            const updatedSchedules = {...schedules, [blockId]: updatedSubjects };
+            setAdminData(prev => ({...prev, schedules: updatedSchedules}));
+
             setIsDeleteDialogOpen(false);
             setSubjectToDelete(null);
             toast({
@@ -312,7 +301,7 @@ export default function SchedulePage() {
                                             <SelectValue placeholder="Select a subject" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {allAvailableSubjects.map(sub => <SelectItem key={sub.id} value={sub.id}>{sub.label}</SelectItem>)}
+                                            {availableSubjects.map(sub => <SelectItem key={sub.id} value={sub.id}>{sub.label}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -323,7 +312,7 @@ export default function SchedulePage() {
                                             <SelectValue placeholder="Select an instructor (optional)" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {initialInstructors.map(ins => <SelectItem key={ins.id} value={ins.name}>{ins.name}</SelectItem>)}
+                                            {instructors.map(ins => <SelectItem key={ins.id} value={ins.name}>{ins.name}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -483,7 +472,7 @@ export default function SchedulePage() {
                                         <SelectValue placeholder="Select an instructor (optional)" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {initialInstructors.map(ins => <SelectItem key={ins.id} value={ins.name}>{ins.name}</SelectItem>)}
+                                        {instructors.map(ins => <SelectItem key={ins.id} value={ins.name}>{ins.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

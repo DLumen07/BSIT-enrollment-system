@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAdmin, Block, mockStudents } from '../../../context/admin-context';
 
 
 const yearLevelMap: Record<string, string> = {
@@ -52,32 +53,16 @@ const specializations = [
     { value: 'DD', label: 'Digital Design (DD)' },
 ];
 
-type Block = {
-    id: number;
-    name: string;
-    capacity: number;
-    enrolled: number;
-    specialization?: string;
-};
-
-const mockStudents = [
-    { id: '2024-001', name: 'Alice Johnson', avatar: 'https://picsum.photos/seed/aj/40/40' },
-    { id: '2024-002', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw/40/40' },
-    { id: '2024-003', name: 'Charlie Brown', avatar: 'https://picsum.photos/seed/cb/40/40' },
-    { id: '2024-004', name: 'Diana Miller', avatar: 'https://picsum.photos/seed/dm/40/40' },
-];
-
 
 export default function YearLevelBlocksPage() {
     const params = useParams();
-    const year = params.year as string;
+    const { adminData, setAdminData } = useAdmin();
+    const year = params.year as '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
     const yearLabel = yearLevelMap[year] || 'Unknown Year';
     const isUpperYear = year === '3rd-year' || year === '4th-year';
 
-    const [blocks, setBlocks] = useState<Block[]>([
-        { id: 1, name: `BSIT ${year.charAt(0)}-A`, capacity: 40, enrolled: 38, specialization: isUpperYear ? 'AP' : undefined },
-        { id: 2, name: `BSIT ${year.charAt(0)}-B`, capacity: 40, enrolled: 35, specialization: isUpperYear ? 'DD' : undefined },
-    ]);
+    const blocksForYear = adminData.blocks.filter(b => b.year === year);
+    
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -100,16 +85,26 @@ export default function YearLevelBlocksPage() {
                 name: blockName,
                 capacity: parseInt(blockCapacity, 10),
                 enrolled: 0,
+                year,
                 specialization: isUpperYear && blockSpecialization !== 'none' ? blockSpecialization : undefined,
             };
-            setBlocks([...blocks, newBlock]);
+            setAdminData(prev => ({...prev, blocks: [...prev.blocks, newBlock]}));
             setIsAddDialogOpen(false);
         }
     };
 
     const handleEditBlock = () => {
         if (selectedBlock && blockName && blockCapacity) {
-            setBlocks(blocks.map(b => b.id === selectedBlock.id ? { ...b, name: blockName, capacity: parseInt(blockCapacity, 10), specialization: isUpperYear && blockSpecialization !== 'none' ? blockSpecialization : undefined } : b));
+            const updatedBlock = { 
+                ...selectedBlock, 
+                name: blockName, 
+                capacity: parseInt(blockCapacity, 10), 
+                specialization: isUpperYear && blockSpecialization !== 'none' ? blockSpecialization : undefined 
+            };
+            setAdminData(prev => ({
+                ...prev,
+                blocks: prev.blocks.map(b => b.id === selectedBlock.id ? updatedBlock : b)
+            }));
             setIsEditDialogOpen(false);
             setSelectedBlock(null);
         }
@@ -117,7 +112,7 @@ export default function YearLevelBlocksPage() {
     
     const handleDeleteBlock = () => {
         if (selectedBlock) {
-            setBlocks(blocks.filter(b => b.id !== selectedBlock.id));
+            setAdminData(prev => ({...prev, blocks: prev.blocks.filter(b => b.id !== selectedBlock.id)}));
             setIsDeleteDialogOpen(false);
             setSelectedBlock(null);
         }
@@ -220,8 +215,8 @@ export default function YearLevelBlocksPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {blocks.length > 0 ? (
-                                    blocks.map(block => (
+                                {blocksForYear.length > 0 ? (
+                                    blocksForYear.map(block => (
                                         <TableRow key={block.id}>
                                             <TableCell className="font-medium">
                                                 {getBlockDisplayName(block)}
@@ -370,5 +365,3 @@ export default function YearLevelBlocksPage() {
         </>
     );
 }
-
-    

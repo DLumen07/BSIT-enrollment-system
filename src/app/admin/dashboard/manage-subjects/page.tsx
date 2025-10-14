@@ -13,7 +13,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,28 +32,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useAdmin, Subject, YearLevelSubjects } from '../../context/admin-context';
 
-
-type Subject = {
-    id: number;
-    code: string;
-    description: string;
-    units: number;
-};
-
-type YearLevelSubjects = Record<string, Subject[]>;
-
-const initialSubjects: YearLevelSubjects = {
-    '1st-year': [
-        { id: 101, code: 'IT 101', description: 'Introduction to Computing', units: 3 },
-        { id: 102, code: 'MATH 101', description: 'Calculus 1', units: 3 },
-    ],
-    '2nd-year': [
-         { id: 201, code: 'IT 201', description: 'Data Structures & Algorithms', units: 3 },
-    ],
-    '3rd-year': [],
-    '4th-year': [],
-};
 
 const yearLevels = [
     { value: '1st-year', label: '1st Year' },
@@ -64,7 +43,9 @@ const yearLevels = [
 ];
 
 export default function ManageSubjectsPage() {
-    const [subjects, setSubjects] = useState<YearLevelSubjects>(initialSubjects);
+    const { adminData, setAdminData } = useAdmin();
+    const { subjects } = adminData;
+
     const [activeTab, setActiveTab] = useState(yearLevels[0].value);
     
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -97,9 +78,12 @@ export default function ManageSubjectsPage() {
             description: formData.get('description') as string,
             units: parseInt(formData.get('units') as string, 10),
         };
-        setSubjects(prev => ({
+        setAdminData(prev => ({
             ...prev,
-            [activeTab]: [...prev[activeTab], newSubject],
+            subjects: {
+                ...prev.subjects,
+                [activeTab]: [...prev.subjects[activeTab], newSubject],
+            }
         }));
         setIsAddDialogOpen(false);
     };
@@ -114,9 +98,12 @@ export default function ManageSubjectsPage() {
             description: formData.get('description') as string,
             units: parseInt(formData.get('units') as string, 10),
         };
-        setSubjects(prev => ({
+        setAdminData(prev => ({
             ...prev,
-            [activeTab]: prev[activeTab].map(s => s.id === currentSubject.id ? updatedSubject : s),
+            subjects: {
+                ...prev.subjects,
+                [activeTab]: prev.subjects[activeTab].map(s => s.id === currentSubject.id ? updatedSubject : s),
+            }
         }));
         setIsEditDialogOpen(false);
         setCurrentSubject(null);
@@ -124,9 +111,12 @@ export default function ManageSubjectsPage() {
 
      const handleDeleteSubject = () => {
         if (!currentSubject) return;
-        setSubjects(prev => ({
+        setAdminData(prev => ({
             ...prev,
-            [activeTab]: prev[activeTab].filter(s => s.id !== currentSubject.id),
+            subjects: {
+                ...prev.subjects,
+                [activeTab]: prev.subjects[activeTab].filter(s => s.id !== currentSubject.id),
+            }
         }));
         setIsDeleteDialogOpen(false);
         setCurrentSubject(null);
@@ -293,9 +283,3 @@ export default function ManageSubjectsPage() {
     </>
   );
 }
-
-    
-
-    
-
-    

@@ -50,26 +50,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-
-type Student = {
-    id: number;
-    studentId: string;
-    name: string;
-    avatar: string;
-    email: string;
-    course: 'BSIT' | 'ACT';
-    year: number;
-    status: 'Enrolled' | 'Not Enrolled' | 'Graduated';
-};
-
-const initialStudents: Student[] = [
-    { id: 1, studentId: '2021-0123', name: 'Alice Johnson', avatar: 'https://picsum.photos/seed/aj-student/40/40', email: 'alice.j@student.example.com', course: 'BSIT', year: 4, status: 'Enrolled' },
-    { id: 2, studentId: '2022-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40', email: 'bob.w@student.example.com', course: 'BSIT', year: 3, status: 'Enrolled' },
-    { id: 3, studentId: '2023-0345', name: 'Charlie Brown', avatar: 'https://picsum.photos/seed/cb-student/40/40', email: 'charlie.b@student.example.com', course: 'ACT', year: 2, status: 'Enrolled' },
-];
+import { useAdmin, Student } from '../../context/admin-context';
 
 export default function StudentsPage() {
-    const [students, setStudents] = useState<Student[]>(initialStudents);
+    const { adminData, setAdminData } = useAdmin();
+    const { students } = adminData;
+    
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState({
         course: 'all',

@@ -38,116 +38,13 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-
-
-const initialPendingApplications = [
-    { 
-        id: 1, 
-        studentId: '2024-1001', 
-        name: 'John Doe', 
-        course: 'BSIT', 
-        year: 2, 
-        status: 'Old',
-        credentials: {
-            birthCertificate: true,
-            grades: true,
-            goodMoral: false,
-            registrationForm: true,
-        }
-    },
-    { 
-        id: 2,
-        studentId: '2024-1002', 
-        name: 'Jane Smith', 
-        course: 'ACT', 
-        year: 1,
-        status: 'New',
-        credentials: {
-            birthCertificate: true,
-            grades: false,
-            goodMoral: true,
-            registrationForm: false,
-        }
-    },
-    { 
-        id: 3,
-        studentId: '2024-1003', 
-        name: 'Peter Jones', 
-        course: 'BSIT', 
-        year: 1, 
-        status: 'Transferee',
-        credentials: {
-            birthCertificate: true,
-            grades: true,
-            goodMoral: true,
-            registrationForm: true,
-        }
-    },
-];
-
-const initialApprovedApplications = [
-    { 
-        id: 4, 
-        studentId: '2024-0999', 
-        name: 'Emily White', 
-        course: 'BSIT',
-        year: 3, 
-        status: 'Old',
-        credentials: {
-            birthCertificate: true,
-            grades: true,
-            goodMoral: true,
-            registrationForm: true,
-        }
-    },
-     { 
-        id: 5, 
-        studentId: '2024-0998', 
-        name: 'Chris Green', 
-        course: 'ACT', 
-        year: 2, 
-        status: 'Old',
-        credentials: {
-            birthCertificate: true,
-            grades: true,
-            goodMoral: true,
-            registrationForm: true,
-        }
-    },
-];
-
-const initialRejectedApplications = [
-     { 
-        id: 6, 
-        studentId: '2024-0997', 
-        name: 'Michael Brown', 
-        course: 'BSIT', 
-        year: 1, 
-        status: 'New',
-        credentials: {
-            birthCertificate: false,
-            grades: true,
-            goodMoral: true,
-            registrationForm: true,
-        },
-        rejectionReason: 'Incomplete or missing documents.'
-    },
-];
-
-
-const rejectionReasons = [
-    { id: 'incomplete_docs', label: 'Incomplete or missing documents.' },
-    { id: 'not_qualified', label: 'Does not meet the minimum qualifications.' },
-    { id: 'slots_full', label: 'All available slots for the course are filled.' },
-];
-
-type Application = typeof initialPendingApplications[0] & { rejectionReason?: string };
+import { useAdmin, Application, credentialLabels, rejectionReasons } from '../../context/admin-context';
 
 
 export default function ManageApplicationsPage() {
-  const [pendingApplications, setPendingApplications] = useState<Application[]>(initialPendingApplications);
-  const [approvedApplications, setApprovedApplications] = useState<Application[]>(initialApprovedApplications);
-  const [rejectedApplications, setRejectedApplications] = useState<Application[]>(initialRejectedApplications);
+  const { adminData, setAdminData } = useAdmin();
+  const { pendingApplications, approvedApplications, rejectedApplications } = adminData;
+
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [rejectionDialog, setRejectionDialog] = useState<{ isOpen: boolean; application: Application | null }>({
     isOpen: false,
@@ -167,13 +64,6 @@ export default function ManageApplicationsPage() {
       status: 'all',
   });
 
-  const credentialLabels: { key: keyof Application['credentials']; label: string }[] = [
-    { key: 'birthCertificate', label: 'Birth Certificate' },
-    { key: 'grades', label: 'Form 138 / Report Card' },
-    { key: 'goodMoral', label: 'Good Moral Certificate' },
-    { key: 'registrationForm', label: 'Finished Registration Form' },
-  ];
-
   const handleOpenRejectionDialog = (application: Application) => {
     setRejectionDialog({ isOpen: true, application });
   };
@@ -183,30 +73,49 @@ export default function ManageApplicationsPage() {
   };
 
   const handleApprove = (application: Application) => {
-    setPendingApplications(prev => prev.filter(app => app.id !== application.id));
-    setApprovedApplications(prev => [...prev, application]);
+    setAdminData(prev => ({
+        ...prev,
+        pendingApplications: prev.pendingApplications.filter(app => app.id !== application.id),
+        approvedApplications: [...prev.approvedApplications, application]
+    }));
     setSelectedApplication(null);
   };
 
   const handleReject = (application: Application, reason: string) => {
-    if (approvedApplications.find(app => app.id === application.id)) {
-        setApprovedApplications(prev => prev.filter(app => app.id !== application.id));
+    const isApproved = approvedApplications.find(app => app.id === application.id);
+    const updatedRejected = [...rejectedApplications, { ...application, rejectionReason: reason }];
+    
+    if (isApproved) {
+        setAdminData(prev => ({
+            ...prev,
+            approvedApplications: prev.approvedApplications.filter(app => app.id !== application.id),
+            rejectedApplications: updatedRejected
+        }));
     } else {
-        setPendingApplications(prev => prev.filter(app => app.id !== application.id));
+        setAdminData(prev => ({
+            ...prev,
+            pendingApplications: prev.pendingApplications.filter(app => app.id !== application.id),
+            rejectedApplications: updatedRejected
+        }));
     }
-    setRejectedApplications(prev => [...prev, { ...application, rejectionReason: reason }]);
     handleCloseRejectionDialog();
     setSelectedApplication(null);
   };
   
   const handleRetrieve = (application: Application) => {
     const { rejectionReason, ...rest } = application;
-    setRejectedApplications(prev => prev.filter(app => app.id !== application.id));
-    setPendingApplications(prev => [...prev, rest]);
+    setAdminData(prev => ({
+        ...prev,
+        rejectedApplications: prev.rejectedApplications.filter(app => app.id !== application.id),
+        pendingApplications: [...prev.pendingApplications, rest]
+    }));
   };
 
   const handleDelete = (application: Application) => {
-    setRejectedApplications(prev => prev.filter(app => app.id !== application.id));
+    setAdminData(prev => ({
+        ...prev,
+        rejectedApplications: prev.rejectedApplications.filter(app => app.id !== application.id)
+    }));
     setDeleteDialog({ isOpen: false, application: null });
   };
   
@@ -239,10 +148,10 @@ export default function ManageApplicationsPage() {
         });
     }, [activeTab, pendingApplications, approvedApplications, rejectedApplications, searchTerm, filters]);
 
-  const allApplications = [...initialPendingApplications, ...initialApprovedApplications];
-  const courses = ['all', ...Array.from(new Set(allApplications.map(app => app.course)))];
-  const years = ['all', ...Array.from(new Set(allApplications.map(app => app.year.toString())))].sort();
-  const statuses = ['all', ...Array.from(new Set(allApplications.map(app => app.status)))];
+  const allAppsForFilters = [...pendingApplications, ...approvedApplications, ...rejectedApplications];
+  const courses = ['all', ...Array.from(new Set(allAppsForFilters.map(app => app.course)))];
+  const years = ['all', ...Array.from(new Set(allAppsForFilters.map(app => app.year.toString())))].sort();
+  const statuses = ['all', ...Array.from(new Set(allAppsForFilters.map(app => app.status)))];
   const isFiltered = searchTerm || filters.course !== 'all' || filters.year !== 'all' || filters.status !== 'all';
 
   return (
@@ -636,5 +545,3 @@ export default function ManageApplicationsPage() {
     </>
   );
 }
-
-    

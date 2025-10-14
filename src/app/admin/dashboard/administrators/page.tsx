@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MoreHorizontal, PlusCircle, Trash2, Pencil, Shield } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Pencil } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -55,9 +55,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useAdmin } from '../../context/admin-context';
 
 
-type AdminUser = {
+export type AdminUser = {
     id: number;
     name: string;
     email: string;
@@ -65,7 +66,7 @@ type AdminUser = {
     avatar: string;
 };
 
-const initialAdminUsers: AdminUser[] = [
+export const initialAdminUsers: AdminUser[] = [
     { id: 1, name: 'Alice Johnson', email: 'alice.j@example.com', role: 'Super Admin', avatar: 'https://picsum.photos/seed/aj-avatar/40/40' },
     { id: 2, name: 'Bob Williams', email: 'bob.w@example.com', role: 'Admin', avatar: 'https://picsum.photos/seed/bw-avatar/40/40' },
     { id: 3, name: 'Charlie Brown', email: 'charlie.b@example.com', role: 'Admin', avatar: 'https://picsum.photos/seed/cb-avatar/40/40' },
@@ -73,11 +74,13 @@ const initialAdminUsers: AdminUser[] = [
     { id: 5, name: 'Ethan Garcia', email: 'ethan.g@example.com', role: 'Moderator', avatar: 'https://picsum.photos/seed/eg-avatar/40/40' },
 ];
 
-const roles: AdminUser['role'][] = ['Super Admin', 'Admin', 'Moderator'];
+export const roles: AdminUser['role'][] = ['Super Admin', 'Admin', 'Moderator'];
 
 
 export default function AdministratorsPage() {
-    const [adminUsers, setAdminUsers] = useState<AdminUser[]>(initialAdminUsers);
+    const { adminData, setAdminData } = useAdmin();
+    const { adminUsers, adminRoles: roles } = adminData;
+
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -103,7 +106,7 @@ export default function AdministratorsPage() {
             role: formData.get('role') as AdminUser['role'],
             avatar: `https://picsum.photos/seed/${Date.now()}/40/40`,
         };
-        setAdminUsers([...adminUsers, newUser]);
+        setAdminData(prev => ({...prev, adminUsers: [...prev.adminUsers, newUser]}));
         setIsAddDialogOpen(false);
     };
 
@@ -117,7 +120,10 @@ export default function AdministratorsPage() {
             email: formData.get('email') as string,
             role: formData.get('role') as AdminUser['role'],
         };
-        setAdminUsers(adminUsers.map(u => u.id === selectedUser.id ? updatedUser : u));
+        setAdminData(prev => ({
+            ...prev,
+            adminUsers: prev.adminUsers.map(u => u.id === selectedUser.id ? updatedUser : u)
+        }));
         setIsEditDialogOpen(false);
         setSelectedUser(null);
     };
@@ -131,7 +137,10 @@ export default function AdministratorsPage() {
             setIsDeleteDialogOpen(false);
             return;
         }
-        setAdminUsers(adminUsers.filter(u => u.id !== selectedUser.id));
+        setAdminData(prev => ({
+            ...prev,
+            adminUsers: prev.adminUsers.filter(u => u.id !== selectedUser.id)
+        }));
         setIsDeleteDialogOpen(false);
         setSelectedUser(null);
     };
