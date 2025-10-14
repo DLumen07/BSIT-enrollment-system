@@ -74,7 +74,7 @@ export default function AdminDashboardPage() {
     <>
         <main className="flex-1 p-4 sm:p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
+            <Card className="rounded-xl">
               <CardHeader>
                 <CardTitle>Total Students</CardTitle>
                 <CardDescription>All active students</CardDescription>
@@ -83,7 +83,7 @@ export default function AdminDashboardPage() {
                 <p className="text-3xl font-bold">1,250</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="rounded-xl">
               <CardHeader>
                 <CardTitle>New Enrollees</CardTitle>
                 <CardDescription>This academic year</CardDescription>
@@ -92,7 +92,7 @@ export default function AdminDashboardPage() {
                 <p className="text-3xl font-bold">320</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="rounded-xl">
               <CardHeader>
                 <CardTitle>Pending Applications</CardTitle>
                 <CardDescription>Awaiting review</CardDescription>
@@ -101,7 +101,7 @@ export default function AdminDashboardPage() {
                 <p className="text-3xl font-bold">45</p>
               </CardContent>
             </Card>
-             <Card>
+             <Card className="rounded-xl">
               <CardHeader>
                 <CardTitle>Total Courses</CardTitle>
                 <CardDescription>Offered by the department</CardDescription>
@@ -112,7 +112,7 @@ export default function AdminDashboardPage() {
             </Card>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="flex flex-col lg:col-span-2">
+            <Card className="flex flex-col lg:col-span-2 rounded-xl">
                 <CardHeader>
                     <CardTitle>Student Population by Year Level</CardTitle>
                     <CardDescription>Distribution of students across all year levels.</CardDescription>
@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
                 </div>
                 </CardFooter>
             </Card>
-             <Card className="flex flex-col">
+             <Card className="flex flex-col rounded-xl">
               <CardHeader>
                 <CardTitle>Student Demographics</CardTitle>
                 <CardDescription>Breakdown by student status.</CardDescription>
@@ -177,7 +177,7 @@ export default function AdminDashboardPage() {
                 </ChartContainer>
               </CardContent>
             </Card>
-             <Card className="lg:col-span-3">
+             <Card className="lg:col-span-3 rounded-xl">
                 <CardHeader>
                     <CardTitle>Scheduling Health</CardTitle>
                     <CardDescription>
@@ -208,7 +208,7 @@ export default function AdminDashboardPage() {
                                     </TableCell>
                                     <TableCell>{issue.details}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button asChild variant="outline" size="sm">
+                                        <Button asChild variant="outline" size="sm" className="rounded-full">
                                             <Link href={`/admin/dashboard/schedule/${encodeURIComponent(issue.block)}`}>
                                                 View Schedule
                                             </Link>
