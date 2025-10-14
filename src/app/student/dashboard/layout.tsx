@@ -9,7 +9,8 @@ import {
   CalendarCheck2,
   GraduationCap,
   FileSignature,
-  ClipboardList
+  ClipboardList,
+  Settings,
 } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
@@ -108,10 +109,10 @@ export default function StudentDashboardLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/profile'}>
-                <Link href="/student/dashboard/profile">
-                  <User />
-                  Profile
+              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/settings'}>
+                <Link href="/student/dashboard/settings">
+                  <Settings />
+                  Settings
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
