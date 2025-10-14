@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileSignature, CheckCircle } from 'lucide-react';
+import { FileSignature, CheckCircle, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,10 @@ const registeredSubjects = [
 
 export default function EnrollmentPage() {
     const [isEnrolled, setIsEnrolled] = useState(true);
+
+    const handlePrint = () => {
+        window.print();
+    };
 
     if (!isEnrolled) {
         return (
@@ -48,7 +52,26 @@ export default function EnrollmentPage() {
 
     return (
         <main className="flex-1 p-4 sm:p-6">
-            <Card className="max-w-4xl mx-auto rounded-xl">
+            <style jsx global>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #print-section, #print-section * {
+                        visibility: visible;
+                    }
+                    #print-section {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                    .no-print {
+                        display: none;
+                    }
+                }
+            `}</style>
+            <Card id="print-section" className="max-w-4xl mx-auto rounded-xl">
                 <CardHeader>
                     <div className="flex items-center gap-4">
                         <CheckCircle className="h-8 w-8 text-green-500" />
@@ -114,10 +137,14 @@ export default function EnrollmentPage() {
                         </Table>
                     </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="no-print justify-between items-center">
                     <p className="text-xs text-muted-foreground">
                         This serves as your official registration form. You can view your class schedule in the Schedule tab.
                     </p>
+                    <Button onClick={handlePrint} variant="outline" className="rounded-xl">
+                        <Printer className="mr-2 h-4 w-4" />
+                        Download Form
+                    </Button>
                 </CardFooter>
             </Card>
         </main>
