@@ -71,6 +71,7 @@ export default function YearLevelBlocksPage() {
     const [blockName, setBlockName] = useState('');
     const [blockCapacity, setBlockCapacity] = useState('');
     const [blockSpecialization, setBlockSpecialization] = useState('none');
+    const [deleteInput, setDeleteInput] = useState('');
 
      useEffect(() => {
         setBlockName('');
@@ -129,6 +130,7 @@ export default function YearLevelBlocksPage() {
     const openDeleteDialog = (block: Block) => {
         setSelectedBlock(block);
         setIsDeleteDialogOpen(true);
+        setDeleteInput('');
     };
 
      const openViewStudentsDialog = (block: Block) => {
@@ -311,14 +313,29 @@ export default function YearLevelBlocksPage() {
              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete the <span className="font-semibold">{selectedBlock ? getBlockDisplayName(selectedBlock) : ''}</span> block.
+                             <br/><br/>
+                            To confirm, please type "delete" below.
                         </AlertDialogDescription>
+                        <Input 
+                            id="delete-confirm" 
+                            name="delete-confirm"
+                            value={deleteInput}
+                            onChange={(e) => setDeleteInput(e.target.value)}
+                            className="mt-4"
+                        />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteBlock} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            disabled={deleteInput !== 'delete'}
+                            onClick={handleDeleteBlock} 
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -365,5 +382,3 @@ export default function YearLevelBlocksPage() {
         </>
     );
 }
-
-    

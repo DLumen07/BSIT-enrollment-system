@@ -99,6 +99,7 @@ export default function SchedulePage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null);
     const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+    const [deleteInput, setDeleteInput] = useState('');
 
     const hasConflict = (newSubject: Omit<Subject, 'id' | 'color' | 'description'>, editingSubjectId: number | null = null) => {
         const toMinutes = (time: string) => {
@@ -253,6 +254,7 @@ export default function SchedulePage() {
     const openDeleteDialog = (subject: Subject) => {
         setSubjectToDelete(subject);
         setIsDeleteDialogOpen(true);
+        setDeleteInput('');
     };
 
     const handleDeleteSubject = () => {
@@ -522,14 +524,29 @@ export default function SchedulePage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
                             This action cannot be undone. This will permanently delete the schedule for <span className="font-semibold">{subjectToDelete?.code}</span>.
+                             <br/><br/>
+                            To confirm, please type "delete" below.
                         </AlertDialogDescription>
+                        <Input 
+                            id="delete-confirm" 
+                            name="delete-confirm"
+                            value={deleteInput}
+                            onChange={(e) => setDeleteInput(e.target.value)}
+                            className="mt-4"
+                        />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setSubjectToDelete(null)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteSubject} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            disabled={deleteInput !== 'delete'}
+                            onClick={handleDeleteSubject}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

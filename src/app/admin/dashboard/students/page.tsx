@@ -53,10 +53,12 @@ export default function StudentsPage() {
 
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [deleteInput, setDeleteInput] = useState('');
 
     const openDeleteDialog = (student: Student) => {
         setSelectedStudent(student);
         setIsDeleteDialogOpen(true);
+        setDeleteInput('');
     };
     
      const handleDeleteStudent = () => {
@@ -254,14 +256,24 @@ export default function StudentsPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="rounded-xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                             This will permanently delete the record for <span className="font-semibold">{selectedStudent?.name}</span>. This action cannot be undone.
+                             This action cannot be undone. This will permanently delete the record for <span className="font-semibold">{selectedStudent?.name}</span>.
+                             <br/><br/>
+                             To confirm, please type "delete" below.
                         </AlertDialogDescription>
+                        <Input 
+                            id="delete-confirm" 
+                            name="delete-confirm"
+                            value={deleteInput}
+                            onChange={(e) => setDeleteInput(e.target.value)}
+                            className="mt-4"
+                        />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="rounded-xl" onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
+                            disabled={deleteInput !== 'delete'}
                             className="bg-destructive hover:bg-destructive/90 rounded-xl"
                             onClick={handleDeleteStudent}
                         >

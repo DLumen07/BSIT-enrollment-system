@@ -60,6 +60,7 @@ export default function ManageApplicationsPage() {
       application: null,
   });
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
 
   const [activeTab, setActiveTab] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
@@ -169,6 +170,7 @@ export default function ManageApplicationsPage() {
         rejectedApplications: prev.rejectedApplications.filter(app => app.id !== application.id)
     }));
     setDeleteDialog({ isOpen: false, application: null });
+    setDeleteInput('');
   };
   
   const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
@@ -578,7 +580,10 @@ export default function ManageApplicationsPage() {
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem
                                                                 className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                                                onSelect={() => setDeleteDialog({ isOpen: true, application })}
+                                                                onSelect={() => {
+                                                                    setDeleteDialog({ isOpen: true, application });
+                                                                    setDeleteInput('');
+                                                                }}
                                                             >
                                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                                 Permanently Delete
@@ -772,18 +777,33 @@ export default function ManageApplicationsPage() {
         )}
         
         {deleteDialog.isOpen && deleteDialog.application && (
-            <AlertDialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && setDeleteDialog({ isOpen: false, application: null })}>
+            <AlertDialog open={deleteDialog.isOpen} onOpenChange={(open) => {
+                if (!open) {
+                    setDeleteDialog({ isOpen: false, application: null });
+                    setDeleteInput('');
+                }
+            }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the application for <span className="font-semibold">{deleteDialog.application.name}</span>. This action cannot be undone.
+                             This action cannot be undone. This will permanently delete the application for <span className="font-semibold">{deleteDialog.application.name}</span>.
+                            <br/><br/>
+                            To confirm, please type "delete" below.
                         </AlertDialogDescription>
+                         <Input 
+                            id="delete-confirm" 
+                            name="delete-confirm"
+                            value={deleteInput}
+                            onChange={(e) => setDeleteInput(e.target.value)}
+                            className="mt-4"
+                        />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-red-600 text-white hover:bg-red-700"
+                            disabled={deleteInput !== 'delete'}
+                            className="bg-destructive hover:bg-destructive/90"
                             onClick={() => handleDelete(deleteDialog.application!)}
                         >
                             Delete
