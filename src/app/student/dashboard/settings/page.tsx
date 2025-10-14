@@ -71,7 +71,7 @@ export default function StudentSettingsPage() {
                     <TabsTrigger value="password">Password</TabsTrigger>
                 </TabsList>
                 <TabsContent value="contact">
-                     <Card>
+                     <Card className="rounded-xl">
                         <CardHeader>
                             <CardTitle>Contact Information</CardTitle>
                             <CardDescription>
@@ -89,12 +89,12 @@ export default function StudentSettingsPage() {
                             </div>
                         </CardContent>
                         <CardFooter>
-                            <Button onClick={handleSaveContact}>Save Contact Info</Button>
+                            <Button onClick={handleSaveContact} className="rounded-xl">Save Contact Info</Button>
                         </CardFooter>
                     </Card>
                 </TabsContent>
                 <TabsContent value="password">
-                    <Card>
+                    <Card className="rounded-xl">
                         <form onSubmit={handlePasswordChange}>
                             <CardHeader>
                                 <CardTitle>Change Password</CardTitle>
@@ -117,7 +117,7 @@ export default function StudentSettingsPage() {
                                 </div>
                             </CardContent>
                             <CardFooter>
-                                <Button type="submit">Change Password</Button>
+                                <Button type="submit" className="rounded-xl">Change Password</Button>
                             </CardFooter>
                         </form>
                     </Card>
