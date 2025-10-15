@@ -97,6 +97,13 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
         
         const [firstName, ...lastNameParts] = currentStudent.name.split(' ');
         const lastName = lastNameParts.join(' ');
+        
+        const yearLevelMap: {[key: number]: string} = {
+            1: '1st Year',
+            2: '2nd Year',
+            3: '3rd Year',
+            4: '4th Year'
+        }
 
         const data: StudentDataType = {
           personal: {
@@ -140,7 +147,7 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
           academic: {
             studentId: currentStudent.studentId,
             course: currentStudent.course,
-            yearLevel: `${currentStudent.year}${currentStudent.year === 1 ? 'st' : currentStudent.year === 2 ? 'nd' : currentStudent.year === 3 ? 'rd' : 'th'} Year`,
+            yearLevel: yearLevelMap[currentStudent.year] || `${currentStudent.year}th Year`,
             block: currentStudent.block || 'N/A',
             status: currentStudent.status,
             dateEnrolled: 'August 15, 2024',
@@ -182,6 +189,3 @@ export const useStudent = (): StudentContextType => {
   }
   return context;
 };
-    
-
-    

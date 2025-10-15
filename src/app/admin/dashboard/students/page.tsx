@@ -54,6 +54,7 @@ export default function StudentsPage() {
     const [filters, setFilters] = useState({
         course: 'all',
         year: 'all',
+        status: 'all',
     });
 
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -82,15 +83,13 @@ export default function StudentsPage() {
 
     const clearFilters = () => {
         setSearchTerm('');
-        setFilters({ course: 'all', year: 'all' });
+        setFilters({ course: 'all', year: 'all', status: 'all' });
     };
     
-    const isFiltered = searchTerm || filters.course !== 'all' || filters.year !== 'all';
+    const isFiltered = searchTerm || filters.course !== 'all' || filters.year !== 'all' || filters.status !== 'all';
     
     const filteredStudents = useMemo(() => {
-        const enrolledStudents = students.filter(student => student.status === 'Enrolled');
-
-        return enrolledStudents.filter(student => {
+        return students.filter(student => {
             const searchTermLower = searchTerm.toLowerCase();
             const matchesSearch = searchTerm ? 
                 student.name.toLowerCase().includes(searchTermLower) || 
@@ -99,13 +98,15 @@ export default function StudentsPage() {
             
             const matchesCourse = filters.course !== 'all' ? student.course === filters.course : true;
             const matchesYear = filters.year !== 'all' ? student.year.toString() === filters.year : true;
+            const matchesStatus = filters.status !== 'all' ? student.status === filters.status : true;
 
-            return matchesSearch && matchesCourse && matchesYear;
+            return matchesSearch && matchesCourse && matchesYear && matchesStatus;
         });
     }, [students, searchTerm, filters]);
     
     const courses = ['all', ...Array.from(new Set(students.map(app => app.course)))];
     const years = ['all', ...Array.from(new Set(students.map(app => app.year.toString())))].sort();
+    const statuses = ['all', ...Array.from(new Set(students.map(student => student.status)))];
     
     const getStatusBadgeVariant = (status: Student['status']) => {
         switch (status) {
@@ -128,7 +129,7 @@ export default function StudentsPage() {
                     <div className="space-y-0.5">
                         <h1 className="text-2xl font-bold tracking-tight">Student Directory</h1>
                         <p className="text-muted-foreground">
-                            Manage and view all enrolled students for the current semester.
+                            Manage and view all students in the system.
                         </p>
                     </div>
                 </div>
@@ -148,7 +149,7 @@ export default function StudentsPage() {
                         </div>
                         <div className="flex flex-wrap items-center gap-4">
                            <div className="text-sm text-muted-foreground">
-                                {isFiltered ? `${filteredStudents.length} of ${students.filter(s => s.status === 'Enrolled').length} students shown` : `Total Students: ${filteredStudents.length}`}
+                                {isFiltered ? `${filteredStudents.length} of ${students.length} students shown` : `Total Students: ${filteredStudents.length}`}
                             </div>
                             <Popover>
                                 <PopoverTrigger asChild>
@@ -178,6 +179,17 @@ export default function StudentsPage() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {years.map(year => <SelectItem key={year} value={year}>{year === 'all' ? 'All Years' : `${year}${year === '1' ? 'st' : year === '2' ? 'nd' : year === '3' ? 'rd' : 'th'} Year`}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="space-y-2">
+                                            <Label>Status</Label>
+                                            <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                                                <SelectTrigger className="rounded-xl focus:ring-0 focus:ring-offset-0">
+                                                    <SelectValue placeholder="All Statuses" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {statuses.map(status => <SelectItem key={status} value={status}>{status === 'all' ? 'All Statuses' : status}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -250,7 +262,7 @@ export default function StudentsPage() {
                                     )) : (
                                         <TableRow>
                                             <TableCell colSpan={5} className="h-24 text-center">
-                                                No enrolled students found.
+                                                No students found.
                                             </TableCell>
                                         </TableRow>
                                     )}
