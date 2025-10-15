@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,24 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Info } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { useStudent } from '@/app/student/context/student-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
 
 const steps = [
     { id: 'Step 1', name: 'Personal & Family Information' },
@@ -85,9 +74,13 @@ const academicSchema = z.object({
     subjects: z.array(z.string()).min(1, "Please select at least one subject."),
 });
 
+// Full schema for new students
+const newStudentSchema = personalFamilySchema.merge(additionalInfoSchema).merge(academicSchema);
 
-const enrollmentSchema = personalFamilySchema.merge(additionalInfoSchema).merge(academicSchema);
-type EnrollmentSchemaType = z.infer<typeof enrollmentSchema>;
+// Schema for old students (only step 3 is relevant)
+const oldStudentSchema = academicSchema;
+
+type EnrollmentSchemaType = z.infer<typeof newStudentSchema>;
 
 function Step1() {
     return (
@@ -338,7 +331,7 @@ function Step3() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        {availableBlocks.length === 0 && <p className="text-sm text-destructive mt-2">There are no available blocks for this course and year level. Please contact the admin.</p>}
+                        {availableBlocks.length === 0 && <p className="text-sm text-muted-foreground mt-2">There are no available blocks for this year level. Please try again later.</p>}
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -401,58 +394,66 @@ function Step3() {
     );
 }
 
-
 export default function EnrollmentFormPage() {
     const { studentData } = useStudent();
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitted, setIsSubmitted] = useState(false);
-    const [showSkipDialog, setShowSkipDialog] = useState(false);
-    const [hasMadeSkipChoice, setHasMadeSkipChoice] = useState(false);
-
-    const getInitialStatus = useCallback(() => {
-        if (!studentData) return 'New';
-        if (studentData.academic.yearLevel === '1st Year') {
-            return 'New';
-        }
-        return 'Old';
-    }, [studentData]);
-
-    const getInitialCourse = useCallback(() => {
-        if (!studentData) return 'ACT';
-        const year = parseInt(studentData.academic.yearLevel, 10);
-        if (year <= 2) {
-            return 'ACT';
-        }
-        return 'BSIT';
-    }, [studentData]);
     
+    const isNewStudent = useMemo(() => {
+        if (!studentData) return true;
+        return parseInt(studentData.academic.yearLevel, 10) === 1;
+    }, [studentData]);
+
     useEffect(() => {
-        if (studentData && parseInt(studentData.academic.yearLevel, 10) > 1 && !hasMadeSkipChoice) {
-            setShowSkipDialog(true);
-        } else if (studentData && parseInt(studentData.academic.yearLevel, 10) === 1) {
-            setHasMadeSkipChoice(true); // Don't show dialog for 1st years
+        if (!isNewStudent) {
+            setCurrentStep(2); // Skip to step 3 for old students
         }
-    }, [studentData, hasMadeSkipChoice]);
+    }, [isNewStudent]);
 
     const methods = useForm<EnrollmentSchemaType>({
-        resolver: zodResolver(enrollmentSchema),
+        resolver: zodResolver(isNewStudent ? newStudentSchema : oldStudentSchema),
         defaultValues: {
-            firstName: studentData?.personal.firstName,
-            lastName: studentData?.personal.lastName,
-            email: studentData?.contact.email,
-            phoneNumber: studentData?.contact.phoneNumber,
-            sex: studentData?.personal.sex,
+            // Personal and contact info from context
+            firstName: studentData?.personal.firstName || '',
+            lastName: studentData?.personal.lastName || '',
+            middleName: studentData?.personal.middleName || '',
+            email: studentData?.contact.email || '',
+            phoneNumber: studentData?.contact.phoneNumber || '',
+            birthdate: studentData?.personal.birthdate ? new Date(studentData.personal.birthdate) : new Date(),
+            currentAddress: studentData?.address.currentAddress || '',
+            permanentAddress: studentData?.address.permanentAddress || '',
+            nationality: studentData?.personal.nationality || 'Filipino',
+            religion: studentData?.personal.religion || '',
+            dialect: studentData?.personal.dialect || '',
+            sex: studentData?.personal.sex || 'Male',
             civilStatus: 'Single',
-            status: getInitialStatus(),
+            // Family info from context
+            fathersName: studentData?.family.fathersName || '',
+            fathersOccupation: studentData?.family.fathersOccupation || '',
+            mothersName: studentData?.family.mothersName || '',
+            mothersOccupation: studentData?.family.mothersOccupation || '',
+            guardiansName: studentData?.family.guardiansName || '',
+            // Additional info from context
+            emergencyContactName: studentData?.additional.emergencyContactName || '',
+            emergencyContactAddress: studentData?.additional.emergencyContactAddress || '',
+            emergencyContactNumber: studentData?.additional.emergencyContactNumber || '',
+            // Education info from context
+            elementarySchool: studentData?.education.elementarySchool || '',
+            elemYearGraduated: studentData?.education.elemYearGraduated || '',
+            secondarySchool: studentData?.education.secondarySchool || '',
+            secondaryYearGraduated: studentData?.education.secondaryYearGraduated || '',
+            collegiateSchool: studentData?.education.collegiateSchool || '',
+            // Academic Info from context
+            status: studentData?.academic.status === 'Enrolled' ? 'Old' : 'New',
             yearLevel: studentData?.academic.yearLevel,
-            course: getInitialCourse(),
+            course: studentData?.academic.course,
             subjects: [],
             block: '',
         }
     });
 
     const processForm = (data: EnrollmentSchemaType) => {
-        console.log(data);
+        console.log("Form Submitted:", data);
         setIsSubmitted(true);
     };
     
@@ -478,22 +479,14 @@ export default function EnrollmentFormPage() {
     };
 
     const prev = () => {
-        if (currentStep > 0) {
+        if (currentStep > (isNewStudent ? 0 : 2)) {
             setCurrentStep(step => step - 1);
         }
     };
 
-    const handleSkip = () => {
-        setCurrentStep(2);
-        setShowSkipDialog(false);
-        setHasMadeSkipChoice(true);
-    };
-
-    const handleUpdate = () => {
-        setShowSkipDialog(false);
-        setHasMadeSkipChoice(true);
-    };
-
+    if (!studentData) {
+        return <div>Loading form...</div>;
+    }
 
     if (isSubmitted) {
         return (
@@ -516,31 +509,6 @@ export default function EnrollmentFormPage() {
         );
     }
     
-    if (!studentData) {
-        return <div>Loading form...</div>
-    }
-
-    if (parseInt(studentData.academic.yearLevel, 10) > 1 && !hasMadeSkipChoice) {
-        return (
-             <AlertDialog open={showSkipDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Returning Student?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Your personal data is already on file. Do you need to update it? Most returning students can skip directly to subject selection.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <Button variant="outline" onClick={handleUpdate}>Update My Info</Button>
-                        <AlertDialogAction asChild>
-                           <Button onClick={handleSkip}>Skip & Continue</Button>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        )
-    }
-
     return (
         <main className="flex-1 p-4 sm:p-6">
             <FormProvider {...methods}>
@@ -548,10 +516,13 @@ export default function EnrollmentFormPage() {
                     <Card className="max-w-4xl mx-auto rounded-xl">
                         <CardHeader>
                             <CardTitle>Enrollment Form</CardTitle>
-                            <CardDescription>
-                                {`Please fill out all the necessary fields. (${steps[currentStep].name})`}
+                             <CardDescription>
+                                {isNewStudent 
+                                    ? `Please fill out all the necessary fields. (${steps[currentStep].name})`
+                                    : "Please select your block and subjects for the new semester."
+                                }
                             </CardDescription>
-                            <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />
+                            {isNewStudent && <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />}
                         </CardHeader>
                         <CardContent>
                             {currentStep === 0 && <Step1 />}
@@ -560,15 +531,17 @@ export default function EnrollmentFormPage() {
                         </CardContent>
                         <CardFooter>
                             <div className="flex justify-between w-full">
-                                <Button type="button" onClick={prev} disabled={currentStep === 0} variant="outline" className="rounded-xl">
-                                    Previous
-                                </Button>
-                                {currentStep < steps.length - 1 ? (
-                                    <Button type="button" onClick={next} className="rounded-xl">
-                                        Next
-                                    </Button>
+                                {isNewStudent ? (
+                                    <>
+                                        <Button type="button" onClick={prev} disabled={currentStep === 0} variant="outline" className="rounded-xl">
+                                            Previous
+                                        </Button>
+                                        <Button type="button" onClick={next} className="rounded-xl">
+                                            {currentStep === steps.length - 1 ? "Submit" : "Next"}
+                                        </Button>
+                                    </>
                                 ) : (
-                                    <Button type="submit" className="rounded-xl">
+                                    <Button type="submit" className="w-full rounded-xl">
                                         Submit
                                     </Button>
                                 )}
