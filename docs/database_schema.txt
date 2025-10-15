@@ -1,0 +1,133 @@
+# BSIT Enrollment System - Database Schema
+
+This document outlines the proposed database schema for the BSIT Enrollment System. The structure is designed to be relational and can be implemented in SQL or adapted for a NoSQL database like Firestore.
+
+---
+
+### 1. `users` Table
+Stores authentication and basic profile information for all user types in the system (students, instructors, and administrators).
+
+| Column          | Type         | Description                                                 | Notes                                    |
+|-----------------|--------------|-------------------------------------------------------------|------------------------------------------|
+| `id`            | UUID/String  | Primary Key. Unique identifier for the user.                | e.g., Firebase Authentication UID        |
+| `email`         | String       | User's email address. Must be unique.                       | Used for login.                          |
+| `password_hash` | String       | Hashed password for email/password authentication.          |                                          |
+| `role`          | Enum         | Defines the user's role: 'student', 'instructor', 'admin'.  | Critical for access control.             |
+| `created_at`    | Timestamp    | Timestamp of when the user account was created.             |                                          |
+
+---
+
+### 2. `student_profiles` Table
+Stores detailed information specific to students. This table has a one-to-one relationship with the `users` table.
+
+| Column                | Type        | Description                                                 | Notes                                                     |
+|-----------------------|-------------|-------------------------------------------------------------|-----------------------------------------------------------|
+| `user_id`             | UUID/String | Primary Key / Foreign Key to `users.id`.                    |                                                           |
+| `student_id_number`   | String      | The official student number (e.g., "21-00-0123"). Unique.   |                                                           |
+| `name`                | String      | Full name of the student.                                   |                                                           |
+| `avatar_url`          | String      | URL to the student's profile picture.                       |                                                           |
+| `course`              | Enum        | 'BSIT' or 'ACT'.                                            |                                                           |
+| `year_level`          | Integer     | The student's current year (1, 2, 3, 4).                    |                                                           |
+| `enrollment_status`   | Enum        | 'Enrolled', 'Not Enrolled', 'Graduated'.                    |                                                           |
+| `block_id`            | UUID/String | Foreign Key to `blocks.id`. Nullable.                       | Null if not currently enrolled in a block.                |
+| `specialization`      | Enum        | 'AP' (Application Programming), 'DD' (Digital Design). Nullable. | Null for 1st/2nd year and ACT students.                   |
+| `sex`                 | Enum        | 'Male', 'Female'.                                           |                                                           |
+| `phone_number`        | String      | Student's contact number.                                   |                                                           |
+| `...personal_details` | JSON/Text   | Additional fields from the enrollment form (address, etc.). | Can be stored as a JSON object for flexibility.           |
+
+---
+
+### 3. `instructor_profiles` Table
+Stores detailed information specific to instructors. One-to-one relationship with the `users` table.
+
+| Column        | Type        | Description                                       | Notes                                      |
+|---------------|-------------|---------------------------------------------------|--------------------------------------------|
+| `user_id`     | UUID/String | Primary Key / Foreign Key to `users.id`.          |                                            |
+| `name`        | String      | Full name of the instructor.                      |                                            |
+| `avatar_url`  | String      | URL to the instructor's profile picture.          |                                            |
+| `department`  | String      | Department the instructor belongs to (e.g., "IT").|                                            |
+
+---
+
+### 4. `admin_profiles` Table
+Stores detailed information specific to administrators. One-to-one relationship with the `users` table.
+
+| Column       | Type        | Description                                 | Notes                                  |
+|--------------|-------------|---------------------------------------------|----------------------------------------|
+| `user_id`    | UUID/String | Primary Key / Foreign Key to `users.id`.    |                                        |
+| `name`       | String      | Full name of the administrator.             |                                        |
+| `avatar_url` | String      | URL to the administrator's profile picture. |                                        |
+| `admin_role` | Enum        | 'Super Admin', 'Admin', 'Moderator'.        | Fine-grained permissions within the admin portal. |
+
+---
+
+### 5. `subjects` Table
+A master list of all subjects offered by the institution.
+
+| Column          | Type        | Description                                | Notes                                    |
+|-----------------|-------------|--------------------------------------------|------------------------------------------|
+| `id`            | UUID/String | Primary Key.                               |                                          |
+| `code`          | String      | The unique subject code (e.g., "IT 101").  | Indexed for fast lookups.                |
+| `description`   | String      | Full description of the subject.           |                                          |
+| `units`         | Integer     | Number of academic units for the subject.  |                                          |
+| `prerequisite_id` | UUID/String | Foreign Key to `subjects.id`. Nullable.    | Self-referencing relationship.           |
+| `year_level`    | Integer     | The year level this subject is intended for. | e.g., 1, 2, 3, 4                         |
+
+---
+
+### 6. `blocks` Table
+Represents a class section for a specific year level and course.
+
+| Column         | Type        | Description                                                 | Notes                                                |
+|----------------|-------------|-------------------------------------------------------------|------------------------------------------------------|
+| `id`           | UUID/String | Primary Key.                                                |                                                      |
+| `name`         | String      | The unique name of the block (e.g., "BSIT 3-A").            |                                                      |
+| `year_level`   | Integer     | The year level this block is for.                           |                                                      |
+| `course`       | Enum        | 'BSIT' or 'ACT'.                                            |                                                      |
+| `specialization` | Enum        | 'AP', 'DD'. Nullable.                                       | Required for 3rd/4th year BSIT blocks.               |
+| `capacity`     | Integer     | Maximum number of students allowed.                         |                                                      |
+
+---
+
+### 7. `schedules` Table (Junction Table)
+Defines the schedule for each subject within a specific block, taught by a specific instructor.
+
+| Column         | Type        | Description                             | Notes                                 |
+|----------------|-------------|-----------------------------------------|---------------------------------------|
+| `id`           | UUID/String | Primary Key.                            |                                       |
+| `block_id`     | UUID/String | Foreign Key to `blocks.id`.             | Part of a composite key for uniqueness. |
+| `subject_id`   | UUID/String | Foreign Key to `subjects.id`.           | Part of a composite key for uniqueness. |
+| `instructor_id`| UUID/String | Foreign Key to `users.id`. Nullable.    | The instructor handling this class.   |
+| `day_of_week`  | Enum        | 'Monday', 'Tuesday', etc.               |                                       |
+| `start_time`   | Time        | The start time of the class.            |                                       |
+| `end_time`     | Time        | The end time of the class.              |                                       |
+| `room`         | String      | The room/laboratory for the class.      |                                       |
+
+---
+
+### 8. `student_grades` Table
+Stores the academic records (grades) for each student.
+
+| Column          | Type        | Description                               | Notes                                 |
+|-----------------|-------------|-------------------------------------------|---------------------------------------|
+| `id`            | UUID/String | Primary Key.                            |                                       |
+| `student_user_id` | UUID/String | Foreign Key to `users.id`.              | Identifies the student.               |
+| `subject_id`    | UUID/String | Foreign Key to `subjects.id`.           | Identifies the subject.               |
+| `grade`         | Decimal     | The final numerical grade (e.g., 1.75).   |                                       |
+| `academic_year` | String      | The A.Y. the grade was earned (e.g., "2023-2024"). |                                       |
+| `semester`      | String      | The semester the grade was earned.      |                                       |
+
+---
+
+### 9. `enrollment_applications` Table
+A temporary table to hold pending enrollment applications for admin review.
+
+| Column           | Type        | Description                                          | Notes                                                     |
+|------------------|-------------|------------------------------------------------------|-----------------------------------------------------------|
+| `id`             | UUID/String | Primary Key.                                         |                                                           |
+| `student_user_id`  | UUID/String | Foreign Key to `users.id`.                           | The student who is applying.                              |
+| `status`         | Enum        | 'pending', 'approved', 'rejected'.                   |                                                           |
+| `block_name`     | String      | The name of the block the student applied for.       | From the form submission.                                 |
+| `submitted_at`   | Timestamp   | When the application was submitted.                  |                                                           |
+| `rejection_reason` | String      | Reason for rejection, if applicable. Nullable.     |                                                           |
+| `form_data`      | JSON/Text   | A snapshot of all the data from the enrollment form. | Useful for review and record-keeping.                     |
