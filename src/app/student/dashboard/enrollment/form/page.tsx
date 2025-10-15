@@ -18,6 +18,16 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { useStudent } from '@/app/student/context/student-context';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 
 const steps = [
     { id: 'Step 1', name: 'Personal & Family Information' },
@@ -478,18 +488,16 @@ export default function EnrollmentFormPage() {
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isReviewing, setIsReviewing] = useState(false);
+    const [showSkipDialog, setShowSkipDialog] = useState(false);
+    const [hasMadeSkipChoice, setHasMadeSkipChoice] = useState(false);
 
     const getInitialStatus = () => {
         if (!studentData) return 'New';
-
-        const year = studentData.academic.yearLevel;
-
-        if (year === '1st Year') {
+        if (studentData.academic.yearLevel === '1st Year') {
             return 'New';
         }
-        
         return 'Old';
-    }
+    };
 
     const getInitialCourse = () => {
         if (!studentData) return 'ACT';
@@ -498,7 +506,13 @@ export default function EnrollmentFormPage() {
             return 'ACT';
         }
         return 'BSIT';
-    }
+    };
+    
+    useEffect(() => {
+        if (studentData && studentData.academic.yearLevel !== '1st Year' && !hasMadeSkipChoice) {
+            setShowSkipDialog(true);
+        }
+    }, [studentData, hasMadeSkipChoice]);
 
     const methods = useForm<EnrollmentSchemaType>({
         resolver: zodResolver(enrollmentSchema),
@@ -554,6 +568,17 @@ export default function EnrollmentFormPage() {
         }
     };
 
+    const handleSkip = () => {
+        setCurrentStep(2);
+        setShowSkipDialog(false);
+        setHasMadeSkipChoice(true);
+    };
+
+    const handleUpdate = () => {
+        setShowSkipDialog(false);
+        setHasMadeSkipChoice(true);
+    };
+
 
     if (isSubmitted) {
         return (
@@ -578,6 +603,27 @@ export default function EnrollmentFormPage() {
     
     if (!studentData) {
         return <div>Loading form...</div>
+    }
+
+    if (studentData.academic.yearLevel !== '1st Year' && !hasMadeSkipChoice) {
+        return (
+             <AlertDialog open={showSkipDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Returning Student?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Your personal data is already on file. Do you need to update it? Most returning students can skip directly to subject selection.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <Button variant="outline" onClick={handleUpdate}>Update My Info</Button>
+                        <AlertDialogAction asChild>
+                           <Button onClick={handleSkip}>Skip & Continue</Button>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        )
     }
 
     return (
