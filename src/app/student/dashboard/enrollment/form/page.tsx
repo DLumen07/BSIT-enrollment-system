@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
@@ -44,17 +45,9 @@ const personalFamilySchema = z.object({
     mothersName: z.string().min(1, "Mother's name is required"),
     mothersOccupation: z.string().min(1, "Mother's occupation is required"),
     guardiansName: z.string().optional(),
-    guardiansOccupation: z.string().optional(),
-    guardiansAddress: z.string().optional(),
 });
 
 const additionalInfoSchema = z.object({
-    livingWithFamily: z.boolean().default(false),
-    boarding: z.boolean().default(false),
-    differentlyAbled: z.boolean().default(false),
-    disability: z.string().optional(),
-    minorityGroup: z.boolean().default(false),
-    minority: z.string().optional(),
     emergencyContactName: z.string().min(1, 'Emergency contact name is required'),
     emergencyContactAddress: z.string().min(1, 'Emergency contact address is required'),
     emergencyContactNumber: z.string().min(10, 'Invalid emergency contact number'),
@@ -63,7 +56,6 @@ const additionalInfoSchema = z.object({
     secondarySchool: z.string().min(1, 'Secondary school is required'),
     secondaryYearGraduated: z.string().min(4, 'Invalid year'),
     collegiateSchool: z.string().optional(),
-    collegiateYearGraduated: z.string().optional(),
 });
 
 const academicSchema = z.object({
@@ -165,52 +157,14 @@ function Step1() {
                 <FormField name="guardiansName" render={({ field }) => (
                     <FormItem><FormLabel>Guardian's Name (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
-                <FormField name="guardiansOccupation" render={({ field }) => (
-                    <FormItem><FormLabel>Guardian's Occupation (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
             </div>
-            <FormField name="guardiansAddress" render={({ field }) => (
-                <FormItem><FormLabel>Guardian's Address (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
         </div>
     );
 }
 
 function Step2() {
-    const form = useFormContext();
-    const isDifferentlyAbled = form.watch('differentlyAbled');
-    const belongsToMinority = form.watch('minorityGroup');
-
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="livingWithFamily" render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-xl border p-4"><div className="space-y-0.5"><FormLabel>Living with Family?</FormLabel></div><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
-                )} />
-                <FormField name="boarding" render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-xl border p-4"><div className="space-y-0.5"><FormLabel>Boarding?</FormLabel></div><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
-                )} />
-            </div>
-             <div className="space-y-4 rounded-xl border p-4">
-                 <FormField name="differentlyAbled" render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between"><div className="space-y-0.5"><FormLabel>Are you differently abled?</FormLabel></div><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
-                )} />
-                {isDifferentlyAbled && (
-                    <FormField name="disability" render={({ field }) => (
-                        <FormItem><FormLabel>Specify disability</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                    )} />
-                )}
-            </div>
-             <div className="space-y-4 rounded-xl border p-4">
-                <FormField name="minorityGroup" render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between"><div className="space-y-0.5"><FormLabel>Belong to minority group?</FormLabel></div><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
-                )} />
-                {belongsToMinority && (
-                    <FormField name="minority" render={({ field }) => (
-                        <FormItem><FormLabel>Specify minority group</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                    )} />
-                )}
-            </div>
             <div className="border-t pt-6 mt-6">
                 <h3 className="text-lg font-medium">Emergency Contact</h3>
             </div>
@@ -246,9 +200,6 @@ function Step2() {
                  <FormField name="collegiateSchool" render={({ field }) => (
                     <FormItem><FormLabel>Collegiate School (If transferee)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
-                 <FormField name="collegiateYearGraduated" render={({ field }) => (
-                    <FormItem><FormLabel>Year Graduated (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
             </div>
         </div>
     );
@@ -264,6 +215,7 @@ function Step3() {
         '1st Year': '1st-year',
         '2nd Year': '2nd-year',
         '3rd Year': '3rd-year',
+        '4th Year': '4th-year',
         '4th Year': '4th-year',
     };
 
@@ -309,7 +261,7 @@ function Step3() {
                     </FormItem>
                 )} />
                 <FormField name="status" render={({ field }) => (
-                    <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                 )} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -319,7 +271,7 @@ function Step3() {
                 <FormField name="block" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Block</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={availableBlocks.length === 0}>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={availableBlocks.length === 0}>
                             <FormControl>
                                 <SelectTrigger className="rounded-xl">
                                     <SelectValue placeholder={availableBlocks.length === 0 ? "No available blocks" : "Select block"} />
@@ -400,19 +352,19 @@ export default function EnrollmentFormPage() {
     const [isSubmitted, setIsSubmitted] = useState(false);
     
     const isNewStudent = useMemo(() => {
-        if (!studentData) return true;
+        if (!studentData) return true; // Assume new if no data yet
         return parseInt(studentData.academic.yearLevel, 10) === 1;
     }, [studentData]);
 
     useEffect(() => {
-        if (!isNewStudent) {
+        if (studentData && !isNewStudent) {
             setCurrentStep(2); // Skip to step 3 for old students
         }
-    }, [isNewStudent]);
+    }, [isNewStudent, studentData]);
 
     const methods = useForm<EnrollmentSchemaType>({
         resolver: zodResolver(isNewStudent ? newStudentSchema : oldStudentSchema),
-        defaultValues: {
+        defaultValues: useMemo(() => ({
             // Personal and contact info from context
             firstName: studentData?.personal.firstName || '',
             lastName: studentData?.personal.lastName || '',
@@ -444,13 +396,51 @@ export default function EnrollmentFormPage() {
             secondaryYearGraduated: studentData?.education.secondaryYearGraduated || '',
             collegiateSchool: studentData?.education.collegiateSchool || '',
             // Academic Info from context
-            status: studentData?.academic.status === 'Enrolled' ? 'Old' : 'New',
+            status: parseInt(studentData?.academic.yearLevel || '1', 10) > 1 ? 'Old' : 'New',
             yearLevel: studentData?.academic.yearLevel,
             course: studentData?.academic.course,
             subjects: [],
             block: '',
-        }
+        }), [studentData])
     });
+
+    useEffect(() => {
+        if (studentData) {
+            methods.reset({
+                firstName: studentData.personal.firstName,
+                lastName: studentData.personal.lastName,
+                middleName: studentData.personal.middleName,
+                email: studentData.contact.email,
+                phoneNumber: studentData.contact.phoneNumber,
+                birthdate: new Date(studentData.personal.birthdate),
+                currentAddress: studentData.address.currentAddress,
+                permanentAddress: studentData.address.permanentAddress,
+                nationality: studentData.personal.nationality,
+                religion: studentData.personal.religion,
+                dialect: studentData.personal.dialect,
+                sex: studentData.personal.sex,
+                civilStatus: 'Single',
+                fathersName: studentData.family.fathersName,
+                fathersOccupation: studentData.family.fathersOccupation,
+                mothersName: studentData.family.mothersName,
+                mothersOccupation: studentData.family.mothersOccupation,
+                guardiansName: studentData.family.guardiansName,
+                emergencyContactName: studentData.additional.emergencyContactName,
+                emergencyContactAddress: studentData.additional.emergencyContactAddress,
+                emergencyContactNumber: studentData.additional.emergencyContactNumber,
+                elementarySchool: studentData.education.elementarySchool,
+                elemYearGraduated: studentData.education.elemYearGraduated,
+                secondarySchool: studentData.education.secondarySchool,
+                secondaryYearGraduated: studentData.education.secondaryYearGraduated,
+                collegiateSchool: studentData.education.collegiateSchool,
+                status: parseInt(studentData.academic.yearLevel, 10) > 1 ? 'Old' : 'New',
+                yearLevel: studentData.academic.yearLevel,
+                course: studentData.academic.course,
+                subjects: [],
+                block: '',
+            });
+        }
+    }, [studentData, methods]);
 
     const processForm = (data: EnrollmentSchemaType) => {
         console.log("Form Submitted:", data);
@@ -466,7 +456,12 @@ export default function EnrollmentFormPage() {
             Object.keys(academicSchema.shape) as FieldName[],
         ];
         
-        const fieldsToValidate: FieldName[] = fieldsByStep[currentStep];
+        let fieldsToValidate: FieldName[] = [];
+        if (isNewStudent) {
+            fieldsToValidate = fieldsByStep[currentStep];
+        } else {
+            fieldsToValidate = fieldsByStep[2];
+        }
 
         const output = await methods.trigger(fieldsToValidate, { shouldFocus: true });
         if (!output) return;
@@ -479,7 +474,7 @@ export default function EnrollmentFormPage() {
     };
 
     const prev = () => {
-        if (currentStep > (isNewStudent ? 0 : 2)) {
+        if (currentStep > 0) {
             setCurrentStep(step => step - 1);
         }
     };
@@ -525,21 +520,22 @@ export default function EnrollmentFormPage() {
                             {isNewStudent && <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />}
                         </CardHeader>
                         <CardContent>
-                            {currentStep === 0 && <Step1 />}
-                            {currentStep === 1 && <Step2 />}
+                            {isNewStudent && currentStep === 0 && <Step1 />}
+                            {isNewStudent && currentStep === 1 && <Step2 />}
                             {currentStep === 2 && <Step3 />}
                         </CardContent>
                         <CardFooter>
                             <div className="flex justify-between w-full">
-                                {isNewStudent ? (
-                                    <>
-                                        <Button type="button" onClick={prev} disabled={currentStep === 0} variant="outline" className="rounded-xl">
-                                            Previous
-                                        </Button>
-                                        <Button type="button" onClick={next} className="rounded-xl">
-                                            {currentStep === steps.length - 1 ? "Submit" : "Next"}
-                                        </Button>
-                                    </>
+                                {(isNewStudent && currentStep > 0) && (
+                                    <Button type="button" onClick={prev} variant="outline" className="rounded-xl">
+                                        Previous
+                                    </Button>
+                                )}
+                                
+                                {currentStep < 2 && isNewStudent ? (
+                                     <Button type="button" onClick={next} className="rounded-xl ml-auto">
+                                        Next
+                                    </Button>
                                 ) : (
                                     <Button type="submit" className="w-full rounded-xl">
                                         Submit
@@ -553,3 +549,6 @@ export default function EnrollmentFormPage() {
         </main>
     );
 }
+
+
+    
