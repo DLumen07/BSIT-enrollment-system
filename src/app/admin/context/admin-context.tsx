@@ -102,6 +102,10 @@ const initialStudentsList: Student[] = [
     { id: 2, studentId: '22-00-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40', email: 'bob.w@student.example.com', course: 'BSIT', year: 3, status: 'Enrolled', sex: 'Male', phoneNumber: '09123456780' },
     { id: 3, studentId: '23-00-0345', name: 'Charlie Brown', avatar: 'https://picsum.photos/seed/cb-student/40/40', email: 'charlie.b@student.example.com', course: 'ACT', year: 2, status: 'Enrolled', sex: 'Male', phoneNumber: '09123456781' },
     { id: 4, studentId: '23-00-0456', name: 'David Wilson', avatar: 'https://picsum.photos/seed/dw-student/40/40', email: 'david.w@student.example.com', course: 'ACT', year: 2, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456782' },
+    { id: 7, studentId: '24-00-0101', name: 'Frank Miller', avatar: 'https://picsum.photos/seed/fm-student/40/40', email: 'frank.m@student.example.com', course: 'ACT', year: 1, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456783' },
+    { id: 8, studentId: '23-00-0102', name: 'Grace Lee', avatar: 'https://picsum.photos/seed/gl-student/40/40', email: 'grace.l@student.example.com', course: 'ACT', year: 2, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09123456784' },
+    { id: 9, studentId: '22-00-0103', name: 'Henry Taylor', avatar: 'https://picsum.photos/seed/ht-student/40/40', email: 'henry.t@student.example.com', course: 'BSIT', year: 3, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456785' },
+    { id: 10, studentId: '21-00-0104', name: 'Ivy Clark', avatar: 'https://picsum.photos/seed/ic-student/40/40', email: 'ivy.c@student.example.com', course: 'BSIT', year: 4, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09123456786' },
 ];
 
 // --- Academic Records ---
@@ -125,7 +129,23 @@ const initialGrades: StudentGrades = {
     '23-00-0456': [ // David Wilson, not enrolled
          { subjectCode: 'IT 101', grade: 1.0 },
          { subjectCode: 'MATH 101', grade: 1.25 },
-    ]
+    ],
+    '24-00-0101': [], // Frank Miller, 1st year, no grades yet
+    '23-00-0102': [ // Grace Lee, 2nd year ACT
+        { subjectCode: 'IT 101', grade: 1.5 },
+        { subjectCode: 'MATH 101', grade: 2.0 },
+    ],
+    '22-00-0103': [ // Henry Taylor, 3rd year BSIT
+        { subjectCode: 'IT 101', grade: 1.25 },
+        { subjectCode: 'MATH 101', grade: 1.5 },
+        { subjectCode: 'IT 201', grade: 2.0 },
+    ],
+    '21-00-0104': [ // Ivy Clark, 4th year BSIT
+        { subjectCode: 'IT 101', grade: 1.0 },
+        { subjectCode: 'MATH 101', grade: 1.25 },
+        { subjectCode: 'IT 201', grade: 1.5 },
+        { subjectCode: 'IT 301', grade: 1.75 }, // Placeholder for 3rd year subjects
+    ],
 };
 
 // --- Main Admin Data Structure ---
@@ -200,3 +220,5 @@ export const useAdmin = (): AdminContextType => {
   }
   return context;
 };
+
+    
