@@ -50,7 +50,7 @@ const personalFamilySchema = z.object({
     sex: z.enum(['Male', 'Female']),
     civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated']),
     fathersName: z.string().min(1, "Father's name is required"),
-    fathersOccupation: z.string().min(1, "Father's occupation is required"),
+    fathersOccupation: zstring().min(1, "Father's occupation is required"),
     mothersName: z.string().min(1, "Mother's name is required"),
     mothersOccupation: z.string().min(1, "Mother's occupation is required"),
     guardiansName: z.string().optional(),
@@ -121,25 +121,26 @@ function ReviewItem({ label, value }: { label: string; value?: string | number |
     if (value === null || value === undefined || value === '') {
         return null;
     }
+    const displayValue = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value instanceof Date ? format(value, "PPP") : value;
     return (
         <div className="flex flex-col sm:flex-row sm:items-center">
             <p className="w-full sm:w-1/3 font-medium text-muted-foreground">{label}</p>
-            <p className="w-full sm:w-2/3">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value instanceof Date ? format(value, "PPP") : value}</p>
+            <p className="w-full sm:w-2/3">{displayValue}</p>
         </div>
     );
 }
 
-function ReviewStep({ formData }: { formData: EnrollmentSchemaType }) {
-    const getSubjectLabel = (subjectId: string) => {
-        for (const course in subjectsByCourseAndYear) {
-            for (const year in subjectsByCourseAndYear[course]) {
-                const subject = subjectsByCourseAndYear[course][year].find(s => s.id === subjectId);
-                if (subject) return subject.label;
-            }
+const getSubjectLabel = (subjectId: string) => {
+    for (const course of Object.values(subjectsByCourseAndYear)) {
+        for (const year of Object.values(course)) {
+            const subject = year.find(s => s.id === subjectId);
+            if (subject) return subject.label;
         }
-        return subjectId;
-    };
+    }
+    return subjectId;
+};
 
+function ReviewStep({ formData }: { formData: EnrollmentSchemaType }) {
     return (
         <div className="space-y-8">
             <div>
@@ -276,7 +277,7 @@ function Step1() {
                     <FormItem><FormLabel>Father's Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField name="fathersOccupation" render={({ field }) => (
-                    <FormItem><FormLabel>Father's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
+                    <FormItem><FormLabel>Father's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -284,7 +285,7 @@ function Step1() {
                     <FormItem><FormLabel>Mother's Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField name="mothersOccupation" render={({ field }) => (
-                    <FormItem><FormLabel>Mother's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
+                    <FormItem><FormLabel>Mother's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -292,7 +293,7 @@ function Step1() {
                     <FormItem><FormLabel>Guardian's Name (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField name="guardiansOccupation" render={({ field }) => (
-                    <FormItem><FormLabel>Guardian's Occupation (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
+                    <FormItem><FormLabel>Guardian's Occupation (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
             </div>
             <FormField name="guardiansAddress" render={({ field }) => (
