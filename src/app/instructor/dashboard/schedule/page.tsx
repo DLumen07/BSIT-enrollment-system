@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useInstructor } from '@/app/instructor/context/instructor-context';
+import { useAdmin } from '@/app/admin/context/admin-context';
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const timeSlots = Array.from({ length: 12 }, (_, i) => `${(i + 7).toString().padStart(2, '0')}:00`);
@@ -27,17 +28,21 @@ const formatTime = (timeStr: string) => {
 
 export default function InstructorSchedulePage() {
     const { instructorData } = useInstructor();
+    const { adminData } = useAdmin();
 
-    if (!instructorData) return null;
+    if (!instructorData || !adminData) return null;
 
     const { schedule, personal } = instructorData;
+    const { academicYear, semester, semesterOptions } = adminData;
+    const semesterLabel = semesterOptions.find(s => s.value === semester)?.label;
+
 
     return (
         <main className="flex-1 p-4 sm:p-6 space-y-6">
             <div className="space-y-0.5">
                 <h1 className="text-2xl font-bold tracking-tight">My Class Schedule</h1>
                 <p className="text-muted-foreground">
-                    A.Y. 2024-2025, 1st Semester | {personal.name}
+                    A.Y. {academicYear}, {semesterLabel} | {personal.name}
                 </p>
             </div>
             <Card className="rounded-xl">

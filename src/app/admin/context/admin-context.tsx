@@ -157,7 +157,15 @@ const initialGrades: StudentGrades = {
 
 // --- Main Admin Data Structure ---
 const mockAdminData = {
-    currentUser: null as AdminUser | null, // Add currentUser
+    currentUser: null as AdminUser | null,
+    academicYear: '2024-2025',
+    semester: '1st-sem',
+    academicYearOptions: ['2024-2025', '2023-2024'],
+    semesterOptions: [
+        { value: '1st-sem', label: '1st Semester' },
+        { value: '2nd-sem', label: '2nd Semester' },
+        { value: 'summer', label: 'Summer' }
+    ],
     instructors: initialInstructors,
     availableSubjects: initialAvailableSubjects,
     adminUsers: initialAdminUsers,

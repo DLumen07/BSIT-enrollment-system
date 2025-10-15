@@ -7,16 +7,20 @@ import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useStudent } from '@/app/student/context/student-context';
+import { useAdmin } from '@/app/admin/context/admin-context';
 
 export default function EnrollmentPage() {
     const { studentData } = useStudent();
+    const { adminData } = useAdmin();
     
-    if (!studentData) return <div>Loading...</div>;
+    if (!studentData || !adminData) return <div>Loading...</div>;
 
+    const { academicYear, semester, semesterOptions } = adminData;
     const { isEnrolled, registeredSubjects } = studentData.enrollment;
     const { studentId, course, yearLevel, dateEnrolled, status } = studentData.academic;
     const { firstName, lastName } = studentData.personal;
 
+    const semesterLabel = semesterOptions.find(s => s.value === semester)?.label;
 
     const handlePrint = () => {
         window.print();
@@ -29,7 +33,7 @@ export default function EnrollmentPage() {
                     <CardHeader>
                         <CardTitle>Online Enrollment</CardTitle>
                         <CardDescription>
-                            Complete your enrollment for the Academic Year 2024-2025, 1st Semester.
+                            Complete your enrollment for the {academicYear}, {semesterLabel}.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -77,7 +81,7 @@ export default function EnrollmentPage() {
                         <div>
                             <CardTitle>Enrolled</CardTitle>
                             <CardDescription>
-                                You are officially enrolled for the Academic Year 2024-2025, 1st Semester.
+                                You are officially enrolled for the {academicYear}, {semesterLabel}.
                             </CardDescription>
                         </div>
                     </div>

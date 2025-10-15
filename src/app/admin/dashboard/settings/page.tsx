@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera } from 'lucide-react';
+import { Camera, Settings as SettingsIcon } from 'lucide-react';
 import { useAdmin } from '../../context/admin-context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 const InfoField = ({ label, value }: { label: string; value?: string | null }) => {
@@ -26,7 +27,7 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
 export default function AdminSettingsPage() {
     const { toast } = useToast();
     const { adminData, setAdminData } = useAdmin();
-    const { currentUser } = adminData;
+    const { currentUser, academicYear, semester, academicYearOptions, semesterOptions } = adminData;
 
     const [editableData, setEditableData] = React.useState({
         name: '',
@@ -36,6 +37,9 @@ export default function AdminSettingsPage() {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    
+    const [currentAcademicYear, setCurrentAcademicYear] = useState(academicYear);
+    const [currentSemester, setCurrentSemester] = useState(semester);
 
     useEffect(() => {
         if (currentUser) {
@@ -45,6 +49,11 @@ export default function AdminSettingsPage() {
             });
         }
     }, [currentUser]);
+
+    useEffect(() => {
+        setCurrentAcademicYear(academicYear);
+        setCurrentSemester(semester);
+    }, [academicYear, semester]);
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +110,18 @@ export default function AdminSettingsPage() {
         setConfirmPassword('');
     };
 
+    const handleSystemSettingsSave = () => {
+        setAdminData(prev => ({
+            ...prev,
+            academicYear: currentAcademicYear,
+            semester: currentSemester,
+        }));
+        toast({
+            title: "System Settings Saved",
+            description: `The academic term has been set to ${currentAcademicYear}, ${semesterOptions.find(s=>s.value === currentSemester)?.label}.`,
+        });
+    }
+
     if (!currentUser) {
         return <div>Loading...</div>;
     }
@@ -133,6 +154,45 @@ export default function AdminSettingsPage() {
                             <p className="text-sm text-muted-foreground">{currentUser.role}</p>
                         </CardContent>
                     </Card>
+                    {currentUser.role === 'Super Admin' && (
+                        <Card className="rounded-xl">
+                            <CardHeader>
+                                <CardTitle>System Settings</CardTitle>
+                                <CardDescription>Manage global settings for the application.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="academic-year">Academic Year</Label>
+                                    <Select value={currentAcademicYear} onValueChange={setCurrentAcademicYear}>
+                                        <SelectTrigger id="academic-year" className="rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {academicYearOptions.map(year => (
+                                                <SelectItem key={year} value={year}>{year}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="semester">Semester</Label>
+                                    <Select value={currentSemester} onValueChange={setCurrentSemester}>
+                                        <SelectTrigger id="semester" className="rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {semesterOptions.map(sem => (
+                                                <SelectItem key={sem.value} value={sem.value}>{sem.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </CardContent>
+                            <CardFooter>
+                                <Button onClick={handleSystemSettingsSave} className="rounded-xl w-full">Save System Settings</Button>
+                            </CardFooter>
+                        </Card>
+                    )}
                 </div>
                 <div className="lg:col-span-2">
                     <Tabs defaultValue="profile" className="w-full">

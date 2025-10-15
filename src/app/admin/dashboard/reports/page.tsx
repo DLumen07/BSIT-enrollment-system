@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -22,6 +22,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Toolti
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useAdmin } from '../../context/admin-context';
 
 const reportData = {
     '2024-2025': {
@@ -57,8 +58,17 @@ const yearLevelChartConfig = {
 
 
 export default function ReportsPage() {
-    const [academicYear, setAcademicYear] = useState('2024-2025');
-    const [semester, setSemester] = useState('1st-sem');
+    const { adminData } = useAdmin();
+    const { academicYear: globalAcademicYear, semester: globalSemester, academicYearOptions, semesterOptions } = adminData;
+
+    const [academicYear, setAcademicYear] = useState(globalAcademicYear);
+    const [semester, setSemester] = useState(globalSemester);
+
+    useEffect(() => {
+        setAcademicYear(globalAcademicYear);
+        setSemester(globalSemester);
+    }, [globalAcademicYear, globalSemester]);
+
 
     const handlePrint = () => {
         window.print();
@@ -66,6 +76,7 @@ export default function ReportsPage() {
 
     // This would be dynamic based on state in a real app
     const currentData = reportData['2024-2025']['1st-sem'];
+    const semesterLabel = semesterOptions.find(s => s.value === semester)?.label || 'Unknown Semester';
 
     return (
         <>
@@ -115,8 +126,9 @@ export default function ReportsPage() {
                                     <SelectValue placeholder="Select Academic Year" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="2024-2025">2024-2025</SelectItem>
-                                    <SelectItem value="2023-2024">2023-2024</SelectItem>
+                                    {academicYearOptions.map(year => (
+                                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -127,9 +139,9 @@ export default function ReportsPage() {
                                     <SelectValue placeholder="Select Semester" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="1st-sem">1st Semester</SelectItem>
-                                    <SelectItem value="2nd-sem">2nd Semester</SelectItem>
-                                    <SelectItem value="summer">Summer</SelectItem>
+                                    {semesterOptions.map(sem => (
+                                        <SelectItem key={sem.value} value={sem.value}>{sem.label}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -139,7 +151,7 @@ export default function ReportsPage() {
                 <div id="print-section">
                     <div className="text-center mb-8 hidden print:block">
                         <h1 className="text-2xl font-bold">Enrollment Report</h1>
-                        <p>Academic Year {academicYear}, {semester === '1st-sem' ? '1st Semester' : '2nd Semester'}</p>
+                        <p>Academic Year {academicYear}, {semesterLabel}</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <Card>
@@ -237,5 +249,3 @@ export default function ReportsPage() {
         </>
     );
 }
-
-    
