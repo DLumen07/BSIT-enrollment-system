@@ -117,98 +117,6 @@ const subjectsByCourseAndYear: Record<string, Record<string, { id: string; label
     }
 };
 
-function ReviewItem({ label, value }: { label: string; value?: string | number | boolean | Date | null }) {
-    if (value === null || value === undefined || value === '') {
-        return null;
-    }
-    const displayValue = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value instanceof Date ? format(value, "PPP") : value;
-    return (
-        <div className="flex flex-col sm:flex-row sm:items-center">
-            <p className="w-full sm:w-1/3 font-medium text-muted-foreground">{label}</p>
-            <p className="w-full sm:w-2/3">{displayValue}</p>
-        </div>
-    );
-}
-
-const getSubjectLabel = (subjectId: string) => {
-    for (const course of Object.values(subjectsByCourseAndYear)) {
-        for (const year of Object.values(course)) {
-            const subject = year.find(s => s.id === subjectId);
-            if (subject) return subject.label;
-        }
-    }
-    return subjectId;
-};
-
-function ReviewStep({ formData }: { formData: EnrollmentSchemaType }) {
-    return (
-        <div className="space-y-8">
-            <div>
-                <h3 className="text-lg font-medium mb-4">Personal & Family Information</h3>
-                <div className="space-y-2">
-                    <ReviewItem label="Full Name" value={`${formData.firstName} ${formData.middleName || ''} ${formData.lastName}`} />
-                    <ReviewItem label="Email" value={formData.email} />
-                    <ReviewItem label="Phone Number" value={formData.phoneNumber} />
-                    <ReviewItem label="Birthdate" value={formData.birthdate} />
-                    <ReviewItem label="Current Address" value={formData.currentAddress} />
-                    <ReviewItem label="Permanent Address" value={formData.permanentAddress} />
-                    <ReviewItem label="Nationality" value={formData.nationality} />
-                    <ReviewItem label="Religion" value={formData.religion} />
-                    <ReviewItem label="Dialect" value={formData.dialect} />
-                    <ReviewItem label="Sex" value={formData.sex} />
-                    <ReviewItem label="Civil Status" value={formData.civilStatus} />
-                    <ReviewItem label="Father's Name" value={formData.fathersName} />
-                    <ReviewItem label="Father's Occupation" value={formData.fathersOccupation} />
-                    <ReviewItem label="Mother's Name" value={formData.mothersName} />
-                    <ReviewItem label="Mother's Occupation" value={formData.mothersOccupation} />
-                    <ReviewItem label="Guardian's Name" value={formData.guardiansName} />
-                    <ReviewItem label="Guardian's Occupation" value={formData.guardiansOccupation} />
-                    <ReviewItem label="Guardian's Address" value={formData.guardiansAddress} />
-                </div>
-            </div>
-            <div className="border-t pt-8">
-                <h3 className="text-lg font-medium mb-4">Additional & Educational Background</h3>
-                <div className="space-y-2">
-                    <ReviewItem label="Living with Family" value={formData.livingWithFamily} />
-                    <ReviewItem label="Boarding" value={formData.boarding} />
-                    <ReviewItem label="Differently Abled" value={formData.differentlyAbled} />
-                    {formData.differentlyAbled && <ReviewItem label="Disability" value={formData.disability} />}
-                    <ReviewItem label="Belong to Minority Group" value={formData.minorityGroup} />
-                    {formData.minorityGroup && <ReviewItem label="Minority Group" value={formData.minority} />}
-                    <ReviewItem label="Emergency Contact Name" value={formData.emergencyContactName} />
-                    <ReviewItem label="Emergency Contact Address" value={formData.emergencyContactAddress} />
-                    <ReviewItem label="Emergency Contact Number" value={formData.emergencyContactNumber} />
-                    <ReviewItem label="Elementary School" value={formData.elementarySchool} />
-                    <ReviewItem label="Year Graduated (Elem)" value={formData.elemYearGraduated} />
-                    <ReviewItem label="Secondary School" value={formData.secondarySchool} />
-                    <ReviewItem label="Year Graduated (Secondary)" value={formData.secondaryYearGraduated} />
-                    <ReviewItem label="Collegiate School" value={formData.collegiateSchool} />
-                    <ReviewItem label="Year Graduated (Collegiate)" value={formData.collegiateYearGraduated} />
-                </div>
-            </div>
-            <div className="border-t pt-8">
-                <h3 className="text-lg font-medium mb-4">Academic Information</h3>
-                <div className="space-y-2">
-                    <ReviewItem label="Course" value={formData.course} />
-                    <ReviewItem label="Status" value={formData.status} />
-                    <ReviewItem label="Year Level" value={formData.yearLevel} />
-                    <ReviewItem label="Block" value={formData.block} />
-                    {formData.subjects && formData.subjects.length > 0 && (
-                        <div>
-                            <p className="w-full sm:w-1/3 font-medium text-muted-foreground mb-2">Enlisted Subjects</p>
-                            <ul className="list-disc pl-5 space-y-1">
-                                {formData.subjects.map(subjectId => (
-                                    <li key={subjectId}>{getSubjectLabel(subjectId)}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
 function Step1() {
     return (
         <div className="space-y-6">
@@ -492,7 +400,6 @@ export default function EnrollmentFormPage() {
     const { studentData } = useStudent();
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitted, setIsSubmitted] = useState(false);
-    const [isReviewing, setIsReviewing] = useState(false);
     const [showSkipDialog, setShowSkipDialog] = useState(false);
     const [hasMadeSkipChoice, setHasMadeSkipChoice] = useState(false);
 
@@ -556,15 +463,11 @@ export default function EnrollmentFormPage() {
         if (currentStep < steps.length - 1) {
             setCurrentStep(step => step + 1);
         } else {
-             setIsReviewing(true);
+             methods.handleSubmit(processForm)();
         }
     };
 
     const prev = () => {
-        if (isReviewing) {
-            setIsReviewing(false);
-            return;
-        }
         if (currentStep > 0) {
             setCurrentStep(step => step - 1);
         }
@@ -634,38 +537,29 @@ export default function EnrollmentFormPage() {
                 <form onSubmit={methods.handleSubmit(processForm)}>
                     <Card className="max-w-4xl mx-auto rounded-xl">
                         <CardHeader>
-                            <CardTitle>{isReviewing ? 'Review Your Information' : 'Enrollment Form'}</CardTitle>
+                            <CardTitle>Enrollment Form</CardTitle>
                             <CardDescription>
-                                {isReviewing 
-                                    ? 'Please review your details carefully before final submission.' 
-                                    : `Please fill out all the necessary fields. (${steps[currentStep].name})`
-                                }
+                                {`Please fill out all the necessary fields. (${steps[currentStep].name})`}
                             </CardDescription>
-                            {!isReviewing && <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />}
+                            <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />
                         </CardHeader>
                         <CardContent>
-                            {isReviewing ? (
-                                <ReviewStep formData={methods.getValues()} />
-                            ) : (
-                                <>
-                                    {currentStep === 0 && <Step1 />}
-                                    {currentStep === 1 && <Step2 />}
-                                    {currentStep === 2 && <Step3 />}
-                                </>
-                            )}
+                            {currentStep === 0 && <Step1 />}
+                            {currentStep === 1 && <Step2 />}
+                            {currentStep === 2 && <Step3 />}
                         </CardContent>
                         <CardFooter>
                             <div className="flex justify-between w-full">
-                                <Button type="button" onClick={prev} disabled={currentStep === 0 && !isReviewing} variant="outline" className="rounded-xl">
-                                    {isReviewing ? 'Edit' : 'Previous'}
+                                <Button type="button" onClick={prev} disabled={currentStep === 0} variant="outline" className="rounded-xl">
+                                    Previous
                                 </Button>
-                                {isReviewing ? (
-                                    <Button type="submit" className="rounded-xl">
-                                        Confirm & Submit
+                                {currentStep < steps.length - 1 ? (
+                                    <Button type="button" onClick={next} className="rounded-xl">
+                                        Next
                                     </Button>
                                 ) : (
-                                    <Button type="button" onClick={next} className="rounded-xl">
-                                        {currentStep < steps.length - 1 ? 'Next' : 'Review'}
+                                    <Button type="submit" className="rounded-xl">
+                                        Submit
                                     </Button>
                                 )}
                             </div>
