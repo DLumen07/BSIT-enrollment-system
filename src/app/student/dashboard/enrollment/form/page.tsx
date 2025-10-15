@@ -219,11 +219,13 @@ function Step2() {
 
 function Step3() {
     const { adminData } = useAdmin();
+    const { studentData } = useStudent();
     const form = useFormContext();
     const selectedYear = form.watch('yearLevel');
     const selectedCourse = form.watch('course');
     const selectedSpecialization = form.watch('specialization');
     const isUpperYear = selectedYear === '3rd Year' || selectedYear === '4th Year';
+    const isFourthYear = selectedYear === '4th Year';
     
     const yearLevelMap: Record<string, '1st-year' | '2nd-year' | '3rd-year' | '4th-year'> = {
         '1st Year': '1st-year',
@@ -231,6 +233,12 @@ function Step3() {
         '3rd Year': '3rd-year',
         '4th Year': '4th-year',
     };
+
+    useEffect(() => {
+        if (isFourthYear && studentData?.specialization) {
+            form.setValue('specialization', studentData.specialization);
+        }
+    }, [isFourthYear, studentData, form]);
 
     const availableBlocks = useMemo(() => {
         if (!selectedYear || !selectedCourse) return [];
@@ -291,7 +299,7 @@ function Step3() {
                     <FormField name="specialization" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Specialization</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isFourthYear}>
                                 <FormControl>
                                     <SelectTrigger className="rounded-xl">
                                         <SelectValue placeholder="Select specialization" />
@@ -302,6 +310,7 @@ function Step3() {
                                     <SelectItem value="DD">Digital Design (DD)</SelectItem>
                                 </SelectContent>
                             </Select>
+                             {isFourthYear && <p className="text-sm text-muted-foreground mt-2">Your specialization is locked from your 3rd year.</p>}
                             <FormMessage />
                         </FormItem>
                     )} />
@@ -390,14 +399,14 @@ export default function EnrollmentFormPage() {
     const [isSubmitted, setIsSubmitted] = useState(false);
     
     const isNewStudent = useMemo(() => {
-        if (!studentData) return true;
+        if (!studentData) return true; // Default to new student if no data
         const yearNumber = parseInt(studentData.academic.yearLevel, 10);
         return yearNumber === 1 && studentData.academic.status !== 'Old';
     }, [studentData]);
 
     useEffect(() => {
         if (studentData && !isNewStudent) {
-            setCurrentStep(2);
+            setCurrentStep(2); // Skip to the last step for old students
         } else {
             setCurrentStep(0);
         }
@@ -409,7 +418,7 @@ export default function EnrollmentFormPage() {
         resolver: zodResolver(currentSchema),
         defaultValues: useMemo(() => {
             if (!studentData) return {};
-            const isOldStudent = parseInt(studentData.academic.yearLevel, 10) > 1;
+            const yearNumber = parseInt(studentData.academic.yearLevel, 10);
             return {
                 firstName: studentData.personal.firstName,
                 lastName: studentData.personal.lastName,
@@ -437,24 +446,25 @@ export default function EnrollmentFormPage() {
                 secondarySchool: studentData.education.secondarySchool,
                 secondaryYearGraduated: studentData.education.secondaryYearGraduated,
                 collegiateSchool: studentData.education.collegiateSchool,
-                status: isOldStudent ? 'Old' : 'New',
+                status: yearNumber > 1 ? 'Old' : 'New',
                 yearLevel: studentData.academic.yearLevel,
                 course: studentData.academic.course,
+                specialization: studentData.academic.specialization || '',
                 subjects: [],
                 block: '',
-                specialization: '',
             };
         }, [studentData])
     });
     
     useEffect(() => {
         if (studentData) {
-            const isOldStudent = parseInt(studentData.academic.yearLevel, 10) > 1;
+            const yearNumber = parseInt(studentData.academic.yearLevel, 10);
             methods.reset({
                 ...methods.getValues(), // keep existing form values
-                status: isOldStudent ? 'Old' : 'New',
+                status: yearNumber > 1 ? 'Old' : 'New',
                 yearLevel: studentData.academic.yearLevel,
                 course: studentData.academic.course,
+                specialization: studentData.academic.specialization || '',
             });
         }
     }, [studentData, methods]);
@@ -476,17 +486,18 @@ export default function EnrollmentFormPage() {
         
         const fieldsToValidate = fieldsByStep[currentStep];
         const output = await methods.trigger(fieldsToValidate, { shouldFocus: true });
+
         if (!output) return;
 
         if (currentStep < steps.length - 1) {
-            setCurrentStep(step => step + 1);
+             setCurrentStep(step => step + 1);
         } else {
              methods.handleSubmit(processForm)();
         }
     };
 
     const prev = () => {
-        if (currentStep > 0 && currentStep > (isNewStudent ? 0 : 2)) {
+        if (currentStep > (isNewStudent ? 0 : 2)) {
             setCurrentStep(step => step - 1);
         }
     };
@@ -537,7 +548,7 @@ export default function EnrollmentFormPage() {
                             {currentStep === 2 && <Step3 />}
                         </CardContent>
                         <CardFooter>
-                            <div className="flex justify-between w-full">
+                           <div className="flex justify-between w-full">
                                 {isNewStudent && currentStep > 0 && (
                                     <Button type="button" onClick={prev} variant="outline" className="rounded-xl">
                                         Previous
@@ -561,5 +572,7 @@ export default function EnrollmentFormPage() {
         </main>
     );
 }
+
+    
 
     

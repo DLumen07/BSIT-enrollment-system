@@ -51,7 +51,8 @@ const mockStudentData = {
         yearLevel: '2nd Year',
         block: 'BSIT 2-A',
         status: 'Enrolled' as 'Enrolled' | 'Not Enrolled' | 'Graduated',
-        dateEnrolled: 'August 15, 2024'
+        dateEnrolled: 'August 15, 2024',
+        specialization: undefined as 'AP' | 'DD' | undefined,
     },
     enrollment: {
         isEnrolled: true,
@@ -142,7 +143,8 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
             yearLevel: `${currentStudent.year}${currentStudent.year === 1 ? 'st' : currentStudent.year === 2 ? 'nd' : currentStudent.year === 3 ? 'rd' : 'th'} Year`,
             block: currentStudent.block || 'N/A',
             status: currentStudent.status,
-            dateEnrolled: 'August 15, 2024'
+            dateEnrolled: 'August 15, 2024',
+            specialization: currentStudent.specialization,
           },
           enrollment: {
             isEnrolled: isEnrolled,
@@ -180,4 +182,6 @@ export const useStudent = (): StudentContextType => {
   }
   return context;
 };
+    
+
     
