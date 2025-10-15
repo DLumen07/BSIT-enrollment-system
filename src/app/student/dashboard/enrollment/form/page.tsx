@@ -117,7 +117,7 @@ const subjectsByCourseAndYear: Record<string, Record<string, { id: string; label
     }
 };
 
-const ReviewItem = ({ label, value }: { label: string, value?: string | number | boolean | Date | null }) => {
+const ReviewItem = ({ label, value }: { label: string; value?: string | number | boolean | Date | null }) => {
     if (value === null || value === undefined || value === '') {
         return null;
     }
@@ -210,95 +210,95 @@ const ReviewStep = ({ formData }: { formData: EnrollmentSchemaType }) => {
 
 const Step1 = () => {
     return (
-    <div className="space-y-6">
-        <h3 className="text-lg font-medium">Personal Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField name="firstName" render={({ field }) => (
-                <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+        <div className="space-y-6">
+            <h3 className="text-lg font-medium">Personal Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField name="firstName" render={({ field }) => (
+                    <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="lastName" render={({ field }) => (
+                    <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="middleName" render={({ field }) => (
+                    <FormItem><FormLabel>Middle Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="email" render={({ field }) => (
+                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} type="email" className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="phoneNumber" render={({ field }) => (
+                    <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input {...field} type="tel" className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+            </div>
+            <FormField name="birthdate" render={({ field }) => (
+                <FormItem className="flex flex-col"><FormLabel>Birthdate</FormLabel><Popover><PopoverTrigger asChild>
+                    <FormControl>
+                        <Button variant={"outline"} className={cn("pl-3 text-left font-normal rounded-xl", !field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                    </FormControl>
+                </PopoverTrigger><PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
+                </PopoverContent></Popover><FormMessage /></FormItem>
             )} />
-            <FormField name="lastName" render={({ field }) => (
-                <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+            <FormField name="currentAddress" render={({ field }) => (
+                <FormItem><FormLabel>Current Address</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
             )} />
-            <FormField name="middleName" render={({ field }) => (
-                <FormItem><FormLabel>Middle Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+            <FormField name="permanentAddress" render={({ field }) => (
+                <FormItem><FormLabel>Permanent Address</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+            )} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField name="nationality" render={({ field }) => (
+                    <FormItem><FormLabel>Nationality</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="religion" render={({ field }) => (
+                    <FormItem><FormLabel>Religion</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="dialect" render={({ field }) => (
+                    <FormItem><FormLabel>Dialect</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="sex" render={({ field }) => (
+                    <FormItem><FormLabel>Sex</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select sex" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+                <FormField name="civilStatus" render={({ field }) => (
+                    <FormItem><FormLabel>Civil Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select civil status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem><SelectItem value="Widowed">Widowed</SelectItem><SelectItem value="Separated">Separated</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+            </div>
+            <div className="border-t pt-6 mt-6">
+                <h3 className="text-lg font-medium">Family Information</h3>
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="fathersName" render={({ field }) => (
+                    <FormItem><FormLabel>Father's Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="fathersOccupation" render={({ field }) => (
+                    <FormItem><FormLabel>Father's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
+                )} />
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="mothersName" render={({ field }) => (
+                    <FormItem><FormLabel>Mother's Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="mothersOccupation" render={({ field }) => (
+                    <FormItem><FormLabel>Mother's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
+                )} />
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="guardiansName" render={({ field }) => (
+                    <FormItem><FormLabel>Guardian's Name (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="guardiansOccupation" render={({ field }) => (
+                    <FormItem><FormLabel>Guardian's Occupation (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
+                )} />
+            </div>
+            <FormField name="guardiansAddress" render={({ field }) => (
+                <FormItem><FormLabel>Guardian's Address (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
             )} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField name="email" render={({ field }) => (
-                <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} type="email" className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="phoneNumber" render={({ field }) => (
-                <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input {...field} type="tel" className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-        </div>
-        <FormField name="birthdate" render={({ field }) => (
-            <FormItem className="flex flex-col"><FormLabel>Birthdate</FormLabel><Popover><PopoverTrigger asChild>
-                <FormControl>
-                    <Button variant={"outline"} className={cn("pl-3 text-left font-normal rounded-xl", !field.value && "text-muted-foreground")}>
-                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                </FormControl>
-            </PopoverTrigger><PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
-            </PopoverContent></Popover><FormMessage /></FormItem>
-        )} />
-        <FormField name="currentAddress" render={({ field }) => (
-            <FormItem><FormLabel>Current Address</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField name="permanentAddress" render={({ field }) => (
-            <FormItem><FormLabel>Permanent Address</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-        )} />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField name="nationality" render={({ field }) => (
-                <FormItem><FormLabel>Nationality</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="religion" render={({ field }) => (
-                <FormItem><FormLabel>Religion</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="dialect" render={({ field }) => (
-                <FormItem><FormLabel>Dialect</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-        </div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField name="sex" render={({ field }) => (
-                <FormItem><FormLabel>Sex</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select sex" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
-            <FormField name="civilStatus" render={({ field }) => (
-                <FormItem><FormLabel>Civil Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select civil status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem><SelectItem value="Widowed">Widowed</SelectItem><SelectItem value="Separated">Separated</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-            )} />
-        </div>
-        <div className="border-t pt-6 mt-6">
-            <h3 className="text-lg font-medium">Family Information</h3>
-        </div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField name="fathersName" render={({ field }) => (
-                <FormItem><FormLabel>Father's Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="fathersOccupation" render={({ field }) => (
-                <FormItem><FormLabel>Father's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
-            )} />
-        </div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField name="mothersName" render={({ field }) => (
-                <FormItem><FormLabel>Mother's Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="mothersOccupation" render={({ field }) => (
-                <FormItem><FormLabel>Mother's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
-            )} />
-        </div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField name="guardiansName" render={({ field }) => (
-                <FormItem><FormLabel>Guardian's Name (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="guardiansOccupation" render={({ field }) => (
-                <FormItem><FormLabel>Guardian's Occupation (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormMessage /></FormItem>
-            )} />
-        </div>
-        <FormField name="guardiansAddress" render={({ field }) => (
-            <FormItem><FormLabel>Guardian's Address (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-        )} />
-    </div>
     );
 };
 
@@ -630,45 +630,47 @@ export default function EnrollmentFormPage() {
     return (
         <main className="flex-1 p-4 sm:p-6">
             <FormProvider {...methods}>
-                <Card className="max-w-4xl mx-auto rounded-xl">
-                    <CardHeader>
-                        <CardTitle>{isReviewing ? 'Review Your Information' : 'Enrollment Form'}</CardTitle>
-                        <CardDescription>
-                            {isReviewing 
-                                ? 'Please review your details carefully before final submission.' 
-                                : `Please fill out all the necessary fields. (${steps[currentStep].name})`
-                            }
-                        </CardDescription>
-                        {!isReviewing && <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />}
-                    </CardHeader>
-                    <CardContent>
-                        {isReviewing ? (
-                            <ReviewStep formData={methods.getValues()} />
-                        ) : (
-                            <>
-                                {currentStep === 0 && <Step1 />}
-                                {currentStep === 1 && <Step2 />}
-                                {currentStep === 2 && <Step3 />}
-                            </>
-                        )}
-                    </CardContent>
-                    <CardFooter>
-                        <div className="flex justify-between w-full">
-                            <Button type="button" onClick={prev} disabled={currentStep === 0 && !isReviewing} variant="outline" className="rounded-xl">
-                                {isReviewing ? 'Edit' : 'Previous'}
-                            </Button>
+                <form onSubmit={methods.handleSubmit(processForm)}>
+                    <Card className="max-w-4xl mx-auto rounded-xl">
+                        <CardHeader>
+                            <CardTitle>{isReviewing ? 'Review Your Information' : 'Enrollment Form'}</CardTitle>
+                            <CardDescription>
+                                {isReviewing 
+                                    ? 'Please review your details carefully before final submission.' 
+                                    : `Please fill out all the necessary fields. (${steps[currentStep].name})`
+                                }
+                            </CardDescription>
+                            {!isReviewing && <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />}
+                        </CardHeader>
+                        <CardContent>
                             {isReviewing ? (
-                                <Button type="button" onClick={methods.handleSubmit(processForm)} className="rounded-xl">
-                                    Confirm & Submit
-                                </Button>
+                                <ReviewStep formData={methods.getValues()} />
                             ) : (
-                                <Button type="button" onClick={next} className="rounded-xl">
-                                    {currentStep < steps.length - 1 ? 'Next' : 'Review'}
-                                </Button>
+                                <>
+                                    {currentStep === 0 && <Step1 />}
+                                    {currentStep === 1 && <Step2 />}
+                                    {currentStep === 2 && <Step3 />}
+                                </>
                             )}
-                        </div>
-                    </CardFooter>
-                </Card>
+                        </CardContent>
+                        <CardFooter>
+                            <div className="flex justify-between w-full">
+                                <Button type="button" onClick={prev} disabled={currentStep === 0 && !isReviewing} variant="outline" className="rounded-xl">
+                                    {isReviewing ? 'Edit' : 'Previous'}
+                                </Button>
+                                {isReviewing ? (
+                                    <Button type="submit" className="rounded-xl">
+                                        Confirm & Submit
+                                    </Button>
+                                ) : (
+                                    <Button type="button" onClick={next} className="rounded-xl">
+                                        {currentStep < steps.length - 1 ? 'Next' : 'Review'}
+                                    </Button>
+                                )}
+                            </div>
+                        </CardFooter>
+                    </Card>
+                </form>
             </FormProvider>
         </main>
     );
