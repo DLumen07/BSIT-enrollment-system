@@ -522,7 +522,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                         </div>
                                     )}
                                 </div>
-                                <DialogFooter className="sm:justify-start">
+                                <DialogFooter className="sm:justify-between">
                                     <Button variant="outline" onClick={() => setDirectEnrollStep(1)} className="rounded-xl">Back</Button>
                                     <Button onClick={() => setDirectEnrollStep(3)} className="rounded-xl">Review</Button>
                                 </DialogFooter>
