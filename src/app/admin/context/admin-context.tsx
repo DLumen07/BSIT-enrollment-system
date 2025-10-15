@@ -68,7 +68,10 @@ const initialSubjects: YearLevelSubjects = {
     '2nd-year': [ 
         { id: 201, code: 'IT 201', description: 'Data Structures & Algorithms', units: 3, prerequisite: 'IT 101' }, 
     ],
-    '3rd-year': [], '4th-year': [],
+    '3rd-year': [
+        { id: 301, code: 'IT 301', description: 'Object-Oriented Programming', units: 3, prerequisite: 'IT 201' },
+    ], 
+    '4th-year': [],
 };
 
 // --- Data from schedule ---
@@ -99,7 +102,7 @@ export type Student = {
 };
 const initialStudentsList: Student[] = [
     { id: 1, studentId: '21-00-0123', name: 'Alice Johnson', avatar: 'https://picsum.photos/seed/aj-student/40/40', email: 'alice.j@student.example.com', course: 'BSIT', year: 4, status: 'Enrolled', sex: 'Female', phoneNumber: '09123456789' },
-    { id: 2, studentId: '22-00-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40', email: 'bob.w@student.example.com', course: 'BSIT', year: 3, status: 'Enrolled', sex: 'Male', phoneNumber: '09123456780' },
+    { id: 2, studentId: '22-00-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40', email: 'bob.w@student.example.com', course: 'BSIT', year: 3, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456780' },
     { id: 3, studentId: '23-00-0345', name: 'Charlie Brown', avatar: 'https://picsum.photos/seed/cb-student/40/40', email: 'charlie.b@student.example.com', course: 'ACT', year: 2, status: 'Enrolled', sex: 'Male', phoneNumber: '09123456781' },
     { id: 4, studentId: '23-00-0456', name: 'David Wilson', avatar: 'https://picsum.photos/seed/dw-student/40/40', email: 'david.w@student.example.com', course: 'ACT', year: 2, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456782' },
     { id: 7, studentId: '24-00-0101', name: 'Frank Miller', avatar: 'https://picsum.photos/seed/fm-student/40/40', email: 'frank.m@student.example.com', course: 'ACT', year: 1, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456783' },
@@ -123,6 +126,7 @@ const initialGrades: StudentGrades = {
     '22-00-0234': [
         { subjectCode: 'IT 101', grade: 1.25 },
         { subjectCode: 'MATH 101', grade: 1.5 },
+        { subjectCode: 'IT 201', grade: 1.75 },
     ],
     '23-00-0345': [
         { subjectCode: 'IT 101', grade: 3.0 },
@@ -222,5 +226,3 @@ export const useAdmin = (): AdminContextType => {
   }
   return context;
 };
-
-    
