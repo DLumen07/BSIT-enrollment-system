@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,12 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { useStudent } from '@/app/student/context/student-context';
+import { useAdmin } from '@/app/admin/context/admin-context';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,6 +28,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const steps = [
@@ -87,13 +89,6 @@ const academicSchema = z.object({
 
 const enrollmentSchema = personalFamilySchema.merge(additionalInfoSchema).merge(academicSchema);
 type EnrollmentSchemaType = z.infer<typeof enrollmentSchema>;
-
-const blocksByYear: Record<string, { value: string; label: string }[]> = {
-    "1st Year": [{ value: 'ACT 1-A', label: 'ACT 1-A' }, { value: 'ACT 1-B', label: 'ACT 1-B' }],
-    "2nd Year": [{ value: 'ACT 2-A', label: 'ACT 2-A' }],
-    "3rd Year": [{ value: 'BSIT 3-A', label: 'BSIT 3-A (AP)' }, { value: 'BSIT 3-B', label: 'BSIT 3-B (DD)' }],
-    "4th Year": [{ value: 'BSIT 4-A', label: 'BSIT 4-A (AP)' }],
-};
 
 const subjectsByCourseAndYear: Record<string, Record<string, { id: string; label: string; units: number }[]>> = {
     "BSIT": {
@@ -290,12 +285,27 @@ function Step2() {
 }
 
 function Step3() {
+    const { adminData } = useAdmin();
     const form = useFormContext();
     const selectedYear = form.watch('yearLevel');
     const selectedCourse = form.watch('course');
     const selectedBlock = form.watch('block');
 
-    const availableBlocks = selectedYear ? blocksByYear[selectedYear] || [] : [];
+    const yearLevelMap: Record<string, string> = {
+        '1st Year': '1st-year',
+        '2nd Year': '2nd-year',
+        '3rd Year': '3rd-year',
+        '4th Year': '4th-year',
+    };
+
+    const availableBlocks = useMemo(() => {
+        if (!selectedYear || !selectedCourse) return [];
+        const yearKey = yearLevelMap[selectedYear];
+        return adminData.blocks
+            .filter(b => b.year === yearKey && b.course === selectedCourse && b.capacity > b.enrolled)
+            .map(b => ({ value: b.name, label: b.name }));
+    }, [selectedYear, selectedCourse, adminData.blocks]);
+
     const availableSubjects = selectedCourse && selectedYear ? subjectsByCourseAndYear[selectedCourse]?.[selectedYear] || [] : [];
     
     return (
@@ -327,18 +337,33 @@ function Step3() {
                 <FormField name="yearLevel" render={({ field }) => (
                     <FormItem><FormLabel>Year Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select year level" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="1st Year">1st Year</SelectItem><SelectItem value="2nd Year">2nd Year</SelectItem><SelectItem value="3rd Year">3rd Year</SelectItem><SelectItem value="4th Year">4th Year</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                 )} />
-                {selectedYear && availableBlocks.length > 0 && (
-                     <FormField name="block" render={({ field }) => (
-                        <FormItem><FormLabel>Block</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select block" /></SelectTrigger></FormControl><SelectContent className="rounded-xl">
-                            {availableBlocks.map(block => (
-                                <SelectItem key={block.value} value={block.value}>{block.label}</SelectItem>
-                            ))}
-                        </SelectContent></Select><FormMessage /></FormItem>
-                    )} />
+                {selectedYear === '1st Year' && (
+                     <>
+                        {availableBlocks.length > 0 ? (
+                             <FormField name="block" render={({ field }) => (
+                                <FormItem><FormLabel>Block</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select block" /></SelectTrigger></FormControl><SelectContent className="rounded-xl">
+                                    {availableBlocks.map(block => (
+                                        <SelectItem key={block.value} value={block.value}>{block.label}</SelectItem>
+                                    ))}
+                                </SelectContent></Select><FormMessage /></FormItem>
+                            )} />
+                        ) : (
+                            <div className="space-y-2">
+                                <FormLabel>Block</FormLabel>
+                                <Alert variant="destructive" className="rounded-xl">
+                                    <Info className="h-4 w-4" />
+                                    <AlertTitle>No Blocks Available</AlertTitle>
+                                    <AlertDescription>
+                                        There are no available blocks for this year level. Please try again later.
+                                    </AlertDescription>
+                                </Alert>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
             
-            {selectedBlock && availableSubjects.length > 0 && (
+            {selectedYear === '1st Year' && selectedBlock && availableSubjects.length > 0 && (
                 <div className="space-y-4 pt-4 border-t">
                      <h3 className="text-lg font-medium">Enlist Subjects</h3>
                      <p className="text-sm text-muted-foreground">Select the subjects you want to enroll in.</p>
@@ -467,6 +492,8 @@ export default function EnrollmentFormPage() {
                 if (!result.success) {
                      // Manually set errors if you want to display them
                     console.error(result.error.format());
+                     // Trigger validation to show errors
+                    methods.trigger(fieldsToValidate);
                     return;
                 }
              } else {
