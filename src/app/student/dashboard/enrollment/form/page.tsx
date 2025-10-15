@@ -19,6 +19,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { useStudent } from '@/app/student/context/student-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 const steps = [
     { id: 'Step 1', name: 'Personal & Family Information' },
@@ -64,7 +66,17 @@ const academicSchema = z.object({
     status: z.enum(['New', 'Old', 'Transferee']),
     block: z.string({required_error: 'Please select a block.'}).min(1, 'Please select a block.'),
     subjects: z.array(z.string()).min(1, "Please select at least one subject."),
+    specialization: z.string().optional(),
+}).refine(data => {
+    if ((data.yearLevel === '3rd Year' || data.yearLevel === '4th Year') && !data.specialization) {
+        return false;
+    }
+    return true;
+}, {
+    message: 'Specialization is required for 3rd and 4th year students.',
+    path: ['specialization'],
 });
+
 
 // Full schema for new students
 const newStudentSchema = personalFamilySchema.merge(additionalInfoSchema).merge(academicSchema);
@@ -210,12 +222,13 @@ function Step3() {
     const form = useFormContext();
     const selectedYear = form.watch('yearLevel');
     const selectedCourse = form.watch('course');
+    const selectedSpecialization = form.watch('specialization');
+    const isUpperYear = selectedYear === '3rd Year' || selectedYear === '4th Year';
     
     const yearLevelMap: Record<string, '1st-year' | '2nd-year' | '3rd-year' | '4th-year'> = {
         '1st Year': '1st-year',
         '2nd Year': '2nd-year',
         '3rd Year': '3rd-year',
-        '4th Year': '4th-year',
         '4th Year': '4th-year',
     };
 
@@ -224,9 +237,15 @@ function Step3() {
         const yearKey = yearLevelMap[selectedYear];
         if (!yearKey) return [];
         return adminData.blocks
-            .filter(b => b.year === yearKey && b.course === selectedCourse && b.capacity > b.enrolled)
+            .filter(b => {
+                const yearMatch = b.year === yearKey;
+                const courseMatch = b.course === selectedCourse;
+                const specMatch = !isUpperYear || b.specialization === selectedSpecialization;
+                const capacityMatch = b.capacity > b.enrolled;
+                return yearMatch && courseMatch && specMatch && capacityMatch;
+            })
             .map(b => ({ value: b.name, label: b.name }));
-    }, [selectedYear, selectedCourse, adminData.blocks]);
+    }, [selectedYear, selectedCourse, selectedSpecialization, adminData.blocks, isUpperYear]);
 
     const availableSubjects = useMemo(() => {
         if (!selectedYear) return [];
@@ -268,26 +287,45 @@ function Step3() {
                 <FormField name="yearLevel" render={({ field }) => (
                     <FormItem><FormLabel>Year Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select year level" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="1st Year">1st Year</SelectItem><SelectItem value="2nd Year">2nd Year</SelectItem><SelectItem value="3rd Year">3rd Year</SelectItem><SelectItem value="4th Year">4th Year</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                 )} />
-                <FormField name="block" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Block</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={availableBlocks.length === 0}>
-                            <FormControl>
-                                <SelectTrigger className="rounded-xl">
-                                    <SelectValue placeholder={availableBlocks.length === 0 ? "No available blocks" : "Select block"} />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="rounded-xl">
-                                {availableBlocks.map(block => (
-                                    <SelectItem key={block.value} value={block.value}>{block.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {availableBlocks.length === 0 && <p className="text-sm text-muted-foreground mt-2">There are no available blocks for this year level. Please try again later.</p>}
-                        <FormMessage />
-                    </FormItem>
-                )} />
+                 {isUpperYear && (
+                    <FormField name="specialization" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Specialization</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger className="rounded-xl">
+                                        <SelectValue placeholder="Select specialization" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="AP">Application Programming (AP)</SelectItem>
+                                    <SelectItem value="DD">Digital Design (DD)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                )}
             </div>
+            <FormField name="block" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Block</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={availableBlocks.length === 0 || (isUpperYear && !selectedSpecialization)}>
+                        <FormControl>
+                            <SelectTrigger className="rounded-xl">
+                                <SelectValue placeholder={availableBlocks.length === 0 ? "No available blocks" : "Select block"} />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-xl">
+                            {availableBlocks.map(block => (
+                                <SelectItem key={block.value} value={block.value}>{block.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {availableBlocks.length === 0 && <p className="text-sm text-muted-foreground mt-2">There are no available blocks for this selection. Please try again later.</p>}
+                    <FormMessage />
+                </FormItem>
+            )} />
             
             {availableSubjects.length > 0 && (
                 <div className="space-y-4 pt-4 border-t">
@@ -352,61 +390,27 @@ export default function EnrollmentFormPage() {
     const [isSubmitted, setIsSubmitted] = useState(false);
     
     const isNewStudent = useMemo(() => {
-        if (!studentData) return true; // Assume new if no data yet
-        return parseInt(studentData.academic.yearLevel, 10) === 1;
+        if (!studentData) return true;
+        const yearNumber = parseInt(studentData.academic.yearLevel, 10);
+        return yearNumber === 1 && studentData.academic.status !== 'Old';
     }, [studentData]);
 
     useEffect(() => {
         if (studentData && !isNewStudent) {
-            setCurrentStep(2); // Skip to step 3 for old students
+            setCurrentStep(2);
+        } else {
+            setCurrentStep(0);
         }
     }, [isNewStudent, studentData]);
 
-    const methods = useForm<EnrollmentSchemaType>({
-        resolver: zodResolver(isNewStudent ? newStudentSchema : oldStudentSchema),
-        defaultValues: useMemo(() => ({
-            // Personal and contact info from context
-            firstName: studentData?.personal.firstName || '',
-            lastName: studentData?.personal.lastName || '',
-            middleName: studentData?.personal.middleName || '',
-            email: studentData?.contact.email || '',
-            phoneNumber: studentData?.contact.phoneNumber || '',
-            birthdate: studentData?.personal.birthdate ? new Date(studentData.personal.birthdate) : new Date(),
-            currentAddress: studentData?.address.currentAddress || '',
-            permanentAddress: studentData?.address.permanentAddress || '',
-            nationality: studentData?.personal.nationality || 'Filipino',
-            religion: studentData?.personal.religion || '',
-            dialect: studentData?.personal.dialect || '',
-            sex: studentData?.personal.sex || 'Male',
-            civilStatus: 'Single',
-            // Family info from context
-            fathersName: studentData?.family.fathersName || '',
-            fathersOccupation: studentData?.family.fathersOccupation || '',
-            mothersName: studentData?.family.mothersName || '',
-            mothersOccupation: studentData?.family.mothersOccupation || '',
-            guardiansName: studentData?.family.guardiansName || '',
-            // Additional info from context
-            emergencyContactName: studentData?.additional.emergencyContactName || '',
-            emergencyContactAddress: studentData?.additional.emergencyContactAddress || '',
-            emergencyContactNumber: studentData?.additional.emergencyContactNumber || '',
-            // Education info from context
-            elementarySchool: studentData?.education.elementarySchool || '',
-            elemYearGraduated: studentData?.education.elemYearGraduated || '',
-            secondarySchool: studentData?.education.secondarySchool || '',
-            secondaryYearGraduated: studentData?.education.secondaryYearGraduated || '',
-            collegiateSchool: studentData?.education.collegiateSchool || '',
-            // Academic Info from context
-            status: parseInt(studentData?.academic.yearLevel || '1', 10) > 1 ? 'Old' : 'New',
-            yearLevel: studentData?.academic.yearLevel,
-            course: studentData?.academic.course,
-            subjects: [],
-            block: '',
-        }), [studentData])
-    });
+    const currentSchema = isNewStudent ? newStudentSchema : oldStudentSchema;
 
-    useEffect(() => {
-        if (studentData) {
-            methods.reset({
+    const methods = useForm<EnrollmentSchemaType>({
+        resolver: zodResolver(currentSchema),
+        defaultValues: useMemo(() => {
+            if (!studentData) return {};
+            const isOldStudent = parseInt(studentData.academic.yearLevel, 10) > 1;
+            return {
                 firstName: studentData.personal.firstName,
                 lastName: studentData.personal.lastName,
                 middleName: studentData.personal.middleName,
@@ -433,14 +437,28 @@ export default function EnrollmentFormPage() {
                 secondarySchool: studentData.education.secondarySchool,
                 secondaryYearGraduated: studentData.education.secondaryYearGraduated,
                 collegiateSchool: studentData.education.collegiateSchool,
-                status: parseInt(studentData.academic.yearLevel, 10) > 1 ? 'Old' : 'New',
+                status: isOldStudent ? 'Old' : 'New',
                 yearLevel: studentData.academic.yearLevel,
                 course: studentData.academic.course,
                 subjects: [],
                 block: '',
+                specialization: '',
+            };
+        }, [studentData])
+    });
+    
+    useEffect(() => {
+        if (studentData) {
+            const isOldStudent = parseInt(studentData.academic.yearLevel, 10) > 1;
+            methods.reset({
+                ...methods.getValues(), // keep existing form values
+                status: isOldStudent ? 'Old' : 'New',
+                yearLevel: studentData.academic.yearLevel,
+                course: studentData.academic.course,
             });
         }
     }, [studentData, methods]);
+
 
     const processForm = (data: EnrollmentSchemaType) => {
         console.log("Form Submitted:", data);
@@ -456,13 +474,7 @@ export default function EnrollmentFormPage() {
             Object.keys(academicSchema.shape) as FieldName[],
         ];
         
-        let fieldsToValidate: FieldName[] = [];
-        if (isNewStudent) {
-            fieldsToValidate = fieldsByStep[currentStep];
-        } else {
-            fieldsToValidate = fieldsByStep[2];
-        }
-
+        const fieldsToValidate = fieldsByStep[currentStep];
         const output = await methods.trigger(fieldsToValidate, { shouldFocus: true });
         if (!output) return;
 
@@ -474,7 +486,7 @@ export default function EnrollmentFormPage() {
     };
 
     const prev = () => {
-        if (currentStep > 0) {
+        if (currentStep > 0 && currentStep > (isNewStudent ? 0 : 2)) {
             setCurrentStep(step => step - 1);
         }
     };
@@ -526,19 +538,19 @@ export default function EnrollmentFormPage() {
                         </CardContent>
                         <CardFooter>
                             <div className="flex justify-between w-full">
-                                {(isNewStudent && currentStep > 0) && (
+                                {isNewStudent && currentStep > 0 && (
                                     <Button type="button" onClick={prev} variant="outline" className="rounded-xl">
                                         Previous
                                     </Button>
                                 )}
                                 
-                                {currentStep < 2 && isNewStudent ? (
+                                {isNewStudent && currentStep < 2 ? (
                                      <Button type="button" onClick={next} className="rounded-xl ml-auto">
                                         Next
                                     </Button>
                                 ) : (
                                     <Button type="submit" className="w-full rounded-xl">
-                                        Submit
+                                        Submit Enrollment
                                     </Button>
                                 )}
                             </div>
@@ -549,6 +561,5 @@ export default function EnrollmentFormPage() {
         </main>
     );
 }
-
 
     
