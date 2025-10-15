@@ -61,7 +61,7 @@ const additionalInfoSchema = z.object({
     elementarySchool: z.string().min(1, 'Elementary school is required'),
     elemYearGraduated: z.string().min(4, 'Invalid year'),
     secondarySchool: z.string().min(1, 'Secondary school is required'),
-    secondaryYearGraduated: zstring().min(4, 'Invalid year'),
+    secondaryYearGraduated: z.string().min(4, 'Invalid year'),
     collegiateSchool: z.string().optional(),
     collegiateYearGraduated: z.string().optional(),
 });
@@ -467,8 +467,8 @@ export default function EnrollmentFormPage() {
 
     const getInitialStatus = () => {
         if (!studentData) return 'New';
-        
-        // A 1st year student applying is always "New"
+
+        // A student with 'Not Enrolled' status who is a 1st year is 'New'
         if (studentData.academic.yearLevel === '1st Year') {
             return 'New';
         }
@@ -480,7 +480,9 @@ export default function EnrollmentFormPage() {
         
         // Fallback for any other case, e.g., if status was Transferee, it should remain so.
         const validStatuses = ['New', 'Old', 'Transferee'];
-        if (validStatuses.includes(studentData.academic.status)) {
+        // This check is a bit redundant with the above, but good for safety
+        const academicStatus = studentData.academic.status as string;
+        if (validStatuses.includes(academicStatus)) {
             return studentData.academic.status as 'New' | 'Old' | 'Transferee';
         }
 
@@ -620,3 +622,5 @@ export default function EnrollmentFormPage() {
         </main>
     );
 }
+
+    
