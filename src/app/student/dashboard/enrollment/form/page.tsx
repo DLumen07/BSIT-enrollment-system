@@ -235,10 +235,13 @@ function Step3() {
     };
 
     useEffect(() => {
-        if (isFourthYear && studentData?.specialization) {
-            form.setValue('specialization', studentData.specialization);
+        if (isFourthYear && studentData?.academic.specialization) {
+            form.setValue('specialization', studentData.academic.specialization);
         }
-    }, [isFourthYear, studentData, form]);
+         if (!isUpperYear) { // Clear specialization for lower years
+            form.setValue('specialization', undefined);
+        }
+    }, [isFourthYear, isUpperYear, studentData, form]);
 
     const availableBlocks = useMemo(() => {
         if (!selectedYear || !selectedCourse) return [];
@@ -331,7 +334,7 @@ function Step3() {
                             ))}
                         </SelectContent>
                     </Select>
-                    {availableBlocks.length === 0 && <p className="text-sm text-muted-foreground mt-2">There are no available blocks for this selection. Please try again later.</p>}
+                    {availableBlocks.length === 0 && <p className="text-sm text-muted-foreground mt-2">There are no available blocks for this year level. Please try again later.</p>}
                     <FormMessage />
                 </FormItem>
             )} />
@@ -395,18 +398,19 @@ function Step3() {
 
 export default function EnrollmentFormPage() {
     const { studentData } = useStudent();
+    const { setAdminData } = useAdmin();
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitted, setIsSubmitted] = useState(false);
     
     const isNewStudent = useMemo(() => {
-        if (!studentData) return true; // Default to new student if no data
+        if (!studentData) return true;
         const yearNumber = parseInt(studentData.academic.yearLevel, 10);
         return yearNumber === 1 && studentData.academic.status !== 'Old';
     }, [studentData]);
 
     useEffect(() => {
         if (studentData && !isNewStudent) {
-            setCurrentStep(2); // Skip to the last step for old students
+            setCurrentStep(2);
         } else {
             setCurrentStep(0);
         }
@@ -460,7 +464,7 @@ export default function EnrollmentFormPage() {
         if (studentData) {
             const yearNumber = parseInt(studentData.academic.yearLevel, 10);
             methods.reset({
-                ...methods.getValues(), // keep existing form values
+                ...methods.getValues(),
                 status: yearNumber > 1 ? 'Old' : 'New',
                 yearLevel: studentData.academic.yearLevel,
                 course: studentData.academic.course,
@@ -471,7 +475,33 @@ export default function EnrollmentFormPage() {
 
 
     const processForm = (data: EnrollmentSchemaType) => {
-        console.log("Form Submitted:", data);
+        if (!studentData) return;
+
+        const yearLevelMap: Record<string, number> = {
+            '1st Year': 1, '2nd Year': 2, '3rd Year': 3, '4th Year': 4,
+        };
+
+        const newApplication = {
+            id: Date.now(),
+            studentId: studentData.academic.studentId,
+            name: `${data.firstName} ${data.lastName}`,
+            course: data.course,
+            year: yearLevelMap[data.yearLevel],
+            status: data.status,
+            block: data.block,
+            credentials: {
+                birthCertificate: true,
+                grades: true,
+                goodMoral: true,
+                registrationForm: true,
+            },
+        };
+
+        setAdminData(prev => ({
+            ...prev,
+            pendingApplications: [...prev.pendingApplications, newApplication],
+        }));
+
         setIsSubmitted(true);
     };
     
@@ -543,24 +573,24 @@ export default function EnrollmentFormPage() {
                             {isNewStudent && <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />}
                         </CardHeader>
                         <CardContent>
-                            {isNewStudent && currentStep === 0 && <Step1 />}
-                            {isNewStudent && currentStep === 1 && <Step2 />}
+                            {currentStep === 0 && <Step1 />}
+                            {currentStep === 1 && <Step2 />}
                             {currentStep === 2 && <Step3 />}
                         </CardContent>
                         <CardFooter>
                            <div className="flex justify-between w-full">
-                                {isNewStudent && currentStep > 0 && (
+                                {currentStep > 0 && isNewStudent && (
                                     <Button type="button" onClick={prev} variant="outline" className="rounded-xl">
                                         Previous
                                     </Button>
                                 )}
                                 
-                                {isNewStudent && currentStep < 2 ? (
+                                {currentStep < 2 && isNewStudent ? (
                                      <Button type="button" onClick={next} className="rounded-xl ml-auto">
                                         Next
                                     </Button>
                                 ) : (
-                                    <Button type="submit" className="w-full rounded-xl">
+                                    <Button type="submit" className="rounded-xl w-full">
                                         Submit Enrollment
                                     </Button>
                                 )}
@@ -572,7 +602,3 @@ export default function EnrollmentFormPage() {
         </main>
     );
 }
-
-    
-
-    
