@@ -638,7 +638,7 @@ export default function EnrollmentFormPage() {
                 </CardHeader>
                 <CardContent>
                     <FormProvider {...methods}>
-                        <form onSubmit={methods.handleSubmit(processForm)}>
+                        <form id="enrollment-form" onSubmit={methods.handleSubmit(processForm)}>
                              {isReviewing ? (
                                 <ReviewStep formData={methods.getValues()} />
                              ) : (
@@ -657,7 +657,7 @@ export default function EnrollmentFormPage() {
                             <Button onClick={() => setIsReviewing(false)} variant="outline" className="rounded-xl">
                                 Edit
                             </Button>
-                            <Button onClick={methods.handleSubmit(processForm)} className="rounded-xl">
+                            <Button type="submit" form="enrollment-form" className="rounded-xl">
                                 Confirm & Submit
                             </Button>
                         </div>
