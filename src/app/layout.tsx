@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from "@/components/ui/toaster"
 import { AdminProvider } from './admin/context/admin-context';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'Firebase Studio App',
@@ -28,7 +29,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased">
+      <body className={cn("font-body antialiased transition-colors duration-300")}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
