@@ -50,33 +50,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useAdmin } from '../../context/admin-context';
+import { useAdmin, Instructor } from '../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 
-
-export type Instructor = {
-    id: number;
-    name: string;
-    email: string;
-    subjects: string[];
-    avatar: string;
-};
-
-export const initialInstructors: Instructor[] = [
-    { id: 1, name: 'Dr. Alan Turing', email: 'alan.turing@university.edu', subjects: ['IT 101', 'IT 201'], avatar: 'https://picsum.photos/seed/at-avatar/40/40' },
-    { id: 2, name: 'Prof. Ada Lovelace', email: 'ada.lovelace@university.edu', subjects: ['MATH 101'], avatar: 'https://picsum.photos/seed/al-avatar/40/40' },
-    { id: 3, name: 'Dr. Grace Hopper', email: 'grace.hopper@university.edu', subjects: ['IT 301', 'IT 401'], avatar: 'https://picsum.photos/seed/gh-avatar/40/40' },
-    { id: 4, name: 'Mr. Charles Babbage', email: 'charles.babbage@university.edu', subjects: ['ENG 101'], avatar: 'https://picsum.photos/seed/cb-avatar/40/40' },
-];
-
-export const availableSubjects = [
-    { id: 'IT 101', label: 'IT 101 - Intro to Computing' },
-    { id: 'IT 201', label: 'IT 201 - Data Structures' },
-    { id: 'IT 301', label: 'IT 301 - Web Development' },
-    { id: 'IT 401', label: 'IT 401 - Capstone Project' },
-    { id: 'MATH 101', label: 'MATH 101 - Calculus 1' },
-    { id: 'ENG 101', label: 'ENG 101 - English Composition' },
-];
 
 const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedSubjects: string[], onSelectionChange: (selected: string[]) => void }) => {
     const { adminData } = useAdmin();
