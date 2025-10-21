@@ -58,6 +58,7 @@ import { useToast } from '@/hooks/use-toast';
 const Breadcrumb = () => {
     const pathname = usePathname();
     const segments = pathname.split('/').filter(Boolean);
+    const { adminData } = useAdmin();
 
     const formatSegment = (s: string) => {
         const decoded = decodeURIComponent(s);
@@ -73,23 +74,16 @@ const Breadcrumb = () => {
 
     if (isSchedulePath) {
         const blockId = segments[3];
-        const blockName = decodeURIComponent(blockId);
-        // This logic is simplified. A real app would fetch block details to get the year level.
-        const yearMatch = blockName.match(/(\d)/);
-        let yearSegment = '1st-year';
-        if (yearMatch) {
-            switch(yearMatch[1]) {
-                case '2': yearSegment = '2nd-year'; break;
-                case '3': yearSegment = '3rd-year'; break;
-                case '4': yearSegment = '4th-year'; break;
-            }
-        }
+        const block = adminData.blocks.find(b => b.name === decodeURIComponent(blockId));
+        
+        if (!block) return null; // or some fallback
 
         const scheduleBreadcrumbs = [
             { name: 'Dashboard', href: '/admin/dashboard' },
             { name: 'Manage Blocks', href: '/admin/dashboard/manage-blocks' },
-            { name: formatSegment(yearSegment), href: `/admin/dashboard/manage-blocks/${yearSegment}` },
-            { name: formatSegment(blockName), href: `/admin/dashboard/schedule/${blockId}` }
+            { name: formatSegment(block.year), href: `/admin/dashboard/manage-blocks/${block.year}` },
+            { name: formatSegment(block.name), href: `/admin/dashboard/manage-blocks/${block.year}` },
+            { name: 'Schedule', href: `/admin/dashboard/schedule/${blockId}` }
         ];
 
         return (
