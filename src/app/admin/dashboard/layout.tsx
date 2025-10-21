@@ -57,85 +57,86 @@ import { useToast } from '@/hooks/use-toast';
 
 const Breadcrumb = () => {
     const pathname = usePathname();
-    const segments = pathname.split('/').filter(Boolean);
     const { adminData } = useAdmin();
+    const segments = pathname.split('/').filter(Boolean);
 
     const formatSegment = (s: string) => {
+        if (!s) return '';
         const decoded = decodeURIComponent(s);
         const str = decoded.replace(/-/g, ' ');
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
-    
+
     if (segments.length < 2) {
-      return null;
+        return null;
     }
-    
-    const isSchedulePath = segments.length > 2 && segments[1] === 'dashboard' && segments[2] === 'schedule' && segments.length > 3;
 
-    if (isSchedulePath) {
-        const blockId = segments[3];
-        const block = adminData.blocks.find(b => b.name === decodeURIComponent(blockId));
+    const buildBreadcrumbs = () => {
+        let path = '';
+        const breadcrumbs = segments.map((segment, index) => {
+            path += `/${segment}`;
+            let name = formatSegment(segment);
+            let href = path;
+
+            // Handle special cases based on path structure
+            if (segment === 'admin' || segment === 'dashboard') {
+                 if (segment === 'admin') return null; // Don't show 'Admin'
+                 name = 'Dashboard';
+                 href = '/admin/dashboard';
+            } else if (segments[index-1] === 'manage-blocks' && index === 3) {
+                 const block = adminData.blocks.find(b => b.year === decodeURIComponent(segment));
+                 if (block) name = formatSegment(block.year);
+            } else if (segments[index-2] === 'instructors' && index === 4) {
+                 const instructor = adminData.instructors.find(i => i.id.toString() === decodeURIComponent(segment));
+                 if (instructor) name = instructor.name;
+            } else if (segments[index-1] === 'schedule' && index === 3) {
+                 const block = adminData.blocks.find(b => b.name === decodeURIComponent(segment));
+                 if (block) name = `Schedule: ${block.name}`;
+            }
+
+            return { name, href };
+        }).filter(Boolean);
         
-        if (!block) return null; // or some fallback
+        // Custom logic for schedule pages to insert parent links
+        const schedulePathIndex = breadcrumbs.findIndex(crumb => crumb?.name.startsWith('Schedule:'));
+        if (schedulePathIndex > -1) {
+            const blockNameSegment = segments[3];
+            const block = adminData.blocks.find(b => b.name === decodeURIComponent(blockNameSegment));
+            if (block) {
+                breadcrumbs.splice(schedulePathIndex, 0,
+                    { name: 'Manage Blocks', href: '/admin/dashboard/manage-blocks' },
+                    { name: formatSegment(block.year), href: `/admin/dashboard/manage-blocks/${block.year}` }
+                );
+            }
+        }
+        
+        // Custom logic for instructor schedule pages
+        const instructorPathIndex = breadcrumbs.findIndex(crumb => segments.includes('instructors') && crumb?.href.includes(segments[3]));
+        if (instructorPathIndex > -1 && segments.length > 4) {
+             breadcrumbs.splice(instructorPathIndex, 0,
+                { name: 'Instructors', href: '/admin/dashboard/instructors' }
+            );
+        }
 
-        const scheduleBreadcrumbs = [
-            { name: 'Dashboard', href: '/admin/dashboard' },
-            { name: 'Manage Blocks', href: '/admin/dashboard/manage-blocks' },
-            { name: formatSegment(block.year), href: `/admin/dashboard/manage-blocks/${block.year}` },
-            { name: formatSegment(block.name), href: `/admin/dashboard/manage-blocks/${block.year}` },
-            { name: 'Schedule', href: `/admin/dashboard/schedule/${blockId}` }
-        ];
-
-        return (
-             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                {scheduleBreadcrumbs.map((crumb, index) => {
-                    const isLast = index === scheduleBreadcrumbs.length - 1;
-                    return (
-                        <React.Fragment key={`${crumb.href}-${crumb.name}`}>
-                            {index > 0 && <ChevronRight className="h-4 w-4" />}
-                            {isLast ? (
-                                <span className="text-foreground">{crumb.name}</span>
-                            ) : (
-                                <Link href={crumb.href} className="hover:text-foreground">
-                                    {crumb.name}
-                                </Link>
-                            )}
-                        </React.Fragment>
-                    )
-                })}
-            </div>
-        )
-    }
+        return breadcrumbs;
+    };
+    
+    const breadcrumbs = buildBreadcrumbs();
 
     return (
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            {segments.map((segment, index) => {
-                 if (index === 0) return null;
-
-                const href = '/' + segments.slice(0, index + 1).join('/');
-                const isLast = index === segments.length - 1;
-                
-                const displayName = formatSegment(segment);
-
-                 if (index === 1) { 
-                    return isLast ? (
-                        <span key={href} className="text-foreground">{displayName}</span>
-                    ) : (
-                         <Link key={href} href={href} className={'hover:text-foreground'}>
-                           {displayName}
-                        </Link>
-                    )
-                }
-
+            {breadcrumbs.map((crumb, index) => {
+                if (!crumb) return null;
+                const isLast = index === breadcrumbs.length - 1;
                 return (
-                    <React.Fragment key={href}>
-                       <ChevronRight className="h-4 w-4" />
+                    <React.Fragment key={`${crumb.href}-${crumb.name}`}>
+                        {index > 0 && <ChevronRight className="h-4 w-4" />}
                         {isLast ? (
-                           <span className="text-foreground">{displayName}</span>
+                            <span className="text-foreground">{crumb.name}</span>
                         ) : (
-                           <Link href={href} className={'hover:text-foreground'}>
-                                {displayName}
-                           </Link>
+                            <Link href={crumb.href} className="hover:text-foreground">
+                                {crumb.name}
+                            </Link>
                         )}
                     </React.Fragment>
                 );
@@ -270,7 +271,7 @@ export default function AdminDashboardLayout({
               </SidebarMenuItem>
               {currentUser.role !== 'Moderator' && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/instructors'}>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/dashboard/instructors')}>
                     <Link href="/admin/dashboard/instructors">
                       <BookUser />
                       Instructors
