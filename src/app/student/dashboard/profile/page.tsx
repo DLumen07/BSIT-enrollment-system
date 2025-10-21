@@ -47,6 +47,11 @@ export default function StudentProfilePage() {
         emergencyContactName: studentData.additional.emergencyContactName,
         emergencyContactAddress: studentData.additional.emergencyContactAddress,
         emergencyContactNumber: studentData.additional.emergencyContactNumber,
+        elementarySchool: studentData.education.elementarySchool,
+        elemYearGraduated: studentData.education.elemYearGraduated,
+        secondarySchool: studentData.education.secondarySchool,
+        secondaryYearGraduated: studentData.education.secondaryYearGraduated,
+        collegiateSchool: studentData.education.collegiateSchool,
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,6 +95,14 @@ export default function StudentProfilePage() {
                      emergencyContactName: editableData.emergencyContactName,
                      emergencyContactAddress: editableData.emergencyContactAddress,
                      emergencyContactNumber: editableData.emergencyContactNumber,
+                },
+                education: {
+                    ...prev.education,
+                    elementarySchool: editableData.elementarySchool,
+                    elemYearGraduated: editableData.elemYearGraduated,
+                    secondarySchool: editableData.secondarySchool,
+                    secondaryYearGraduated: editableData.secondaryYearGraduated,
+                    collegiateSchool: editableData.collegiateSchool,
                 }
             }
         });
@@ -271,15 +284,33 @@ export default function StudentProfilePage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <InfoField label="Elementary School" value={studentData.education.elementarySchool} />
-                                        <InfoField label="Year Graduated" value={studentData.education.elemYearGraduated} />
+                                        <div className="space-y-2">
+                                            <Label htmlFor="elementarySchool">Elementary School</Label>
+                                            <Input id="elementarySchool" value={editableData.elementarySchool} onChange={handleInputChange} className="rounded-xl" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="elemYearGraduated">Year Graduated</Label>
+                                            <Input id="elemYearGraduated" value={editableData.elemYearGraduated} onChange={handleInputChange} className="rounded-xl" />
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <InfoField label="Secondary School" value={studentData.education.secondarySchool} />
-                                        <InfoField label="Year Graduated" value={studentData.education.secondaryYearGraduated} />
+                                        <div className="space-y-2">
+                                            <Label htmlFor="secondarySchool">Secondary School</Label>
+                                            <Input id="secondarySchool" value={editableData.secondarySchool} onChange={handleInputChange} className="rounded-xl" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="secondaryYearGraduated">Year Graduated</Label>
+                                            <Input id="secondaryYearGraduated" value={editableData.secondaryYearGraduated} onChange={handleInputChange} className="rounded-xl" />
+                                        </div>
                                     </div>
-                                     <InfoField label="Collegiate School" value={studentData.education.collegiateSchool} />
+                                     <div className="space-y-2">
+                                        <Label htmlFor="collegiateSchool">Collegiate School (if transferee)</Label>
+                                        <Input id="collegiateSchool" value={editableData.collegiateSchool || ''} onChange={handleInputChange} className="rounded-xl" />
+                                    </div>
                                 </CardContent>
+                                <CardFooter>
+                                     <Button onClick={() => handleSaveChanges('Education')} className="rounded-xl">Save Education Info</Button>
+                                </CardFooter>
                             </Card>
                         </TabsContent>
                     </Tabs>
