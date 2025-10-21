@@ -75,7 +75,7 @@ const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedS
                     <ChevronDown className="h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-full">
+            <DropdownMenuContent className="w-full rounded-xl">
                 <DropdownMenuLabel>Available Subjects</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {availableSubjects.map(subject => (
@@ -207,7 +207,7 @@ export default function InstructorsPage() {
                     </Button>
                 </div>
 
-                <Card>
+                <Card className="rounded-xl">
                     <CardHeader>
                         <CardTitle>Instructor List</CardTitle>
                         <CardDescription>
@@ -253,7 +253,7 @@ export default function InstructorsPage() {
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
+                                                <DropdownMenuContent align="end" className="rounded-xl">
                                                      <DropdownMenuItem onSelect={() => toast({ title: 'Feature in progress', description: 'Viewing instructor schedules is not yet implemented.' })}>
                                                         <Calendar className="mr-2 h-4 w-4" />
                                                         View Schedule
@@ -323,7 +323,7 @@ export default function InstructorsPage() {
 
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent>
+                <DialogContent className="rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Edit Instructor</DialogTitle>
                         <DialogDescription>
@@ -334,11 +334,11 @@ export default function InstructorsPage() {
                         <div className="space-y-4 py-2">
                              <div className="space-y-2">
                                 <Label htmlFor="edit-name">Full Name</Label>
-                                <Input id="edit-name" name="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                                <Input id="edit-name" name="name" value={name} onChange={(e) => setName(e.target.value)} required className="rounded-xl" />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="edit-email">Email Address</Label>
-                                <Input id="edit-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                                <Input id="edit-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="rounded-xl" />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="edit-subjects">Subjects Handled</Label>
@@ -347,15 +347,15 @@ export default function InstructorsPage() {
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-                        <Button type="submit" form="edit-instructor-form">Save Changes</Button>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                        <Button type="submit" form="edit-instructor-form" className="rounded-xl">Save Changes</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Delete Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -368,14 +368,14 @@ export default function InstructorsPage() {
                             name="delete-confirm"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
-                            className="mt-4"
+                            className="mt-4 rounded-xl"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')} className="rounded-xl">Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             disabled={deleteInput !== 'delete'}
-                            className="bg-destructive hover:bg-destructive/90"
+                            className="bg-destructive hover:bg-destructive/90 rounded-xl"
                             onClick={handleDeleteInstructor}
                         >
                             Delete
@@ -386,6 +386,8 @@ export default function InstructorsPage() {
         </>
     );
 }
+
+    
 
     
 
