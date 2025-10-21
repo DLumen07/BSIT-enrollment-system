@@ -234,21 +234,10 @@ function Step3() {
         '4th Year': '4th-year',
     };
 
-    useEffect(() => {
-        if (isFourthYear && studentData?.academic.specialization) {
-            form.setValue('specialization', studentData.academic.specialization);
-        }
-    }, [isFourthYear, studentData, form]);
-
     const availableBlocks = useMemo(() => {
         if (!selectedYear || !selectedCourse) return [];
         const yearKey = yearLevelMap[selectedYear];
         if (!yearKey) return [];
-        
-        // Clear specialization if not an upper year to prevent infinite loops
-        if (!isUpperYear) {
-            form.setValue('specialization', undefined);
-        }
 
         return adminData.blocks
             .filter(b => {
@@ -299,7 +288,31 @@ function Step3() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField name="yearLevel" render={({ field }) => (
-                    <FormItem><FormLabel>Year Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select year level" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="1st Year">1st Year</SelectItem><SelectItem value="2nd Year">2nd Year</SelectItem><SelectItem value="3rd Year">3rd Year</SelectItem><SelectItem value="4th Year">4th Year</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Year Level</FormLabel>
+                    <Select onValueChange={(value) => {
+                        field.onChange(value);
+                        const isUpper = value === '3rd Year' || value === '4th Year';
+                        if (!isUpper) {
+                            form.setValue('specialization', undefined);
+                        }
+                         if (value === '4th Year' && studentData?.academic.specialization) {
+                            form.setValue('specialization', studentData.academic.specialization);
+                        }
+                    }} defaultValue={field.value} disabled>
+                    <FormControl>
+                        <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Select year level" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="rounded-xl">
+                        <SelectItem value="1st Year">1st Year</SelectItem>
+                        <SelectItem value="2nd Year">2nd Year</SelectItem>
+                        <SelectItem value="3rd Year">3rd Year</SelectItem>
+                        <SelectItem value="4th Year">4th Year</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
                 )} />
                  {isUpperYear && (
                     <FormField name="specialization" render={({ field }) => (
