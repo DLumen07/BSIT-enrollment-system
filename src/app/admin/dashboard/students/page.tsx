@@ -54,9 +54,9 @@ import { useToast } from '@/hooks/use-toast';
 
 const InfoField = ({ label, value }: { label: string; value?: string | number | null }) => (
     value ? (
-        <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-muted-foreground col-span-1">{label}</span>
-            <span className="font-medium text-sm col-span-2">{value}</span>
+        <div className="flex justify-between text-sm py-1">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-medium text-right">{value}</span>
         </div>
     ) : null
 );
@@ -288,79 +288,58 @@ export default function StudentsPage() {
             {/* Profile Dialog */}
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
                 {selectedStudent && (
-                    <DialogContent className="sm:max-w-4xl rounded-xl">
+                    <DialogContent className="sm:max-w-2xl rounded-xl">
                         <DialogHeader>
-                            <DialogTitle>Student Profile</DialogTitle>
-                            <DialogDescription>
-                                Viewing the complete profile for {selectedStudent.name}.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="max-h-[70vh] overflow-y-auto pr-6 pl-2 -ml-2 py-4">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="lg:col-span-1 space-y-6">
-                                    <Card>
-                                        <CardContent className="pt-6 flex flex-col items-center text-center">
-                                            <Avatar className="h-24 w-24 mb-4">
-                                                <AvatarImage src={selectedStudent.avatar} alt={selectedStudent.name} data-ai-hint="person avatar" />
-                                                <AvatarFallback>{selectedStudent.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <h2 className="text-xl font-semibold">{selectedStudent.name}</h2>
-                                            <p className="text-sm text-muted-foreground">{selectedStudent.studentId}</p>
-                                            <Badge variant={getStatusBadgeVariant(selectedStudent.status)} className="mt-2">{selectedStudent.status}</Badge>
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardHeader><CardTitle>Contact Information</CardTitle></CardHeader>
-                                        <CardContent className="space-y-3">
-                                            <InfoField label="Email" value={selectedStudent.email} />
-                                            <InfoField label="Phone" value={selectedStudent.phoneNumber} />
-                                        </CardContent>
-                                    </Card>
+                            <div className="flex items-center gap-4">
+                                <Avatar className="h-16 w-16">
+                                    <AvatarImage src={selectedStudent.avatar} alt={selectedStudent.name} data-ai-hint="person avatar" />
+                                    <AvatarFallback>{selectedStudent.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <DialogTitle className="text-2xl">{selectedStudent.name}</DialogTitle>
+                                    <DialogDescription>
+                                        {selectedStudent.studentId} • {selectedStudent.course} - {selectedStudent.year} Year
+                                    </DialogDescription>
                                 </div>
-                                <div className="lg:col-span-2 space-y-6">
-                                    <Card>
-                                        <CardHeader><CardTitle>Academic Information</CardTitle></CardHeader>
-                                        <CardContent className="space-y-3">
-                                            <InfoField label="Course" value={selectedStudent.course} />
-                                            <InfoField label="Year Level" value={`${selectedStudent.year}${selectedStudent.year === 1 ? 'st' : selectedStudent.year === 2 ? 'nd' : selectedStudent.year === 3 ? 'rd' : 'th'} Year`} />
-                                            <InfoField label="Block Section" value={selectedStudent.block || 'N/A'} />
-                                            {selectedStudent.specialization && <InfoField label="Specialization" value={selectedStudent.specialization} />}
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardHeader><CardTitle>Grade History</CardTitle></CardHeader>
-                                        <CardContent>
-                                            <div className="border rounded-lg max-h-60 overflow-y-auto">
-                                                <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead>Subject</TableHead>
-                                                            <TableHead>Description</TableHead>
-                                                            <TableHead className="text-right">Grade</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {(grades[selectedStudent.studentId] || []).length > 0 ? (
-                                                            (grades[selectedStudent.studentId] || []).map(grade => {
-                                                                const subjectDetails = allSubjects.find(s => s.code === grade.subjectCode);
-                                                                return (
-                                                                    <TableRow key={grade.subjectCode}>
-                                                                        <TableCell className="font-medium">{grade.subjectCode}</TableCell>
-                                                                        <TableCell>{subjectDetails?.description || 'N/A'}</TableCell>
-                                                                        <TableCell className="text-right font-semibold">{grade.grade.toFixed(2)}</TableCell>
-                                                                    </TableRow>
-                                                                )
-                                                            })
-                                                        ) : (
-                                                            <TableRow>
-                                                                <TableCell colSpan={3} className="text-center h-24">No grade history available.</TableCell>
-                                                            </TableRow>
-                                                        )}
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                            </div>
+                        </DialogHeader>
+                        <div className="max-h-[60vh] overflow-y-auto pr-6 pl-1 -ml-1 py-4 space-y-6">
+                            <div className="space-y-2">
+                                <h4 className="font-semibold text-sm">Details</h4>
+                                <div className="border rounded-lg p-3 space-y-1">
+                                    <InfoField label="Status" value={selectedStudent.status} />
+                                    <InfoField label="Block" value={selectedStudent.block} />
+                                    <InfoField label="Email" value={selectedStudent.email} />
+                                    <InfoField label="Phone" value={selectedStudent.phoneNumber} />
+                                    {selectedStudent.specialization && <InfoField label="Specialization" value={selectedStudent.specialization} />}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <h4 className="font-semibold text-sm">Grade History</h4>
+                                <div className="border rounded-lg max-h-52 overflow-y-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Subject</TableHead>
+                                                <TableHead className="text-right">Grade</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {(grades[selectedStudent.studentId] || []).length > 0 ? (
+                                                (grades[selectedStudent.studentId] || []).map(grade => (
+                                                    <TableRow key={grade.subjectCode}>
+                                                        <TableCell className="font-medium">{grade.subjectCode}</TableCell>
+                                                        <TableCell className="text-right font-semibold">{grade.grade.toFixed(2)}</TableCell>
+                                                    </TableRow>
+                                                ))
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={2} className="text-center h-24">No grade history.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             </div>
                         </div>
