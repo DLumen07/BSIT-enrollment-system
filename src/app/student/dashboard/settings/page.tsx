@@ -177,15 +177,15 @@ export default function StudentSettingsPage() {
                                     <CardContent className="space-y-4">
                                         <div className="space-y-1">
                                             <Label htmlFor="current-password">Current Password</Label>
-                                            <Input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+                                            <Input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="rounded-xl" />
                                         </div>
                                         <div className="space-y-1">
                                             <Label htmlFor="new-password">New Password</Label>
-                                            <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                                            <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="rounded-xl" />
                                         </div>
                                          <div className="space-y-1">
                                             <Label htmlFor="confirm-password">Confirm New Password</Label>
-                                            <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                                            <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="rounded-xl" />
                                         </div>
                                     </CardContent>
                                     <CardFooter>
