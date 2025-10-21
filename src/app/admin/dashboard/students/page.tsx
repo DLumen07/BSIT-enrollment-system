@@ -1,7 +1,7 @@
 
-
 'use client';
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { MoreHorizontal, Search, Filter, FilterX, Trash2 } from 'lucide-react';
 import {
   Card,
@@ -54,7 +54,7 @@ export default function StudentsPage() {
     const [filters, setFilters] = useState({
         course: 'all',
         year: 'all',
-        status: 'Enrolled',
+        status: 'Enrolled', // Hardcoded to 'Enrolled'
     });
 
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -77,7 +77,7 @@ export default function StudentsPage() {
         setSelectedStudent(null);
     };
     
-    const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
+    const handleFilterChange = (filterType: keyof Omit<typeof filters, 'status'>, value: string) => {
         setFilters(prev => ({ ...prev, [filterType]: value }));
     };
 
@@ -98,7 +98,7 @@ export default function StudentsPage() {
             
             const matchesCourse = filters.course !== 'all' ? student.course === filters.course : true;
             const matchesYear = filters.year !== 'all' ? student.year.toString() === filters.year : true;
-            const matchesStatus = filters.status !== 'all' ? student.status === filters.status : true;
+            const matchesStatus = student.status === 'Enrolled';
 
             return matchesSearch && matchesCourse && matchesYear && matchesStatus;
         });
@@ -234,7 +234,9 @@ export default function StudentsPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => toast({ title: 'Feature in progress', description: 'Viewing student profiles is not yet implemented.' })}>View Profile</DropdownMenuItem>
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={`/admin/dashboard/students/${student.id}`}>View Profile</Link>
+                                                        </DropdownMenuItem>
                                                         <DropdownMenuItem onSelect={() => toast({ title: 'Feature in progress', description: 'Claiming ORF is not yet implemented.' })}>Claim ORF</DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
