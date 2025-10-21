@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle, BadgeCheck, FileText } from 'lucide-react';
@@ -176,8 +175,12 @@ export default function ManageApplicationsPage() {
         else if (foundStudent.year === 3) yearKey = '3rd-year';
         else if (foundStudent.year === 4) yearKey = '4th-year';
         
-        const courseForYear = (foundStudent.year <= 2) ? 'ACT' : 'BSIT';
-        return blocks.filter(b => b.year === yearKey && b.course === courseForYear);
+        return blocks.filter(b => {
+             const yearMatch = b.year === yearKey;
+             const courseMatch = b.course === foundStudent.course;
+             const specMatch = !foundStudent.specialization || b.specialization === foundStudent.specialization;
+             return yearMatch && courseMatch && specMatch;
+        });
     }, [blocks, foundStudent]);
 
     const availableSubjectsForDirectEnroll = useMemo(() => {

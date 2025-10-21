@@ -198,7 +198,7 @@ export default function YearLevelBlocksPage() {
                                 {isUpperYear && (
                                      <div className="space-y-2">
                                         <Label htmlFor="block-specialization">Specialization</Label>
-                                        <Select value={blockSpecialization} onValueChange={setBlockSpecialization}>
+                                        <Select value={blockSpecialization} onValueChange={setBlockSpecialization} required>
                                             <SelectTrigger id="block-specialization">
                                                 <SelectValue placeholder="Select a specialization" />
                                             </SelectTrigger>
@@ -309,7 +309,7 @@ export default function YearLevelBlocksPage() {
                          {isUpperYear && (
                             <div className="space-y-2">
                                 <Label htmlFor="edit-block-specialization">Specialization</Label>
-                                <Select value={blockSpecialization} onValueChange={setBlockSpecialization}>
+                                <Select value={blockSpecialization} onValueChange={setBlockSpecialization} required>
                                     <SelectTrigger id="edit-block-specialization">
                                         <SelectValue placeholder="Select a specialization" />
                                     </SelectTrigger>
@@ -401,5 +401,3 @@ export default function YearLevelBlocksPage() {
         </>
     );
 }
-
-    
