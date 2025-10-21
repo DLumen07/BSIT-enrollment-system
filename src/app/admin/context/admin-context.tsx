@@ -217,35 +217,75 @@ const mockAdminData = {
 type AdminDataType = typeof mockAdminData;
 
 interface AdminContextType {
-  adminData: AdminDataType;
-  setAdminData: React.Dispatch<React.SetStateAction<AdminDataType>>;
+  adminData: AdminDataType | null;
+  setAdminData: React.Dispatch<React.SetStateAction<AdminDataType | null>>;
+  loading: boolean;
+  error: string | null;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
-  const [adminData, setAdminData] = useState<AdminDataType>(mockAdminData);
+  const [adminData, setAdminData] = useState<AdminDataType | null>(mockAdminData);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const storedUser = sessionStorage.getItem('currentUser');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        setAdminData(prev => ({ ...prev, currentUser: user }));
+    // To connect to a backend, you would fetch data here.
+    // The code below is a template for fetching data.
+    /*
+    const fetchAdminData = async () => {
+      try {
+        // Replace with your actual API endpoint.
+        // Example for a PHP backend: 'https://your-domain.com/api/admin_data.php'
+        const response = await fetch('https://your-api.com/admin/data');
+        if (!response.ok) {
+          throw new Error('Failed to fetch data from the server.');
+        }
+        const data = await response.json();
+        setAdminData(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to parse user from sessionStorage", error);
-    }
+    };
+    
+    // Uncomment the line below to enable API fetching
+    // fetchAdminData();
+    */
+
+    // For now, we are using mock data.
     setLoading(false);
   }, []);
 
+
+  useEffect(() => {
+    // This part handles loading the logged-in user from session storage.
+    // It should be kept even when you connect to a backend.
+    if (!loading) {
+        try {
+            const storedUser = sessionStorage.getItem('currentUser');
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                // Ensure adminData is not null before setting currentUser
+                setAdminData(prev => prev ? { ...prev, currentUser: user } : null);
+            }
+        } catch (error) {
+            console.error("Failed to parse user from sessionStorage", error);
+        }
+    }
+  }, [loading]);
+
   if (loading) {
-    return <div>Loading...</div>; // Or a proper loading spinner
+    return <div>Loading admin dashboard...</div>;
+  }
+  if (error) {
+    return <div>Error: {error}</div>;
   }
 
   return (
-    <AdminContext.Provider value={{ adminData, setAdminData }}>
+    <AdminContext.Provider value={{ adminData, setAdminData, loading, error }}>
       {children}
     </AdminContext.Provider>
   );
@@ -256,5 +296,8 @@ export const useAdmin = (): AdminContextType => {
   if (context === undefined) {
     throw new Error('useAdmin must be used within an AdminProvider');
   }
-  return context;
+  // If adminData is null, it means we are still loading or there was an error.
+  // The provider handles the loading/error UI, so we can safely assert non-null here
+  // in components that are rendered as children of the provider.
+  return { ...context, adminData: context.adminData! };
 };
