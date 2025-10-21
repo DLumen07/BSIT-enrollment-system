@@ -327,7 +327,7 @@ export default function AdminDashboardLayout({
                   <Input
                     type="search"
                     placeholder="Search..."
-                    className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                    className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px] rounded-full"
                   />
                 </div>
               )}
