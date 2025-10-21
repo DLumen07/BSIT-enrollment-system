@@ -288,17 +288,17 @@ export default function StudentsPage() {
             {/* Profile Dialog */}
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
                 {selectedStudent && (
-                    <DialogContent className="sm:max-w-2xl rounded-xl">
+                    <DialogContent className="sm:max-w-lg rounded-xl">
                         <DialogHeader>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-start gap-4">
                                 <Avatar className="h-16 w-16">
                                     <AvatarImage src={selectedStudent.avatar} alt={selectedStudent.name} data-ai-hint="person avatar" />
                                     <AvatarFallback>{selectedStudent.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <DialogTitle className="text-2xl">{selectedStudent.name}</DialogTitle>
+                                    <DialogTitle className="text-xl">{selectedStudent.name}</DialogTitle>
                                     <DialogDescription>
-                                        {selectedStudent.studentId} • {selectedStudent.course} - {selectedStudent.year} Year
+                                        {selectedStudent.studentId}
                                     </DialogDescription>
                                 </div>
                             </div>
@@ -316,26 +316,26 @@ export default function StudentsPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <h4 className="font-semibold text-sm">Grade History</h4>
+                                <h4 className="font-semibold text-sm">Enlisted Subjects</h4>
                                 <div className="border rounded-lg max-h-52 overflow-y-auto">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Subject</TableHead>
-                                                <TableHead className="text-right">Grade</TableHead>
+                                                <TableHead className="text-right">Units</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {(grades[selectedStudent.studentId] || []).length > 0 ? (
-                                                (grades[selectedStudent.studentId] || []).map(grade => (
-                                                    <TableRow key={grade.subjectCode}>
-                                                        <TableCell className="font-medium">{grade.subjectCode}</TableCell>
-                                                        <TableCell className="text-right font-semibold">{grade.grade.toFixed(2)}</TableCell>
+                                            {(selectedStudent.enlistedSubjects || []).length > 0 ? (
+                                                (selectedStudent.enlistedSubjects || []).map(subject => (
+                                                    <TableRow key={subject.code}>
+                                                        <TableCell className="font-medium">{subject.code}</TableCell>
+                                                        <TableCell className="text-right">{subject.units}</TableCell>
                                                     </TableRow>
                                                 ))
                                             ) : (
                                                 <TableRow>
-                                                    <TableCell colSpan={2} className="text-center h-24">No grade history.</TableCell>
+                                                    <TableCell colSpan={2} className="text-center h-24">No subjects enlisted for this semester.</TableCell>
                                                 </TableRow>
                                             )}
                                         </TableBody>
