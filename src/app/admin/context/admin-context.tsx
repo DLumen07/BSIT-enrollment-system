@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AdminUser, initialAdminUsers, roles as adminRoles } from '../dashboard/administrators/page';
 import { Subject as ScheduleSubject } from '../dashboard/schedule/[blockId]/page';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // --- Data from instructors ---
 export type Instructor = {
@@ -286,7 +287,11 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
   }, [loading]);
 
   if (loading) {
-    return <div>Loading admin dashboard...</div>;
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <LoadingSpinner className="h-8 w-8" />
+      </div>
+    );
   }
   if (error) {
     return <div>Error: {error}</div>;

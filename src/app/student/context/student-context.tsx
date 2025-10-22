@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import { useSearchParams } from 'next/navigation';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // Define the shape of your data
 // This combines all the disparate mock data into a single structure.
@@ -172,7 +173,11 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
 
 
   if (!studentData) {
-    return <div>Loading student data...</div>;
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <LoadingSpinner className="h-8 w-8" />
+        </div>
+    );
   }
 
   return (

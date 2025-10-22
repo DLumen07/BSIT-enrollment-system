@@ -5,6 +5,7 @@ import { useAdmin } from '@/app/admin/context/admin-context';
 import type { Subject as ScheduleSubject } from '@/app/admin/dashboard/schedule/[blockId]/page';
 import type { Student, Subject } from '@/app/admin/context/admin-context';
 import { useSearchParams } from 'next/navigation';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 type InstructorPersonal = {
     id: number;
@@ -105,8 +106,11 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
   };
 
   if (!instructorData) {
-    // You can return a loading spinner here
-    return <div>Loading instructor data...</div>;
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <LoadingSpinner className="h-8 w-8" />
+        </div>
+    );
   }
 
   return (
