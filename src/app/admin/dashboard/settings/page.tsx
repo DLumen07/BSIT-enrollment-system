@@ -27,11 +27,12 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
     );
 };
 
+type YearLevelKey = '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
 
 export default function AdminSettingsPage() {
     const { toast } = useToast();
     const { adminData, setAdminData } = useAdmin();
-    const { currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate, academicYearOptions, semesterOptions } = adminData;
+    const { currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate, academicYearOptions, semesterOptions, phasedEnrollmentSchedule } = adminData;
 
     const [editableData, setEditableData] = React.useState({
         name: '',
@@ -50,6 +51,8 @@ export default function AdminSettingsPage() {
 
     const [startDate, setStartDate] = useState<Date | undefined>(enrollmentStartDate);
     const [endDate, setEndDate] = useState<Date | undefined>(enrollmentEndDate);
+    
+    const [phasedSchedule, setPhasedSchedule] = useState(phasedEnrollmentSchedule);
 
     useEffect(() => {
         if (currentUser) {
@@ -152,6 +155,21 @@ export default function AdminSettingsPage() {
         });
     };
 
+    const handlePhasedScheduleChange = (year: YearLevelKey, type: 'startDate' | 'endDate', date?: Date) => {
+        setPhasedSchedule(prev => ({
+            ...prev,
+            [year]: { ...prev[year], [type]: date }
+        }));
+    };
+    
+    const handlePhasedScheduleSave = () => {
+        setAdminData(prev => ({ ...prev, phasedEnrollmentSchedule: phasedSchedule }));
+        toast({
+            title: "Phased Schedule Saved",
+            description: "The year-level specific enrollment dates have been updated.",
+        });
+    };
+
     if (!currentUser) {
         return <div>Loading...</div>;
     }
@@ -225,8 +243,8 @@ export default function AdminSettingsPage() {
                         </Card>
                         <Card className="rounded-xl">
                             <CardHeader>
-                                <CardTitle>Enrollment Schedule</CardTitle>
-                                <CardDescription>Set the start and end dates for enrollment.</CardDescription>
+                                <CardTitle>General Enrollment Schedule</CardTitle>
+                                <CardDescription>Set the main start and end dates for enrollment.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
@@ -341,6 +359,58 @@ export default function AdminSettingsPage() {
                             </Card>
                         </TabsContent>
                     </Tabs>
+                    {currentUser.role === 'Super Admin' && (
+                        <Card className="rounded-xl mt-6">
+                            <CardHeader>
+                                <CardTitle>Phased Enrollment Schedule</CardTitle>
+                                <CardDescription>Set specific enrollment dates for each year level.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {Object.keys(phasedSchedule).map(year => {
+                                    const key = year as YearLevelKey;
+                                    const yearLabel = key.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                    return (
+                                        <div key={key} className="p-3 border rounded-lg">
+                                            <p className="font-medium text-sm mb-2">{yearLabel}</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Start Date</Label>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !phasedSchedule[key].startDate && "text-muted-foreground")}>
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {phasedSchedule[key].startDate ? format(phasedSchedule[key].startDate, "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                                                            <Calendar mode="single" selected={phasedSchedule[key].startDate} onSelect={(date) => handlePhasedScheduleChange(key, 'startDate', date)} initialFocus />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>End Date</Label>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !phasedSchedule[key].endDate && "text-muted-foreground")}>
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {phasedSchedule[key].endDate ? format(phasedSchedule[key].endDate, "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                                                            <Calendar mode="single" selected={phasedSchedule[key].endDate} onSelect={(date) => handlePhasedScheduleChange(key, 'endDate', date)} initialFocus />
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </CardContent>
+                            <CardFooter>
+                                <Button onClick={handlePhasedScheduleSave} className="rounded-xl w-full">Save Phased Schedule</Button>
+                            </CardFooter>
+                        </Card>
+                    )}
                 </div>
             </div>
         </main>
