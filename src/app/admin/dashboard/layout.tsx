@@ -362,7 +362,7 @@ export default function AdminDashboardLayout({
                   <DropdownMenuItem asChild>
                     <Link href="/admin/dashboard/settings">Settings</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => toast({ title: 'Feature in progress', description: 'Support page is not yet implemented.' })}>Support</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => toast({ title: 'Contact Support', description: 'For any support questions, please email us at support@enrollease.com' })}>Support</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     Logout
