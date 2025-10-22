@@ -8,9 +8,13 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Settings as SettingsIcon, Eye, EyeOff } from 'lucide-react';
+import { Camera, Settings as SettingsIcon, Eye, EyeOff, Calendar as CalendarIcon } from 'lucide-react';
 import { useAdmin } from '../../context/admin-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 
 const InfoField = ({ label, value }: { label: string; value?: string | null }) => {
@@ -27,7 +31,7 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
 export default function AdminSettingsPage() {
     const { toast } = useToast();
     const { adminData, setAdminData } = useAdmin();
-    const { currentUser, academicYear, semester, academicYearOptions, semesterOptions } = adminData;
+    const { currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate, academicYearOptions, semesterOptions } = adminData;
 
     const [editableData, setEditableData] = React.useState({
         name: '',
@@ -43,6 +47,9 @@ export default function AdminSettingsPage() {
     
     const [currentAcademicYear, setCurrentAcademicYear] = useState(academicYear);
     const [currentSemester, setCurrentSemester] = useState(semester);
+
+    const [startDate, setStartDate] = useState<Date | undefined>(enrollmentStartDate);
+    const [endDate, setEndDate] = useState<Date | undefined>(enrollmentEndDate);
 
     useEffect(() => {
         if (currentUser) {
@@ -125,6 +132,26 @@ export default function AdminSettingsPage() {
         });
     }
 
+    const handleScheduleSave = () => {
+        if (!startDate || !endDate) {
+            toast({ variant: 'destructive', title: 'Invalid Dates', description: 'Please select both a start and end date.' });
+            return;
+        }
+        if (startDate > endDate) {
+            toast({ variant: 'destructive', title: 'Invalid Date Range', description: 'Start date cannot be after the end date.' });
+            return;
+        }
+        setAdminData(prev => ({
+            ...prev,
+            enrollmentStartDate: startDate,
+            enrollmentEndDate: endDate,
+        }));
+        toast({
+            title: "Enrollment Schedule Saved",
+            description: `Enrollment is set from ${format(startDate, 'PPP')} to ${format(endDate, 'PPP')}.`,
+        });
+    };
+
     if (!currentUser) {
         return <div>Loading...</div>;
     }
@@ -158,6 +185,7 @@ export default function AdminSettingsPage() {
                         </CardContent>
                     </Card>
                     {currentUser.role === 'Super Admin' && (
+                        <>
                         <Card className="rounded-xl">
                             <CardHeader>
                                 <CardTitle>System Settings</CardTitle>
@@ -195,6 +223,46 @@ export default function AdminSettingsPage() {
                                 <Button onClick={handleSystemSettingsSave} className="rounded-xl w-full">Save System Settings</Button>
                             </CardFooter>
                         </Card>
+                        <Card className="rounded-xl">
+                            <CardHeader>
+                                <CardTitle>Enrollment Schedule</CardTitle>
+                                <CardDescription>Set the start and end dates for enrollment.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Start Date</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !startDate && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                                            <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>End Date</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !endDate && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                                            <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            </CardContent>
+                             <CardFooter>
+                                <Button onClick={handleScheduleSave} className="rounded-xl w-full">Save Schedule</Button>
+                            </CardFooter>
+                        </Card>
+                        </>
                     )}
                 </div>
                 <div className="lg:col-span-2">
@@ -278,5 +346,3 @@ export default function AdminSettingsPage() {
         </main>
     );
 }
-
-    

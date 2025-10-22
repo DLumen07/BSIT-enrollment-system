@@ -183,6 +183,8 @@ const mockAdminData = {
     currentUser: null as AdminUser | null,
     academicYear: '2024-2025',
     semester: '1st-sem',
+    enrollmentStartDate: new Date('2024-08-01'),
+    enrollmentEndDate: new Date('2024-08-15'),
     academicYearOptions: ['2024-2025', '2023-2024'],
     semesterOptions: [
         { value: '1st-sem', label: '1st Semester' },
@@ -214,7 +216,7 @@ const mockAdminData = {
     },
 };
 
-type AdminDataType = typeof mockAdminData;
+export type AdminDataType = typeof mockAdminData;
 
 interface AdminContextType {
   adminData: AdminDataType | null;

@@ -7,8 +7,9 @@ import {
   ArrowUpRight,
   AlertTriangle,
   UserX,
+  Clock,
 } from 'lucide-react';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip } from "recharts"
 import Image from 'next/image';
 
@@ -68,6 +69,39 @@ const schedulingIssues = [
     { id: 4, block: 'BSIT 2-B', subject: 'IT 201', type: 'Conflict', details: 'Prof. Ada Lovelace has a time conflict with a class in BSIT 2-A.', priority: 'high' },
 ];
 
+const ClockCard = () => {
+    const [date, setDate] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setDate(new Date());
+        }, 1000);
+        return () => {
+            clearInterval(timer);
+        };
+    }, []);
+
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const day = date.toLocaleDateString([], { weekday: 'long' });
+    const fullDate = date.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' });
+
+    return (
+        <Card className="rounded-xl col-span-1 md:col-span-2 lg:col-span-1">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-6 w-6" />
+                    <span>Current Time</span>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+                <p className="text-4xl font-bold font-mono">{time}</p>
+                <p className="text-lg text-muted-foreground">{day}</p>
+                <p className="text-sm text-muted-foreground">{fullDate}</p>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export default function AdminDashboardPage() {
   return (
@@ -101,15 +135,7 @@ export default function AdminDashboardPage() {
                 <p className="text-3xl font-bold">45</p>
               </CardContent>
             </Card>
-             <Card className="rounded-xl">
-              <CardHeader>
-                <CardTitle>Total Users</CardTitle>
-                <CardDescription>All users of the system</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">13</p>
-              </CardContent>
-            </Card>
+            <ClockCard />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="flex flex-col lg:col-span-2 rounded-xl">
