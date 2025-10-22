@@ -38,8 +38,8 @@ export default function ManageBlocksPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {yearLevelsConfig.map(yl => (
-                       <Link href={`/admin/dashboard/manage-blocks/${yl.value}`} key={yl.value}>
-                            <Card className="hover:border-primary transition-colors hover:bg-primary/5 rounded-xl">
+                       <Link href={`/admin/dashboard/manage-blocks/${yl.value}`} key={yl.value} className="flex">
+                            <Card className="w-full flex flex-col hover:border-primary transition-colors hover:bg-primary/5 rounded-xl">
                                 <CardHeader className="flex flex-row items-start justify-between">
                                     <div className="space-y-1.5">
                                         <CardTitle>{yl.label} ({yl.course})</CardTitle>
