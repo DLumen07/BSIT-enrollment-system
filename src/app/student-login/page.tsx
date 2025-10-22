@@ -83,7 +83,7 @@ function LoginForm() {
       </div>
       <div className="space-y-2 text-left">
           <Label htmlFor="password">Password</Label>
-          <div className="relative">
+          <div className="relative group">
             <Input 
                 id="password" 
                 type={showPassword ? "text" : "password"}
@@ -96,7 +96,7 @@ function LoginForm() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:bg-transparent"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
                 onClick={() => setShowPassword(prev => !prev)}
             >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

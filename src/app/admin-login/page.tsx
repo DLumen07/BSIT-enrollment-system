@@ -20,8 +20,8 @@ function LoginForm() {
   const { adminData, setAdminData } = useAdmin();
   const { adminUsers, instructors } = adminData;
 
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
+  const [email, setEmail] = React.useState('alice.j@example.com');
+  const [password, setPassword] = React.useState('password123');
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -62,9 +62,9 @@ function LoginForm() {
           className="rounded-xl hover:border-accent focus-visible:ring-accent hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] focus-visible:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-all"
         />
       </div>
-      <div className="space-y-2 text-left relative">
+      <div className="space-y-2 text-left">
         <Label htmlFor="password">Password</Label>
-        <div className="relative">
+        <div className="relative group">
             <Input 
               id="password" 
               type={showPassword ? "text" : "password"} 
@@ -77,7 +77,7 @@ function LoginForm() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:bg-transparent"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:bg-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
                 onClick={() => setShowPassword(prev => !prev)}
             >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

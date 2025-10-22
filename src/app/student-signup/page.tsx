@@ -1,14 +1,18 @@
 
 'use client';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 export default function StudentSignupPage() {
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   return (
     <div className={cn(
         "dark",
@@ -54,11 +58,21 @@ export default function StudentSignupPage() {
                 </div>
                 <div className="space-y-2 text-left">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required className="rounded-xl" />
+                   <div className="relative group">
+                        <Input id="password" type={showPassword ? "text" : "password"} required className="rounded-xl pr-10" />
+                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowPassword(p => !p)}>
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                    </div>
                 </div>
                 <div className="space-y-2 text-left">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input id="confirmPassword" type="password" required className="rounded-xl" />
+                  <div className="relative group">
+                    <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} required className="rounded-xl pr-10" />
+                     <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowConfirmPassword(p => !p)}>
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full rounded-xl">
                   Create Account
