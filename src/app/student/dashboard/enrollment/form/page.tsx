@@ -60,14 +60,16 @@ const additionalInfoSchema = z.object({
     collegiateSchool: z.string().optional(),
 });
 
-const academicSchema = z.object({
+const baseAcademicSchema = z.object({
     course: z.string().min(1, 'Course is required'),
     yearLevel: z.string().min(1, 'Year level is required'),
     status: z.enum(['New', 'Old', 'Transferee']),
     block: z.string({required_error: 'Please select a block.'}).min(1, 'Please select a block.'),
     subjects: z.array(z.string()).min(1, "Please select at least one subject."),
     specialization: z.string().optional(),
-}).refine(data => {
+});
+
+const academicSchema = baseAcademicSchema.refine(data => {
     if ((data.yearLevel === '3rd Year' || data.yearLevel === '4th Year') && !data.specialization) {
         return false;
     }
@@ -527,7 +529,7 @@ export default function EnrollmentFormPage() {
         const fieldsByStep: FieldName[][] = [
             Object.keys(personalFamilySchema.shape) as FieldName[],
             Object.keys(additionalInfoSchema.shape) as FieldName[],
-            Object.keys(academicSchema.shape) as FieldName[],
+            Object.keys(baseAcademicSchema.shape) as FieldName[],
         ];
         
         const fieldsToValidate = fieldsByStep[currentStep];
