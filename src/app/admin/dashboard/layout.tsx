@@ -19,6 +19,7 @@ import {
   Shield,
   BookUser,
   Users,
+  Clock,
 } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
@@ -39,6 +40,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -143,6 +145,29 @@ const Breadcrumb = () => {
                     </React.Fragment>
                 );
             })}
+        </div>
+    );
+};
+
+const SidebarClock = () => {
+    const [date, setDate] = React.useState(new Date());
+
+    React.useEffect(() => {
+        const timer = setInterval(() => {
+            setDate(new Date());
+        }, 1000);
+        return () => {
+            clearInterval(timer);
+        };
+    }, []);
+
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const fullDate = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
+    return (
+        <div className="text-center px-2 group-data-[collapsible=icon]:hidden">
+            <p className="text-2xl font-bold font-mono text-sidebar-foreground">{time}</p>
+            <p className="text-xs text-sidebar-foreground/80">{fullDate}</p>
         </div>
     );
 };
@@ -310,13 +335,18 @@ export default function AdminDashboardLayout({
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter>
+            <SidebarSeparator />
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleLogout}>
-                  <LogOut />
-                  Logout
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                <SidebarMenuItem>
+                     <SidebarClock />
+                </SidebarMenuItem>
+                <SidebarSeparator />
+                <SidebarMenuItem>
+                    <SidebarMenuButton onClick={handleLogout}>
+                    <LogOut />
+                    Logout
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
             </SidebarMenu>
           </SidebarFooter>
         </Sidebar>
