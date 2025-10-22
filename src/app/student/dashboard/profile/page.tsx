@@ -42,7 +42,7 @@ export default function StudentProfilePage() {
         firstName: studentData.personal.firstName,
         lastName: studentData.personal.lastName,
         middleName: studentData.personal.middleName,
-        birthdate: new Date(studentData.personal.birthdate),
+        birthdate: studentData.personal.birthdate,
         sex: studentData.personal.sex,
         civilStatus: studentData.personal.civilStatus,
         nationality: studentData.personal.nationality,
@@ -76,10 +76,8 @@ export default function StudentProfilePage() {
         setEditableData(prev => ({ ...prev, [id]: value }));
     };
 
-    const handleDateChange = (id: keyof typeof editableData, value: Date | undefined) => {
-        if(value) {
-            setEditableData(prev => ({ ...prev, [id]: value }));
-        }
+    const handleDateChange = (id: keyof typeof editableData, value: string) => {
+        setEditableData(prev => ({ ...prev, [id]: value }));
     };
 
 
@@ -96,7 +94,7 @@ export default function StudentProfilePage() {
                     firstName: editableData.firstName,
                     lastName: editableData.lastName,
                     middleName: editableData.middleName,
-                    birthdate: format(editableData.birthdate, 'MMMM d, yyyy'),
+                    birthdate: editableData.birthdate,
                     sex: editableData.sex,
                     civilStatus: editableData.civilStatus,
                     nationality: editableData.nationality,
@@ -218,18 +216,8 @@ export default function StudentProfilePage() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label>Date of Birth</Label>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal rounded-xl", !editableData.birthdate && "text-muted-foreground")}>
-                                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                                            {editableData.birthdate ? format(editableData.birthdate, "PPP") : <span>Pick a date</span>}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                                                        <Calendar mode="single" selected={editableData.birthdate} onSelect={(date) => handleDateChange('birthdate', date)} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
-                                                    </PopoverContent>
-                                                </Popover>
+                                                <Label htmlFor="birthdate">Date of Birth</Label>
+                                                <Input id="birthdate" value={editableData.birthdate} onChange={(e) => handleDateChange('birthdate', e.target.value)} placeholder="MM/DD/YYYY" className="rounded-xl" />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label>Sex</Label>
@@ -384,6 +372,5 @@ export default function StudentProfilePage() {
             </form>
         </main>
     );
-}
 
     
