@@ -29,10 +29,11 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
 
 type YearLevelKey = '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
 
-const timeOptions = Array.from({ length: 24 }, (_, i) => {
-    const hour = i.toString().padStart(2, '0');
-    return [`${hour}:00`, `${hour}:30`];
-}).flat();
+const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
+    const hour = Math.floor(i / 2);
+    const minute = (i % 2) * 30;
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+});
 
 export default function AdminSettingsPage() {
     const { toast } = useToast();
@@ -119,8 +120,7 @@ export default function AdminSettingsPage() {
         });
     };
     
-     const handlePasswordChange = (e: React.FormEvent) => {
-        e.preventDefault();
+     const handlePasswordChange = () => {
         if (newPassword !== confirmPassword) {
             toast({
                 variant: 'destructive',
@@ -341,8 +341,8 @@ export default function AdminSettingsPage() {
                                         return (
                                             <div key={key} className="p-3 border rounded-lg">
                                                 <p className="font-medium text-sm mb-3">{yearLabel}</p>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                    <div className="space-y-2">
+                                                <div className="flex flex-col sm:flex-row gap-4">
+                                                    <div className="space-y-2 flex-1">
                                                         <Label>Enrollment Date</Label>
                                                         <Popover>
                                                             <PopoverTrigger asChild>
@@ -359,7 +359,7 @@ export default function AdminSettingsPage() {
                                                     <div className="space-y-2">
                                                         <Label>Start Time</Label>
                                                         <Select value={phasedSchedule[key].startTime} onValueChange={(value) => handlePhasedScheduleChange(key, 'startTime', value)}>
-                                                            <SelectTrigger className="rounded-xl">
+                                                            <SelectTrigger className="rounded-xl w-[120px]">
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -370,7 +370,7 @@ export default function AdminSettingsPage() {
                                                     <div className="space-y-2">
                                                         <Label>End Time</Label>
                                                          <Select value={phasedSchedule[key].endTime} onValueChange={(value) => handlePhasedScheduleChange(key, 'endTime', value)}>
-                                                            <SelectTrigger className="rounded-xl">
+                                                            <SelectTrigger className="rounded-xl w-[120px]">
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
