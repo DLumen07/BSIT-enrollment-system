@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/app/admin/context/admin-context';
+import { Eye, EyeOff } from 'lucide-react';
 
 
 function LoginForm() {
@@ -21,6 +22,7 @@ function LoginForm() {
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -60,16 +62,25 @@ function LoginForm() {
           className="rounded-xl hover:border-accent focus-visible:ring-accent hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] focus-visible:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-all"
         />
       </div>
-      <div className="space-y-2 text-left">
+      <div className="space-y-2 text-left relative">
         <Label htmlFor="password">Password</Label>
         <Input 
           id="password" 
-          type="password" 
+          type={showPassword ? "text" : "password"} 
           required 
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded-xl hover:border-accent focus-visible:ring-accent hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] focus-visible:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-all"
+          className="rounded-xl hover:border-accent focus-visible:ring-accent hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] focus-visible:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-all pr-10"
         />
+        <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-[29px] h-7 w-7 text-muted-foreground hover:bg-transparent"
+            onClick={() => setShowPassword(prev => !prev)}
+        >
+            {showPassword ? <EyeOff /> : <Eye />}
+        </Button>
       </div>
       <Button onClick={handleLogin} className="w-full rounded-xl hover:shadow-[0_0_8px_hsl(var(--accent)/0.5)] transition-shadow" variant="accent">
         Login
@@ -87,7 +98,6 @@ export default function StaffLoginPage() {
 
   return (
     <div className={cn(
-        "dark",
         "flex flex-col min-h-screen bg-background",
         "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.3),hsl(var(--background)))]",
     )}>

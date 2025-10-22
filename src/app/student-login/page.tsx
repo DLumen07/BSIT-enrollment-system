@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/app/admin/context/admin-context';
+import { Eye, EyeOff } from 'lucide-react';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg role="img" viewBox="0 0 24 24" {...props}>
@@ -48,6 +49,8 @@ function LoginForm() {
   const { adminData } = useAdmin();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -78,14 +81,25 @@ function LoginForm() {
               className="rounded-xl hover:border-primary focus-visible:ring-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] focus-visible:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all"
           />
       </div>
-      <div className="space-y-2 text-left">
+      <div className="space-y-2 text-left relative">
           <Label htmlFor="password">Password</Label>
           <Input 
               id="password" 
-              type="password" 
+              type={showPassword ? "text" : "password"}
               required 
-              className="rounded-xl hover:border-primary focus-visible:ring-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] focus-visible:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="rounded-xl hover:border-primary focus-visible:ring-primary hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] focus-visible:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all pr-10"
           />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-[29px] h-7 w-7 text-muted-foreground hover:bg-transparent"
+            onClick={() => setShowPassword(prev => !prev)}
+        >
+            {showPassword ? <EyeOff /> : <Eye />}
+        </Button>
       </div>
       <Button onClick={handleLogin} className="w-full rounded-xl hover:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-shadow">
           Login
@@ -103,7 +117,6 @@ export default function StudentLoginPage() {
 
   return (
     <div className={cn(
-        "dark",
         "flex flex-col min-h-screen bg-background",
         "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.3),hsl(var(--background)))]",
     )}>
