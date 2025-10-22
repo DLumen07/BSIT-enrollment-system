@@ -18,7 +18,7 @@ import {
   Settings,
   Shield,
   BookUser,
-  Users,
+  UsersRound,
 } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
@@ -276,7 +276,7 @@ export default function AdminDashboardLayout({
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/users'}>
                   <Link href="/admin/dashboard/users">
-                    <Users />
+                    <UsersRound />
                     Users
                   </Link>
                 </SidebarMenuButton>
