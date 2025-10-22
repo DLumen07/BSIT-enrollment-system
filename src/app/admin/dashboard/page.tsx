@@ -7,9 +7,9 @@ import {
   ArrowUpRight,
   AlertTriangle,
   UserX,
-  Clock,
+  Users,
 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip } from "recharts"
 import Image from 'next/image';
 
@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAdmin } from '../context/admin-context';
 
 
 const yearLevelData = [
@@ -70,17 +71,24 @@ const schedulingIssues = [
 ];
 
 export default function AdminDashboardPage() {
+  const { adminData } = useAdmin();
+  const { adminUsers, instructors, students, pendingApplications } = adminData;
+
+  const totalUsers = adminUsers.length + instructors.length + students.length;
+  const totalStudents = students.length;
+  const newEnrollees = students.filter(s => s.year === 1 && s.status !== 'Old').length;
+
   return (
     <>
         <main className="flex-1 p-4 sm:p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="rounded-xl">
               <CardHeader>
                 <CardTitle>Total Students</CardTitle>
                 <CardDescription>All active students</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">1,250</p>
+                <p className="text-3xl font-bold">{totalStudents}</p>
               </CardContent>
             </Card>
             <Card className="rounded-xl">
@@ -89,7 +97,7 @@ export default function AdminDashboardPage() {
                 <CardDescription>This academic year</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">320</p>
+                <p className="text-3xl font-bold">{newEnrollees}</p>
               </CardContent>
             </Card>
             <Card className="rounded-xl">
@@ -98,7 +106,16 @@ export default function AdminDashboardPage() {
                 <CardDescription>Awaiting review</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">45</p>
+                <p className="text-3xl font-bold">{pendingApplications.length}</p>
+              </CardContent>
+            </Card>
+            <Card className="rounded-xl">
+              <CardHeader>
+                <CardTitle>Total Users</CardTitle>
+                <CardDescription>All system users</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{totalUsers}</p>
               </CardContent>
             </Card>
           </div>
