@@ -99,20 +99,31 @@ export default function AdminSettingsPage() {
             return;
         }
 
-        setAdminData(prev => ({
-            ...prev,
-            currentUser: { ...currentUser, name: editableData.name, email: editableData.email },
-            adminUsers: prev.adminUsers.map(user => 
-                user.id === currentUser.id 
-                ? { ...user, name: editableData.name, email: editableData.email }
-                : user
-            ),
-            academicYear: currentAcademicYear,
-            semester: currentSemester,
-            enrollmentStartDate: startDate,
-            enrollmentEndDate: endDate,
-            phasedEnrollmentSchedule: phasedSchedule,
-        }));
+        setAdminData(prev => {
+            if (!prev) return null;
+            const updatedAdminData = {
+                ...prev,
+                currentUser: { ...currentUser, name: editableData.name, email: editableData.email },
+                adminUsers: prev.adminUsers.map(user => 
+                    user.id === currentUser.id 
+                    ? { ...user, name: editableData.name, email: editableData.email }
+                    : user
+                ),
+            };
+
+             if (currentUser.role === 'Super Admin') {
+                return {
+                    ...updatedAdminData,
+                    academicYear: currentAcademicYear,
+                    semester: currentSemester,
+                    enrollmentStartDate: startDate,
+                    enrollmentEndDate: endDate,
+                    phasedEnrollmentSchedule: phasedSchedule,
+                };
+            }
+
+            return updatedAdminData;
+        });
 
         toast({
             title: `Settings Updated`,
@@ -283,6 +294,11 @@ export default function AdminSettingsPage() {
                                         </div>
                                         <InfoField label="Role" value={currentUser.role} />
                                     </CardContent>
+                                     {currentUser.role !== 'Super Admin' && (
+                                        <CardFooter>
+                                            <Button type="submit" className="rounded-xl">Save Changes</Button>
+                                        </CardFooter>
+                                    )}
                                 </Card>
                             </TabsContent>
                             <TabsContent value="password">
@@ -341,8 +357,8 @@ export default function AdminSettingsPage() {
                                         return (
                                             <div key={key} className="p-3 border rounded-lg">
                                                 <p className="font-medium text-sm mb-3">{yearLabel}</p>
-                                                <div className="flex flex-col sm:flex-row gap-4">
-                                                    <div className="space-y-2 flex-1">
+                                                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                                    <div className="space-y-2 flex-1 w-full sm:w-auto">
                                                         <Label>Enrollment Date</Label>
                                                         <Popover>
                                                             <PopoverTrigger asChild>
@@ -385,9 +401,11 @@ export default function AdminSettingsPage() {
                                 </CardContent>
                             </Card>
                         )}
-                         <div className="flex justify-end mt-6">
-                            <Button type="submit" className="rounded-xl w-full lg:w-auto">Save All Changes</Button>
-                        </div>
+                         {currentUser.role === 'Super Admin' && (
+                            <div className="flex justify-end mt-6">
+                                <Button type="submit" className="rounded-xl w-full lg:w-auto">Save All Changes</Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </form>
