@@ -3,7 +3,7 @@ header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 
 include_once '../database.php';
-include_once 'models/administrator.php';
+include_once '../models/administrator.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -22,7 +22,8 @@ if ($num > 0) {
         $administrator_item = array(
             "id" => $id,
             "name" => $name,
-            "email" => $email
+            "email" => $email,
+            "role" => $role // Include role in the response
         );
         array_push($administrators_arr["records"], $administrator_item);
     }

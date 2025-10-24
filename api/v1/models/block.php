@@ -4,10 +4,12 @@ class Block {
     private $table_name = "blocks";
 
     public $id;
-    public $block_name;
+    public $name; // Renamed from block_name
     public $course;
-    public $year_level;
+    public $year; // Renamed from year_level
     public $specialization;
+    public $capacity; // Added
+    public $enrolled; // Added
 
     public function __construct($db) {
         $this->conn = $db;
@@ -34,7 +36,16 @@ class Block {
     }
 
     function read() {
-        $query = "SELECT * FROM " . $this->table_name;
+        // Added capacity and enrolled, and aliased fields
+        $query = "SELECT 
+                    id, 
+                    block_name as name, 
+                    course, 
+                    year_level as year, 
+                    specialization, 
+                    40 as capacity, 
+                    0 as enrolled 
+                  FROM " . $this->table_name;
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
