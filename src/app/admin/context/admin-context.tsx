@@ -162,13 +162,11 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
-        const API_BASE_URL = '/api/v1/endpoints';
-        
         const [adminsRes, blocksRes, instructorsRes, subjectsRes] = await Promise.all([
-            fetch(`${API_BASE_URL}/read_admin_profiles.php`),
-            fetch(`${API_BASE_URL}/read_blocks.php`),
-            fetch(`${API_BASE_URL}/read_instructor_profiles.php`),
-            fetch(`${API_BASE_URL}/read_subjects.php`),
+            fetch(`/api/v1/endpoints/read_admin_profiles.php`),
+            fetch(`/api/v1/endpoints/read_blocks.php`),
+            fetch(`/api/v1/endpoints/read_instructor_profiles.php`),
+            fetch(`/api/v1/endpoints/read_subjects.php`),
         ]);
 
         if (!adminsRes.ok || !blocksRes.ok || !instructorsRes.ok || !subjectsRes.ok) {

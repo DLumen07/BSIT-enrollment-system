@@ -27,7 +27,7 @@ function LoginForm() {
     e.preventDefault();
 
     try {
-      const response = await fetch('/api/v1/endpoints/login.php', {
+      const response = await fetch('/api/v1/login.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
