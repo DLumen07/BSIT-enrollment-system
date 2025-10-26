@@ -48,5 +48,47 @@ class CourseClass {
         $stmt->execute();
         return $stmt;
     }
+
+    function update() {
+        $query = "UPDATE " . $this->table_name . " SET subject_id=:subject_id, instructor_id=:instructor_id, block_id=:block_id, room=:room, day_of_week=:day_of_week, start_time=:start_time, end_time=:end_time WHERE id=:id";
+        $stmt = $this->conn->prepare($query);
+
+        $this->id = htmlspecialchars(strip_tags($this->id));
+        $this->subject_id = htmlspecialchars(strip_tags($this->subject_id));
+        $this->instructor_id = htmlspecialchars(strip_tags($this->instructor_id));
+        $this->block_id = htmlspecialchars(strip_tags($this->block_id));
+        $this->room = htmlspecialchars(strip_tags($this->room));
+        $this->day_of_week = htmlspecialchars(strip_tags($this->day_of_week));
+        $this->start_time = htmlspecialchars(strip_tags($this->start_time));
+        $this->end_time = htmlspecialchars(strip_tags($this->end_time));
+
+        $stmt->bindParam(":id", $this->id);
+        $stmt->bindParam(":subject_id", $this->subject_id);
+        $stmt->bindParam(":instructor_id", $this->instructor_id);
+        $stmt->bindParam(":block_id", $this->block_id);
+        $stmt->bindParam(":room", $this->room);
+        $stmt->bindParam(":day_of_week", $this->day_of_week);
+        $stmt->bindParam(":start_time", $this->start_time);
+        $stmt->bindParam(":end_time", $this->end_time);
+
+        if ($stmt->execute()) {
+            return true;
+        }
+        return false;
+    }
+
+    function delete() {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+
+        $this->id = htmlspecialchars(strip_tags($this->id));
+
+        $stmt->bindParam(1, $this->id);
+
+        if ($stmt->execute()) {
+            return true;
+        }
+        return false;
+    }
 }
 ?>

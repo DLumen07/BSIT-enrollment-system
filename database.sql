@@ -54,3 +54,31 @@ CREATE TABLE `classes` (
   `end_time` time NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `student_grades` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `student_user_id` varchar(255) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `grade` decimal(3,2) NOT NULL,
+  `academic_year` varchar(255) NOT NULL,
+  `semester` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `enrollment_applications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `student_user_id` varchar(255) NOT NULL,
+  `status` varchar(255) NOT NULL DEFAULT 'pending',
+  `block_name` varchar(255) NOT NULL,
+  `submitted_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `rejection_reason` text,
+  `form_data` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `student_subjects` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `student_user_id` varchar(255) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

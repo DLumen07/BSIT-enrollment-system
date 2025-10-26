@@ -50,5 +50,41 @@ class Block {
         $stmt->execute();
         return $stmt;
     }
+
+    function update() {
+        $query = "UPDATE " . $this->table_name . " SET block_name=:block_name, course=:course, year_level=:year_level, specialization=:specialization WHERE id=:id";
+        $stmt = $this->conn->prepare($query);
+
+        $this->id = htmlspecialchars(strip_tags($this->id));
+        $this->block_name = htmlspecialchars(strip_tags($this->block_name));
+        $this->course = htmlspecialchars(strip_tags($this->course));
+        $this->year_level = htmlspecialchars(strip_tags($this->year_level));
+        $this->specialization = htmlspecialchars(strip_tags($this->specialization));
+
+        $stmt->bindParam(":id", $this->id);
+        $stmt->bindParam(":block_name", $this->block_name);
+        $stmt->bindParam(":course", $this->course);
+        $stmt->bindParam(":year_level", $this->year_level);
+        $stmt->bindParam(":specialization", $this->specialization);
+
+        if ($stmt->execute()) {
+            return true;
+        }
+        return false;
+    }
+
+    function delete() {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+
+        $this->id = htmlspecialchars(strip_tags($this->id));
+
+        $stmt->bindParam(1, $this->id);
+
+        if ($stmt->execute()) {
+            return true;
+        }
+        return false;
+    }
 }
 ?>
