@@ -15,7 +15,7 @@ $subject = new Subject($db);
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!empty($data->subject_code)) {
+if (!empty($data->subject_code) && !empty($data->subject_name) && !empty($data->description) && !empty($data->units) && !empty($data->course) && !empty($data->year_level)) {
     $subject->subject_code = $data->subject_code;
     $subject->subject_name = $data->subject_name;
     $subject->description = $data->description;
@@ -23,10 +23,12 @@ if (!empty($data->subject_code)) {
     $subject->course = $data->course;
     $subject->year_level = $data->year_level;
     $subject->specialization = $data->specialization;
+    $subject->prerequisite = $data->prerequisite;
 
     if ($subject->create()) {
+        $subject->readOne();
         http_response_code(201);
-        echo json_encode(array("message" => "Subject was created."));
+        echo json_encode($subject);
     } else {
         http_response_code(503);
         echo json_encode(array("message" => "Unable to create subject."));

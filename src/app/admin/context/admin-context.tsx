@@ -162,16 +162,18 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
-        const API_BASE_URL = '/api/v1/endpoints';
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
         
-        const [adminsRes, blocksRes, instructorsRes, subjectsRes] = await Promise.all([
+        const [adminsRes, blocksRes, instructorsRes, subjectsRes, studentsRes, applicationsRes] = await Promise.all([
             fetch(`${API_BASE_URL}/read_admin_profiles.php`),
             fetch(`${API_BASE_URL}/read_blocks.php`),
             fetch(`${API_BASE_URL}/read_instructor_profiles.php`),
             fetch(`${API_BASE_URL}/read_subjects.php`),
+            fetch(`${API_BASE_URL}/read_student_profiles.php`),
+            fetch(`${API_BASE_URL}/read_applications.php`),
         ]);
 
-        if (!adminsRes.ok || !blocksRes.ok || !instructorsRes.ok || !subjectsRes.ok) {
+        if (!adminsRes.ok || !blocksRes.ok || !instructorsRes.ok || !subjectsRes.ok || !studentsRes.ok || !applicationsRes.ok) {
             console.error('Failed to fetch one or more resources');
             throw new Error('Failed to fetch initial data from the server.');
         }
@@ -180,6 +182,8 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
         const blocksData = await blocksRes.json();
         const instructorsData = await instructorsRes.json();
         const subjectsData = await subjectsRes.json();
+        const studentsData = await studentsRes.json();
+        const applicationsData = await applicationsRes.json();
 
         // --- Transform data to match frontend schema ---
         const transformedAdmins = adminsData.records.map((admin: any) => ({
@@ -228,6 +232,26 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
           label: `${subj.code} - ${subj.description}`
         }));
 
+        const transformedStudents = studentsData.records.map((stud: any) => ({
+            id: stud.user_id,
+            studentId: stud.student_id_number,
+            name: stud.name,
+            avatar: stud.avatar_url,
+            email: stud.email,
+            course: stud.course,
+            year: parseInt(stud.year_level, 10),
+            status: 'Enrolled', // Default status for now
+            block: stud.block,
+            sex: 'Male', // Default
+            phoneNumber: '09123456789', //Default
+            specialization: stud.specialization
+        }));
+
+        const pendingApplications = applicationsData.records.filter((app: any) => app.status === 'pending');
+        const approvedApplications = applicationsData.records.filter((app: any) => app.status === 'approved');
+        const rejectedApplications = applicationsData.records.filter((app: any) => app.status === 'rejected');
+
+
         // Merge fetched data with initial mock data for parts not yet in backend
         setAdminData({
             ...initialAdminData,
@@ -236,6 +260,10 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
             instructors: transformedInstructors,
             subjects: transformedSubjects,
             availableSubjects: availableSubjects,
+            students: transformedStudents,
+            pendingApplications: pendingApplications,
+            approvedApplications: approvedApplications,
+            rejectedApplications: rejectedApplications,
         });
 
       } catch (err: any) {

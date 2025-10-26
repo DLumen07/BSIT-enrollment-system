@@ -34,18 +34,19 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAdmin, Subject, YearLevelSubjects } from '../../context/admin-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import { useToast } from '@/components/ui/use-toast';
 
 const yearLevels = [
-    { value: '1st-year', label: '1st Year' },
-    { value: '2nd-year', label: '2nd Year' },
-    { value: '3rd-year', label: '3rd Year' },
-    { value: '4th-year', label: '4th Year' },
+    { value: '1', label: '1st Year' },
+    { value: '2', label: '2nd Year' },
+    { value: '3', label: '3rd Year' },
+    { value: '4', label: '4th Year' },
 ];
 
 export default function ManageSubjectsPage() {
     const { adminData, setAdminData } = useAdmin();
     const { subjects } = adminData;
+    const { toast } = useToast();
 
     const [activeTab, setActiveTab] = useState(yearLevels[0].value);
     
@@ -65,7 +66,6 @@ export default function ManageSubjectsPage() {
             options.push(...(subjects[yearKey] || []));
         }
         
-        // Exclude the subject being edited from its own prerequisite list
         if (currentSubject) {
             return options.filter(s => s.id !== currentSubject.id);
         }
@@ -90,61 +90,118 @@ export default function ManageSubjectsPage() {
         setDeleteInput('');
     };
 
-    const handleAddSubject = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleAddSubject = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        const prerequisite = formData.get('prerequisite') as string;
-        const newSubject: Subject = {
-            id: Date.now(),
-            code: formData.get('code') as string,
-            description: formData.get('description') as string,
+        const newSubjectData = {
+            subject_code: formData.get('code') as string,
+            subject_name: formData.get('description') as string,
             units: parseInt(formData.get('units') as string, 10),
-            prerequisite: prerequisite !== 'none' ? prerequisite : undefined,
+            prerequisite: formData.get('prerequisite') as string,
+            course: 'BSIT',
+            year_level: parseInt(activeTab),
+            specialization: ''
         };
-        setAdminData(prev => ({
-            ...prev,
-            subjects: {
-                ...prev.subjects,
-                [activeTab]: [...prev.subjects[activeTab], newSubject],
-            }
-        }));
-        setIsAddDialogOpen(false);
+
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/create_subject.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newSubjectData)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+
+            const newSubject: Subject = {
+                id: result.id,
+                code: result.subject_code,
+                description: result.subject_name,
+                units: result.units,
+                prerequisite: result.prerequisite,
+            };
+
+            setAdminData(prev => ({
+                ...prev,
+                subjects: {
+                    ...prev.subjects,
+                    [activeTab]: [...prev.subjects[activeTab], newSubject],
+                }
+            }));
+            toast({ title: "Success", description: "Subject created successfully." });
+            setIsAddDialogOpen(false);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to create subject.", variant: "destructive" });
+        }
     };
 
-    const handleEditSubject = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleEditSubject = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!currentSubject) return;
         const formData = new FormData(e.currentTarget);
-        const prerequisite = formData.get('prerequisite') as string;
-        const updatedSubject = {
-            ...currentSubject,
-            code: formData.get('code') as string,
-            description: formData.get('description') as string,
+        const updatedSubjectData = {
+            id: currentSubject.id,
+            subject_code: formData.get('code') as string,
+            subject_name: formData.get('description') as string,
             units: parseInt(formData.get('units') as string, 10),
-            prerequisite: prerequisite !== 'none' ? prerequisite : undefined,
+            prerequisite: formData.get('prerequisite') as string,
+            course: 'BSIT',
+            year_level: parseInt(activeTab),
+            specialization: ''
         };
-        setAdminData(prev => ({
-            ...prev,
-            subjects: {
-                ...prev.subjects,
-                [activeTab]: prev.subjects[activeTab].map(s => s.id === currentSubject.id ? updatedSubject : s),
-            }
-        }));
-        setIsEditDialogOpen(false);
-        setCurrentSubject(null);
+
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/update_subject.php`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedSubjectData)
+            });
+            if (!response.ok) throw new Error();
+
+            const updatedSubject: Subject = {
+                id: currentSubject.id,
+                code: updatedSubjectData.subject_code,
+                description: updatedSubjectData.subject_name,
+                units: updatedSubjectData.units,
+                prerequisite: updatedSubjectData.prerequisite,
+            };
+
+            setAdminData(prev => ({
+                ...prev,
+                subjects: {
+                    ...prev.subjects,
+                    [activeTab]: prev.subjects[activeTab].map(s => s.id === currentSubject.id ? updatedSubject : s),
+                }
+            }));
+            toast({ title: "Success", description: "Subject updated successfully." });
+            setIsEditDialogOpen(false);
+            setCurrentSubject(null);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to update subject.", variant: "destructive" });
+        }
     };
 
-     const handleDeleteSubject = () => {
+     const handleDeleteSubject = async () => {
         if (!currentSubject) return;
-        setAdminData(prev => ({
-            ...prev,
-            subjects: {
-                ...prev.subjects,
-                [activeTab]: prev.subjects[activeTab].filter(s => s.id !== currentSubject.id),
-            }
-        }));
-        setIsDeleteDialogOpen(false);
-        setCurrentSubject(null);
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/delete_subject.php`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: currentSubject.id })
+            });
+            if (!response.ok) throw new Error();
+            setAdminData(prev => ({
+                ...prev,
+                subjects: {
+                    ...prev.subjects,
+                    [activeTab]: prev.subjects[activeTab].filter(s => s.id !== currentSubject.id),
+                }
+            }));
+            toast({ title: "Success", description: "Subject deleted successfully." });
+            setIsDeleteDialogOpen(false);
+            setCurrentSubject(null);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to delete subject.", variant: "destructive" });
+        }
     };
 
   return (
@@ -186,7 +243,7 @@ export default function ManageSubjectsPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {subjects[yl.value].length > 0 ? (
+                                            {subjects[yl.value] && subjects[yl.value].length > 0 ? (
                                                 subjects[yl.value].map(subject => (
                                                     <TableRow key={subject.id}>
                                                         <TableCell className="font-medium">{subject.code}</TableCell>
@@ -357,5 +414,3 @@ export default function ManageSubjectsPage() {
     </>
   );
 }
-
-    

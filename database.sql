@@ -31,6 +31,7 @@ CREATE TABLE `subjects` (
   `course` varchar(255) NOT NULL,
   `year_level` int(11) NOT NULL,
   `specialization` varchar(255) NOT NULL,
+  `prerequisite` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

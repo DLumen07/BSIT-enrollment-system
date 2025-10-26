@@ -91,14 +91,25 @@ export default function StudentsPage() {
         setIsProfileDialogOpen(true);
     };
 
-     const handleDeleteStudent = () => {
+     const handleDeleteStudent = async () => {
         if (!selectedStudent) return;
-        setAdminData(prev => ({
-            ...prev,
-            students: prev.students.filter(s => s.id !== selectedStudent.id),
-        }));
-        setIsDeleteDialogOpen(false);
-        setSelectedStudent(null);
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/delete_student_profile.php`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: selectedStudent.id })
+            });
+            if (!response.ok) throw new Error();
+            setAdminData(prev => ({
+                ...prev,
+                students: prev.students.filter(s => s.id !== selectedStudent.id),
+            }));
+            toast({ title: "Success", description: "Student deleted successfully." });
+            setIsDeleteDialogOpen(false);
+            setSelectedStudent(null);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to delete student.", variant: "destructive" });
+        }
     };
     
     const handleFilterChange = (filterType: keyof Omit<typeof filters, 'status'>, value: string) => {
