@@ -1,12 +1,11 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: PUT");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+include_once '../core.php';
 
+include_once '../core.php';
 include_once '../database.php';
 include_once '../models/block.php';
+
+require_auth(['Super Admin', 'Admin']);
 
 $database = new Database();
 $db = $database->getConnection();
@@ -15,12 +14,13 @@ $block = new Block($db);
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!empty($data->id) && !empty($data->block_name) && !empty($data->course) && !empty($data->year_level)) {
+if (!empty($data->id) && !empty($data->name) && !empty($data->course) && !empty($data->year_level)) {
     $block->id = $data->id;
-    $block->block_name = $data->block_name;
+    $block->name = $data->name;
     $block->course = $data->course;
     $block->year_level = $data->year_level;
     $block->specialization = $data->specialization;
+    $block->capacity = $data->capacity;
 
     if ($block->update()) {
         http_response_code(200);

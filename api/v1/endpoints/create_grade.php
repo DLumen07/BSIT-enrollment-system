@@ -1,12 +1,11 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+include_once '../core.php';
 
+include_once '../core.php';
 include_once '../database.php';
 include_once '../models/grade.php';
+
+require_auth(['Super Admin', 'Admin']);
 
 $database = new Database();
 $db = $database->getConnection();
@@ -24,7 +23,7 @@ if (!empty($data->student_user_id) && !empty($data->subject_id) && !empty($data-
 
     if ($grade->create()) {
         http_response_code(201);
-        echo json_encode(array("message" => "Grade was created."));
+        echo json_encode($grade);
     } else {
         http_response_code(503);
         echo json_encode(array("message" => "Unable to create grade."));

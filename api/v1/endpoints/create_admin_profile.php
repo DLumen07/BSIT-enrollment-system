@@ -1,9 +1,5 @@
 <?php
 include_once '../core.php';
-include_once '../database.php';
-include_once '../models/admin_profile.php';
-
-$database = new Database();
 $db = $database->getConnection();
 
 $admin_profile = new AdminProfile($db);

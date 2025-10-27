@@ -39,6 +39,18 @@ class AdminProfile {
         return $stmt;
     }
 
+    function readOne() {
+        $query = "SELECT * FROM " . $this->table_name . " WHERE user_id = ? LIMIT 0,1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $this->user_id);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $this->name = $row['name'];
+        $this->avatar_url = $row['avatar_url'];
+        $this->admin_role = $row['admin_role'];
+    }
+
     function update() {
         $query = "UPDATE " . $this->table_name . " SET name=:name, avatar_url=:avatar_url, admin_role=:admin_role WHERE user_id=:user_id";
         $stmt = $this->conn->prepare($query);

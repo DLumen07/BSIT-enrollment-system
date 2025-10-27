@@ -1,12 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-
-include_once '../database.php';
-include_once '../models/subject.php';
+include_once '../core.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -15,18 +8,14 @@ $subject = new Subject($db);
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!empty($data->subject_code) && !empty($data->subject_name) && !empty($data->description) && !empty($data->units) && !empty($data->course) && !empty($data->year_level)) {
-    $subject->subject_code = $data->subject_code;
-    $subject->subject_name = $data->subject_name;
+if (!empty($data->code) && !empty($data->description) && !empty($data->units) && !empty($data->year_level)) {
+    $subject->code = $data->code;
     $subject->description = $data->description;
     $subject->units = $data->units;
-    $subject->course = $data->course;
+    $subject->prerequisite_id = $data->prerequisite_id;
     $subject->year_level = $data->year_level;
-    $subject->specialization = $data->specialization;
-    $subject->prerequisite = $data->prerequisite;
 
     if ($subject->create()) {
-        $subject->readOne();
         http_response_code(201);
         echo json_encode($subject);
     } else {

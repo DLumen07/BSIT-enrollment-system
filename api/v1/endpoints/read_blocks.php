@@ -1,9 +1,5 @@
 <?php
 include_once '../core.php';
-include_once '../database.php';
-include_once '../models/block.php';
-
-$database = new Database();
 $db = $database->getConnection();
 
 $block = new Block($db);
