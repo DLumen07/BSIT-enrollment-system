@@ -7,6 +7,7 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
     return response.json();
   },

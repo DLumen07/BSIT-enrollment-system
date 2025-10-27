@@ -32,7 +32,7 @@ const steps = [
 const personalFamilySchema = z.object({
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
-    middleName: z.string().optional(),
+    middleName: z.string().min(1, 'Middle name is required'),
     email: z.string().email('Invalid email address'),
     phoneNumber: z.string().min(10, 'Invalid phone number'),
     birthdate: z.date({ required_error: "A date of birth is required." }),
@@ -546,7 +546,7 @@ export default function EnrollmentFormPage() {
             await api.post('/api/v1/endpoints/create_student_profile.php', {
                 user_id: studentData.user.id,
                 student_id_number: studentData.academic.studentId,
-                name: `${data.firstName} ${data.middleName} ${data.lastName}`,
+                name: `${data.firstName} ${data.lastName}`,
                 avatar_url: studentData.personal.avatarUrl,
                 course: data.course,
                 year_level: data.yearLevel,
