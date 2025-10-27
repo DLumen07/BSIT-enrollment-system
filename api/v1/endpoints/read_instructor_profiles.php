@@ -23,11 +23,11 @@ if ($num > 0) {
             "user_id" => $user_id,
             "name" => $name,
             "avatar_url" => $avatar_url,
-            "department" => $department
+            "department" => $department,
+            "email" => $email
         );
         array_push($instructor_profiles_arr["records"], $instructor_profile_item);
     }
-
     http_response_code(200);
     echo json_encode($instructor_profiles_arr);
 } else {

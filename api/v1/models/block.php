@@ -4,68 +4,63 @@ class Block {
     private $table_name = "blocks";
 
     public $id;
-    public $name; // Renamed from block_name
+    public $name;
+    public $year_level;
     public $course;
-    public $year; // Renamed from year_level
     public $specialization;
-    public $capacity; // Added
-    public $enrolled; // Added
+    public $capacity;
 
     public function __construct($db) {
         $this->conn = $db;
     }
 
     function create() {
-        $query = "INSERT INTO " . $this->table_name . " SET block_name=:block_name, course=:course, year_level=:year_level, specialization=:specialization";
+        $query = "INSERT INTO " . $this->table_name . " SET name=:name, year_level=:year_level, course=:course, specialization=:specialization, capacity=:capacity";
         $stmt = $this->conn->prepare($query);
 
-        $this->block_name = htmlspecialchars(strip_tags($this->block_name));
-        $this->course = htmlspecialchars(strip_tags($this->course));
+        $this->name = htmlspecialchars(strip_tags($this->name));
         $this->year_level = htmlspecialchars(strip_tags($this->year_level));
+        $this->course = htmlspecialchars(strip_tags($this->course));
         $this->specialization = htmlspecialchars(strip_tags($this->specialization));
+        $this->capacity = htmlspecialchars(strip_tags($this->capacity));
 
-        $stmt->bindParam(":block_name", $this->block_name);
-        $stmt->bindParam(":course", $this->course);
+        $stmt->bindParam(":name", $this->name);
         $stmt->bindParam(":year_level", $this->year_level);
+        $stmt->bindParam(":course", $this->course);
         $stmt->bindParam(":specialization", $this->specialization);
+        $stmt->bindParam(":capacity", $this->capacity);
 
         if ($stmt->execute()) {
+            $this->id = $this->conn->lastInsertId();
             return true;
         }
         return false;
     }
 
     function read() {
-        // Added capacity and enrolled, and aliased fields
-        $query = "SELECT 
-                    id, 
-                    block_name as name, 
-                    course, 
-                    year_level as year, 
-                    specialization, 
-                    40 as capacity, 
-                    0 as enrolled 
-                  FROM " . $this->table_name;
+        $query = "SELECT * FROM " . $this->table_name;
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
     }
 
     function update() {
-        $query = "UPDATE " . $this->table_name . " SET block_name=:block_name, course=:course, year_level=:year_level, specialization=:specialization WHERE id=:id";
+        $query = "UPDATE " . $this->table_name . " SET name=:name, year_level=:year_level, course=:course, specialization=:specialization, capacity=:capacity WHERE id=:id";
         $stmt = $this->conn->prepare($query);
 
         $this->id = htmlspecialchars(strip_tags($this->id));
-        $this->block_name = htmlspecialchars(strip_tags($this->block_name));
-        $this->course = htmlspecialchars(strip_tags($this->course));
+        $this->name = htmlspecialchars(strip_tags($this->name));
         $this->year_level = htmlspecialchars(strip_tags($this->year_level));
+        $this->course = htmlspecialchars(strip_tags($this->course));
         $this->specialization = htmlspecialchars(strip_tags($this->specialization));
+        $this->capacity = htmlspecialchars(strip_tags($this->capacity));
 
         $stmt->bindParam(":id", $this->id);
-        $stmt->bindParam(":block_name", $this->block_name);
-        $stmt->bindParam(":course", $this->course);
+        $stmt->bindParam(":name", $this->name);
         $stmt->bindParam(":year_level", $this->year_level);
+        $stmt->bindParam(":course", $this->course);
         $stmt->bindParam(":specialization", $this->specialization);
+        $stmt->bindParam(":capacity", $this->capacity);
 
         if ($stmt->execute()) {
             return true;
@@ -76,11 +71,8 @@ class Block {
     function delete() {
         $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
         $stmt = $this->conn->prepare($query);
-
         $this->id = htmlspecialchars(strip_tags($this->id));
-
         $stmt->bindParam(1, $this->id);
-
         if ($stmt->execute()) {
             return true;
         }

@@ -31,18 +31,17 @@ class Grade {
         $stmt->bindParam(":semester", $this->semester);
 
         if ($stmt->execute()) {
+            $this->id = $this->conn->lastInsertId();
             return true;
         }
         return false;
     }
 
-    function read() {
-        $query = "SELECT * FROM " . $this->table_name . " WHERE student_user_id = ?";
+    function readByStudent() {
+        $query = "SELECT g.*, s.code as subject_code FROM " . $this->table_name . " g JOIN subjects s ON g.subject_id = s.id WHERE g.student_user_id = ?";
         $stmt = $this->conn->prepare($query);
-
         $this->student_user_id = htmlspecialchars(strip_tags($this->student_user_id));
         $stmt->bindParam(1, $this->student_user_id);
-
         $stmt->execute();
         return $stmt;
     }
@@ -57,6 +56,17 @@ class Grade {
         $stmt->bindParam(":id", $this->id);
         $stmt->bindParam(":grade", $this->grade);
 
+        if ($stmt->execute()) {
+            return true;
+        }
+        return false;
+    }
+
+    function delete() {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+        $this->id = htmlspecialchars(strip_tags($this->id));
+        $stmt->bindParam(1, $this->id);
         if ($stmt->execute()) {
             return true;
         }

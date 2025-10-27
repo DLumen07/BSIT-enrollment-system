@@ -31,11 +31,10 @@ if ($num > 0) {
             "specialization" => $specialization,
             "sex" => $sex,
             "phone_number" => $phone_number,
-            "personal_details" => $personal_details
+            "email" => $email
         );
         array_push($student_profiles_arr["records"], $student_profile_item);
     }
-
     http_response_code(200);
     echo json_encode($student_profiles_arr);
 } else {

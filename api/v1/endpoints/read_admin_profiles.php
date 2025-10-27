@@ -1,5 +1,7 @@
 <?php
-include_once '../core.php';
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+
 include_once '../database.php';
 include_once '../models/admin_profile.php';
 
@@ -21,11 +23,11 @@ if ($num > 0) {
             "user_id" => $user_id,
             "name" => $name,
             "avatar_url" => $avatar_url,
-            "admin_role" => $admin_role
+            "admin_role" => $admin_role,
+            "email" => $email
         );
         array_push($admin_profiles_arr["records"], $admin_profile_item);
     }
-
     http_response_code(200);
     echo json_encode($admin_profiles_arr);
 } else {

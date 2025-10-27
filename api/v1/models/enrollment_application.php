@@ -30,13 +30,14 @@ class EnrollmentApplication {
         $stmt->bindParam(":form_data", $this->form_data);
 
         if ($stmt->execute()) {
+            $this->id = $this->conn->lastInsertId();
             return true;
         }
         return false;
     }
 
     function read() {
-        $query = "SELECT * FROM " . $this->table_name . " WHERE status = 'pending'";
+        $query = "SELECT ea.*, sp.name as student_name, sp.course, sp.year_level FROM " . $this->table_name . " ea JOIN student_profiles sp ON ea.student_user_id = sp.user_id";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
@@ -54,6 +55,17 @@ class EnrollmentApplication {
         $stmt->bindParam(":status", $this->status);
         $stmt->bindParam(":rejection_reason", $this->rejection_reason);
 
+        if ($stmt->execute()) {
+            return true;
+        }
+        return false;
+    }
+
+    function delete() {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+        $this->id = htmlspecialchars(strip_tags($this->id));
+        $stmt->bindParam(1, $this->id);
         if ($stmt->execute()) {
             return true;
         }

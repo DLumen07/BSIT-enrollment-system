@@ -15,11 +15,12 @@ $block = new Block($db);
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!empty($data->block_name) && !empty($data->course) && !empty($data->year_level)) {
-    $block->block_name = $data->block_name;
+if (!empty($data->name) && !empty($data->course) && !empty($data->year_level)) {
+    $block->name = $data->name;
     $block->course = $data->course;
     $block->year_level = $data->year_level;
     $block->specialization = $data->specialization;
+    $block->capacity = $data->capacity;
 
     if ($block->create()) {
         http_response_code(201);

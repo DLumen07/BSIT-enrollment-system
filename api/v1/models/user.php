@@ -5,9 +5,8 @@ class User {
 
     public $id;
     public $email;
-    public $password_hash;
+    public $password;
     public $role;
-    public $created_at;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -18,39 +17,58 @@ class User {
         $stmt = $this->conn->prepare($query);
 
         $this->email = htmlspecialchars(strip_tags($this->email));
-        $this->password_hash = htmlspecialchars(strip_tags($this->password_hash));
         $this->role = htmlspecialchars(strip_tags($this->role));
+        $password_hash = password_hash($this->password, PASSWORD_BCRYPT);
 
         $stmt->bindParam(":email", $this->email);
-        $stmt->bindParam(":password_hash", $this->password_hash);
+        $stmt->bindParam(":password_hash", $password_hash);
         $stmt->bindParam(":role", $this->role);
 
         if ($stmt->execute()) {
+            $this->id = $this->conn->lastInsertId();
             return true;
         }
         return false;
     }
 
-    function read() {
-        $query = "SELECT id, email, role, created_at FROM " . $this->table_name;
+    function emailExists() {
+        $query = "SELECT id, password_hash, role FROM " . $this->table_name . " WHERE email = ? LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
+        $this->email = htmlspecialchars(strip_tags($this->email));
+        $stmt->bindParam(1, $this->email);
         $stmt->execute();
-        return $stmt;
+        $num = $stmt->rowCount();
+
+        if ($num > 0) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $this->id = $row['id'];
+            $this->password_hash = $row['password_hash'];
+            $this->role = $row['role'];
+            return true;
+        }
+        return false;
     }
 
     function update() {
-        $query = "UPDATE " . $this->table_name . " SET email = :email, password_hash = :password_hash, role = :role WHERE id = :id";
+        $query = "UPDATE " . $this->table_name . " SET email=:email, role=:role";
+        if (!empty($this->password)) {
+            $query .= ", password_hash=:password_hash";
+        }
+        $query .= " WHERE id=:id";
         $stmt = $this->conn->prepare($query);
 
         $this->id = htmlspecialchars(strip_tags($this->id));
         $this->email = htmlspecialchars(strip_tags($this->email));
-        $this->password_hash = htmlspecialchars(strip_tags($this->password_hash));
         $this->role = htmlspecialchars(strip_tags($this->role));
 
-        $stmt->bindParam(':id', $this->id);
-        $stmt->bindParam(':email', $this->email);
-        $stmt->bindParam(':password_hash', $this->password_hash);
-        $stmt->bindParam(':role', $this->role);
+        $stmt->bindParam(":id", $this->id);
+        $stmt->bindParam(":email", $this->email);
+        $stmt->bindParam(":role", $this->role);
+
+        if (!empty($this->password)) {
+            $password_hash = password_hash($this->password, PASSWORD_BCRYPT);
+            $stmt->bindParam(":password_hash", $password_hash);
+        }
 
         if ($stmt->execute()) {
             return true;
@@ -61,10 +79,8 @@ class User {
     function delete() {
         $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
         $stmt = $this->conn->prepare($query);
-
         $this->id = htmlspecialchars(strip_tags($this->id));
         $stmt->bindParam(1, $this->id);
-
         if ($stmt->execute()) {
             return true;
         }
