@@ -53,3 +53,5 @@ For a detailed explanation of the system's architecture, state management, and c
 ## Connecting to a Backend API
 
 This application is designed for easy integration with any backend API (e.g., PHP, Node.js, Python). For a step-by-step guide on how to connect the frontend to your backend, please see the **[Backend Integration Guide](./docs/backend-integration.md)**.
+
+For an explanation of how the frontend authenticates with the backend, please see the **[Authentication Integration Guide](./docs/auth-integration.md)**.
