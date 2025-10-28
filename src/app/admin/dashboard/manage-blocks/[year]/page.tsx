@@ -41,10 +41,10 @@ import { useAdmin, Block, mockStudents } from '../../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 
 const yearLevelMap: Record<string, string> = {
-    '1st-year': '1st Year',
-    '2nd-year': '2nd Year',
-    '3rd-year': '3rd Year',
-    '4th-year': '4th Year',
+    '1': '1st Year',
+    '2': '2nd Year',
+    '3': '3rd Year',
+    '4': '4th Year',
 };
 
 const specializations = [
@@ -57,12 +57,12 @@ export default function YearLevelBlocksPage() {
     const params = useParams();
     const { toast } = useToast();
     const { adminData, setAdminData } = useAdmin();
-    const year = params.year as '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
+    const year = params.year as '1' | '2' | '3' | '4';
     const yearLabel = yearLevelMap[year] || 'Unknown Year';
-    const isUpperYear = year === '3rd-year' || year === '4th-year';
+    const isUpperYear = year === '3' || year === '4';
     const course = isUpperYear ? 'BSIT' : 'ACT';
 
-    const blocksForYear = adminData.blocks.filter(b => b.year === year);
+    const blocksForYear = adminData.blocks.filter(b => b.year === parseInt(year));
     
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -80,7 +80,7 @@ export default function YearLevelBlocksPage() {
         setBlockSpecialization(isUpperYear ? 'AP' : undefined);
     }, [isAddDialogOpen, isEditDialogOpen, isUpperYear]);
 
-    const handleAddBlock = () => {
+    const handleAddBlock = async () => {
         if (!blockName || !blockCapacity) {
              toast({ variant: 'destructive', title: 'Missing Fields', description: 'Block Name and Capacity are required.' });
              return;
@@ -91,24 +91,45 @@ export default function YearLevelBlocksPage() {
              return;
         }
 
-        const newBlock: Block = {
-            id: Date.now(),
-            name: `${course} ${blockName}`,
-            capacity: parseInt(blockCapacity, 10),
-            enrolled: 0,
-            year,
-            course,
-            specialization: isUpperYear ? (blockSpecialization as 'AP' | 'DD') : undefined,
+        const newBlockData = {
+            block_name: `${course} ${blockName}`,
+            course: course,
+            year_level: parseInt(year),
+            specialization: isUpperYear ? blockSpecialization : '',
         };
-        setAdminData(prev => ({
-            ...prev, 
-            blocks: [...prev.blocks, newBlock],
-            schedules: { ...prev.schedules, [newBlock.name]: [] }
-        }));
-        setIsAddDialogOpen(false);
+
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/create_block.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newBlockData)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+
+            const newBlock: Block = {
+                id: result.id,
+                name: result.block_name,
+                capacity: parseInt(blockCapacity, 10),
+                enrolled: 0,
+                year: result.year_level,
+                course,
+                specialization: result.specialization as 'AP' | 'DD' | undefined,
+            };
+
+            setAdminData(prev => ({
+                ...prev,
+                blocks: [...prev.blocks, newBlock],
+                schedules: { ...prev.schedules, [newBlock.name]: [] }
+            }));
+            toast({ title: "Success", description: "Block created successfully." });
+            setIsAddDialogOpen(false);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to create block.", variant: "destructive" });
+        }
     };
 
-    const handleEditBlock = () => {
+    const handleEditBlock = async () => {
         if (!selectedBlock || !blockName || !blockCapacity) return;
 
          if (isUpperYear && !blockSpecialization) {
@@ -116,25 +137,56 @@ export default function YearLevelBlocksPage() {
              return;
         }
 
-        const updatedBlock = { 
-            ...selectedBlock, 
-            name: blockName.startsWith(course) ? blockName : `${course} ${blockName}`,
-            capacity: parseInt(blockCapacity, 10), 
-            specialization: isUpperYear ? (blockSpecialization as 'AP' | 'DD') : undefined 
+        const updatedBlockData = {
+            id: selectedBlock.id,
+            block_name: blockName.startsWith(course) ? blockName : `${course} ${blockName}`,
+            course: course,
+            year_level: parseInt(year),
+            specialization: isUpperYear ? blockSpecialization : '',
         };
-        setAdminData(prev => ({
-            ...prev,
-            blocks: prev.blocks.map(b => b.id === selectedBlock.id ? updatedBlock : b)
-        }));
-        setIsEditDialogOpen(false);
-        setSelectedBlock(null);
+
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/update_block.php`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedBlockData)
+            });
+            if (!response.ok) throw new Error();
+
+            const updatedBlock = {
+                ...selectedBlock,
+                name: updatedBlockData.block_name,
+                capacity: parseInt(blockCapacity, 10),
+                specialization: updatedBlockData.specialization as 'AP' | 'DD' | undefined
+            };
+            setAdminData(prev => ({
+                ...prev,
+                blocks: prev.blocks.map(b => b.id === selectedBlock.id ? updatedBlock : b)
+            }));
+            toast({ title: "Success", description: "Block updated successfully." });
+            setIsEditDialogOpen(false);
+            setSelectedBlock(null);
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to update block.", variant: "destructive" });
+        }
     };
     
-    const handleDeleteBlock = () => {
+    const handleDeleteBlock = async () => {
         if (selectedBlock) {
-            setAdminData(prev => ({...prev, blocks: prev.blocks.filter(b => b.id !== selectedBlock.id)}));
-            setIsDeleteDialogOpen(false);
-            setSelectedBlock(null);
+            try {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/delete_block.php`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: selectedBlock.id })
+                });
+                if (!response.ok) throw new Error();
+                setAdminData(prev => ({...prev, blocks: prev.blocks.filter(b => b.id !== selectedBlock.id)}));
+                toast({ title: "Success", description: "Block deleted successfully." });
+                setIsDeleteDialogOpen(false);
+                setSelectedBlock(null);
+            } catch (error) {
+                toast({ title: "Error", description: "Failed to delete block.", variant: "destructive" });
+            }
         }
     };
 

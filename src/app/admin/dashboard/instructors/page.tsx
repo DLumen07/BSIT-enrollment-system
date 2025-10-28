@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -141,7 +140,7 @@ export default function InstructorsPage() {
         setDeleteInput('');
     };
     
-    const handleAddInstructor = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleAddInstructor = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (password !== confirmPassword) {
             toast({
@@ -152,46 +151,97 @@ export default function InstructorsPage() {
             return;
         }
 
-        const newInstructor: Instructor = {
-            id: Date.now(),
-            name,
-            email,
-            subjects,
-            avatar: `https://picsum.photos/seed/${Date.now()}/40/40`,
-        };
-        setAdminData(prev => ({...prev, instructors: [...prev.instructors, newInstructor]}));
-        setIsAddDialogOpen(false);
-        toast({
-            title: 'Instructor Account Created',
-            description: `An account for ${name} has been successfully created.`,
-        });
+        try {
+            const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/create_user.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, role: 'instructor' })
+            });
+            const userData = await userResponse.json();
+            if (!userResponse.ok) throw new Error(userData.message);
+
+            const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/create_instructor_profile.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userData.id, name, department: 'IT', avatar_url: `https://picsum.photos/seed/${userData.id}/40/40` })
+            });
+            const profileData = await profileResponse.json();
+            if (!profileResponse.ok) throw new Error(profileData.message);
+
+            const newInstructor: Instructor = {
+                id: profileData.user_id,
+                name: profileData.name,
+                email: email,
+                subjects,
+                avatar: profileData.avatar_url,
+            };
+            setAdminData(prev => ({...prev, instructors: [...prev.instructors, newInstructor]}));
+            setIsAddDialogOpen(false);
+            toast({
+                title: 'Instructor Account Created',
+                description: `An account for ${name} has been successfully created.`,
+            });
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to create instructor.", variant: "destructive" });
+        }
     };
 
-    const handleEditInstructor = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleEditInstructor = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!selectedInstructor) return;
-        const updatedInstructor = {
-            ...selectedInstructor,
+
+        const updatedInstructorData = {
+            user_id: selectedInstructor.id,
             name,
-            email,
-            subjects,
+            department: 'IT',
+            avatar_url: selectedInstructor.avatar,
         };
-        setAdminData(prev => ({
-            ...prev,
-            instructors: prev.instructors.map(u => u.id === selectedInstructor.id ? updatedInstructor : u)
-        }));
-        setIsEditDialogOpen(false);
-        setSelectedInstructor(null);
+
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/update_instructor_profile.php`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedInstructorData)
+            });
+            if (!response.ok) throw new Error();
+
+            const updatedInstructor = {
+                ...selectedInstructor,
+                name,
+                email,
+                subjects,
+            };
+            setAdminData(prev => ({
+                ...prev,
+                instructors: prev.instructors.map(u => u.id === selectedInstructor.id ? updatedInstructor : u)
+            }));
+            setIsEditDialogOpen(false);
+            setSelectedInstructor(null);
+            toast({ title: "Success", description: "Instructor updated successfully." });
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to update instructor.", variant: "destructive" });
+        }
     };
 
-    const handleDeleteInstructor = () => {
+    const handleDeleteInstructor = async () => {
         if (!selectedInstructor) return;
-        setAdminData(prev => ({
-            ...prev,
-            instructors: prev.instructors.filter(u => u.id !== selectedInstructor.id)
-        }));
-        setIsDeleteDialogOpen(false);
-        setSelectedInstructor(null);
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/delete_instructor_profile.php`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: selectedInstructor.id })
+            });
+            if (!response.ok) throw new Error();
+            setAdminData(prev => ({
+                ...prev,
+                instructors: prev.instructors.filter(u => u.id !== selectedInstructor.id)
+            }));
+            setIsDeleteDialogOpen(false);
+            setSelectedInstructor(null);
+            toast({ title: "Success", description: "Instructor deleted successfully." });
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to delete instructor.", variant: "destructive" });
+        }
     };
 
     return (

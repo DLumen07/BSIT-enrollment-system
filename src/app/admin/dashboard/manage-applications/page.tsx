@@ -246,34 +246,55 @@ export default function ManageApplicationsPage() {
     setRejectionDialog({ isOpen: false, application: null });
   };
 
-  const handleApprove = (application: Application) => {
-    setAdminData(prev => ({
-        ...prev,
-        pendingApplications: prev.pendingApplications.filter(app => app.id !== application.id),
-        approvedApplications: [...prev.approvedApplications, application]
-    }));
-    setSelectedApplication(null);
-  };
-
-  const handleReject = (application: Application, reason: string) => {
-    const isApproved = approvedApplications.find(app => app.id === application.id);
-    const updatedRejected = [...rejectedApplications, { ...application, rejectionReason: reason }];
-    
-    if (isApproved) {
-        setAdminData(prev => ({
-            ...prev,
-            approvedApplications: prev.approvedApplications.filter(app => app.id !== application.id),
-            rejectedApplications: updatedRejected
-        }));
-    } else {
+  const handleApprove = async (application: Application) => {
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/approve_application.php`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: application.id, status: 'approved' })
+        });
+        if (!response.ok) throw new Error();
         setAdminData(prev => ({
             ...prev,
             pendingApplications: prev.pendingApplications.filter(app => app.id !== application.id),
-            rejectedApplications: updatedRejected
+            approvedApplications: [...prev.approvedApplications, application]
         }));
+        toast({ title: "Success", description: "Application approved successfully." });
+        setSelectedApplication(null);
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to approve application.", variant: "destructive" });
     }
-    handleCloseRejectionDialog();
-    setSelectedApplication(null);
+  };
+
+  const handleReject = async (application: Application, reason: string) => {
+    const isApproved = approvedApplications.find(app => app.id === application.id);
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/approve_application.php`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: application.id, status: 'rejected', rejection_reason: reason })
+        });
+        if (!response.ok) throw new Error();
+        const updatedRejected = [...rejectedApplications, { ...application, rejectionReason: reason }];
+        if (isApproved) {
+            setAdminData(prev => ({
+                ...prev,
+                approvedApplications: prev.approvedApplications.filter(app => app.id !== application.id),
+                rejectedApplications: updatedRejected
+            }));
+        } else {
+            setAdminData(prev => ({
+                ...prev,
+                pendingApplications: prev.pendingApplications.filter(app => app.id !== application.id),
+                rejectedApplications: updatedRejected
+            }));
+        }
+        toast({ title: "Success", description: "Application rejected successfully." });
+        handleCloseRejectionDialog();
+        setSelectedApplication(null);
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to reject application.", variant: "destructive" });
+    }
   };
   
   const handleRetrieve = (application: Application) => {

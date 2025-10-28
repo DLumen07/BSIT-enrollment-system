@@ -13,21 +13,8 @@ export type Instructor = {
     subjects: string[];
     avatar: string;
 };
-export const initialInstructors: Instructor[] = [
-    { id: 1, name: 'Dr. Alan Turing', email: 'alan.turing@university.edu', subjects: ['IT 101', 'IT 201'], avatar: 'https://picsum.photos/seed/at-avatar/40/40' },
-    { id: 2, name: 'Prof. Ada Lovelace', email: 'ada.lovelace@university.edu', subjects: ['MATH 101'], avatar: 'https://picsum.photos/seed/al-avatar/40/40' },
-    { id: 3, name: 'Dr. Grace Hopper', email: 'grace.hopper@university.edu', subjects: ['IT 301', 'IT 401'], avatar: 'https://picsum.photos/seed/gh-avatar/40/40' },
-    { id: 4, name: 'Mr. Charles Babbage', email: 'charles.babbage@university.edu', subjects: ['ENG 101'], avatar: 'https://picsum.photos/seed/cb-avatar/40/40' },
-];
-export const availableSubjects = [
-    { id: 'IT 101', label: 'IT 101 - Intro to Computing' },
-    { id: 'IT 201', label: 'IT 201 - Data Structures' },
-    { id: 'IT 301', label: 'IT 301 - Web Development' },
-    { id: 'IT 401', label: 'IT 401 - Capstone Project' },
-    { id: 'MATH 101', label: 'MATH 101 - Calculus 1' },
-    { id: 'ENG 101', label: 'ENG 101 - English Composition' },
-];
-
+export const initialInstructors: Instructor[] = []; // Will be fetched from API
+export const availableSubjects = []; // Will be fetched from API
 
 // --- Data from manage-applications ---
 const initialPendingApplications = [
@@ -60,14 +47,7 @@ export type Block = {
     specialization?: 'AP' | 'DD';
     year: '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
 };
-const initialBlocks: Block[] = [
-    { id: 1, name: `ACT 1-A`, capacity: 40, enrolled: 38, course: 'ACT', year: '1st-year' },
-    { id: 2, name: `ACT 1-B`, capacity: 40, enrolled: 35, course: 'ACT', year: '1st-year' },
-    { id: 3, name: `ACT 2-A`, capacity: 40, enrolled: 32, course: 'ACT', year: '2nd-year' },
-    { id: 4, name: `BSIT 3-A`, capacity: 40, enrolled: 28, course: 'BSIT', specialization: 'AP', year: '3rd-year' },
-    { id: 5, name: `BSIT 3-B`, capacity: 40, enrolled: 30, course: 'BSIT', specialization: 'DD', year: '3rd-year' },
-    { id: 6, name: `BSIT 4-A`, capacity: 40, enrolled: 25, course: 'BSIT', specialization: 'AP', year: '4th-year' },
-];
+const initialBlocks: Block[] = []; // Will be fetched from API
 export const mockStudents = [
     { id: '24-00-0004', name: 'Alice Johnson', avatar: 'https://picsum.photos/seed/aj/40/40' },
     { id: '24-00-0005', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw/40/40' },
@@ -84,29 +64,14 @@ export type Subject = {
     prerequisite?: string;
 };
 export type YearLevelSubjects = Record<string, Subject[]>;
-const initialSubjects: YearLevelSubjects = {
-    '1st-year': [
-        { id: 101, code: 'IT 101', description: 'Introduction to Computing', units: 3 },
-        { id: 102, code: 'MATH 101', description: 'Calculus 1', units: 3 },
-    ],
-    '2nd-year': [ 
-        { id: 201, code: 'IT 201', description: 'Data Structures & Algorithms', units: 3, prerequisite: 'IT 101' }, 
-    ],
-    '3rd-year': [
-        { id: 301, code: 'IT 301', description: 'Object-Oriented Programming', units: 3, prerequisite: 'IT 201' },
-    ], 
-    '4th-year': [],
-};
+const initialSubjects: YearLevelSubjects = {}; // Will be fetched from API
 
 // --- Data from schedule ---
-const initialScheduleSubjects: ScheduleSubject[] = [
-    { id: 1, code: 'IT 101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Alan Turing', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
-    { id: 2, code: 'MATH 101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
-];
+const initialScheduleSubjects: ScheduleSubject[] = []; // Mock data for now
 const initialSchedules: Record<string, ScheduleSubject[]> = {
-    "ACT 1-A": initialScheduleSubjects,
-    "ACT 1-B": [{ id: 10, code: 'IT 101', description: 'Intro to Computing', day: 'Tuesday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Grace Hopper', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' }],
-    "ACT 2-A": [{ id: 20, code: 'IT 201', description: 'Data Structures', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' }]
+    "ACT 1-A": [],
+    "ACT 1-B": [],
+    "ACT 2-A": []
 };
 
 // --- Student Data ---
@@ -125,62 +90,17 @@ export type Student = {
     phoneNumber: string;
     specialization?: 'AP' | 'DD';
 };
-const initialStudentsList: Student[] = [
-    { id: 1, studentId: '21-00-0123', name: 'Alice Johnson', avatar: 'https://picsum.photos/seed/aj-student/40/40', email: 'alice.j@student.example.com', course: 'BSIT', year: 4, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09123456789', specialization: 'AP' },
-    { id: 2, studentId: '22-00-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40', email: 'bob.w@student.example.com', course: 'BSIT', year: 3, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456780', specialization: 'AP' },
-    { id: 3, studentId: '23-00-0345', name: 'Charlie Brown', avatar: 'https://picsum.photos/seed/cb-student/40/40', email: 'charlie.b@student.example.com', course: 'ACT', year: 2, status: 'Enrolled', sex: 'Male', phoneNumber: '09123456781', block: 'ACT 2-A' },
-    { id: 4, studentId: '23-00-0456', name: 'David Wilson', avatar: 'https://picsum.photos/seed/dw-student/40/40', email: 'david.w@student.example.com', course: 'ACT', year: 2, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456782' },
-    { id: 7, studentId: '24-00-0101', name: 'Frank Miller', avatar: 'https://picsum.photos/seed/fm-student/40/40', email: 'frank.m@student.example.com', course: 'ACT', year: 1, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456783' },
-    { id: 8, studentId: '23-00-0102', name: 'Grace Lee', avatar: 'https://picsum.photos/seed/gl-student/40/40', email: 'grace.l@student.example.com', course: 'ACT', year: 2, status: 'Enrolled', sex: 'Female', phoneNumber: '09123456784', block: 'ACT 2-A' },
-    { id: 9, studentId: '22-00-0103', name: 'Henry Taylor', avatar: 'https://picsum.photos/seed/ht-student/40/40', email: 'henry.t@student.example.com', course: 'BSIT', year: 3, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456785' },
-    { id: 10, studentId: '21-00-0104', name: 'Ivy Clark', avatar: 'https://picsum.photos/seed/ic-student/40/40', email: 'ivy.c@student.example.com', course: 'BSIT', year: 4, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09123456786' },
-    { id: 11, studentId: '24-00-1001', name: 'Gabby New', avatar: 'https://picsum.photos/seed/gn-student/40/40', email: 'gabby.n@student.example.com', course: 'ACT', year: 1, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09111111111' },
-];
+const initialStudentsList: Student[] = []; // Mock data for now
 
 // --- Academic Records ---
 type Grade = { subjectCode: string; grade: number; };
 type StudentGrades = {
     [studentId: string]: Grade[];
 };
-const initialGrades: StudentGrades = {
-    '21-00-0123': [
-        { subjectCode: 'IT 101', grade: 1.5 },
-        { subjectCode: 'MATH 101', grade: 2.0 },
-        { subjectCode: 'IT 201', grade: 1.75 },
-    ],
-    '22-00-0234': [
-        { subjectCode: 'IT 101', grade: 1.25 },
-        { subjectCode: 'MATH 101', grade: 1.5 },
-        { subjectCode: 'IT 201', grade: 1.75 },
-    ],
-    '23-00-0345': [
-        { subjectCode: 'IT 101', grade: 3.0 },
-    ],
-    '23-00-0456': [ // David Wilson, not enrolled
-         { subjectCode: 'IT 101', grade: 1.0 },
-         { subjectCode: 'MATH 101', grade: 1.25 },
-    ],
-    '24-00-0101': [], // Frank Miller, 1st year, no grades yet
-    '23-00-0102': [ // Grace Lee, 2nd year ACT
-        { subjectCode: 'IT 101', grade: 1.5 },
-        { subjectCode: 'MATH 101', grade: 2.0 },
-    ],
-    '22-00-0103': [ // Henry Taylor, 3rd year BSIT
-        { subjectCode: 'IT 101', grade: 1.25 },
-        { subjectCode: 'MATH 101', grade: 1.5 },
-        { subjectCode: 'IT 201', grade: 2.0 },
-    ],
-    '21-00-0104': [ // Ivy Clark, 4th year BSIT
-        { subjectCode: 'IT 101', grade: 1.0 },
-        { subjectCode: 'MATH 101', grade: 1.25 },
-        { subjectCode: 'IT 201', grade: 1.5 },
-        { subjectCode: 'IT 301', grade: 1.75 }, // Placeholder for 3rd year subjects
-    ],
-    '24-00-1001': [], // Gabby New, 1st year, no grades
-};
+const initialGrades: StudentGrades = {}; // Mock data for now
 
 // --- Main Admin Data Structure ---
-const mockAdminData = {
+const initialAdminData = {
     currentUser: null as AdminUser | null,
     academicYear: '2024-2025',
     semester: '1st-sem',
@@ -223,7 +143,7 @@ const mockAdminData = {
     },
 };
 
-export type AdminDataType = typeof mockAdminData;
+export type AdminDataType = typeof initialAdminData;
 
 interface AdminContextType {
   adminData: AdminDataType | null;
@@ -235,37 +155,126 @@ interface AdminContextType {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
-  const [adminData, setAdminData] = useState<AdminDataType | null>(mockAdminData);
+  const [adminData, setAdminData] = useState<AdminDataType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // To connect to a backend, you would fetch data here.
-    // The code below is a template for fetching data.
-    /*
     const fetchAdminData = async () => {
       try {
-        // Replace with your actual API endpoint.
-        // Example for a PHP backend: 'https://your-domain.com/api/admin_data.php'
-        const response = await fetch('https://your-api.com/admin/data');
-        if (!response.ok) {
-          throw new Error('Failed to fetch data from the server.');
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+        
+        const [adminsRes, blocksRes, instructorsRes, subjectsRes, studentsRes, applicationsRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/read_admin_profiles.php`),
+            fetch(`${API_BASE_URL}/read_blocks.php`),
+            fetch(`${API_BASE_URL}/read_instructor_profiles.php`),
+            fetch(`${API_BASE_URL}/read_subjects.php`),
+            fetch(`${API_BASE_URL}/read_student_profiles.php`),
+            fetch(`${API_BASE_URL}/read_applications.php`),
+        ]);
+
+        if (!adminsRes.ok || !blocksRes.ok || !instructorsRes.ok || !subjectsRes.ok || !studentsRes.ok || !applicationsRes.ok) {
+            console.error('Failed to fetch one or more resources');
+            throw new Error('Failed to fetch initial data from the server.');
         }
-        const data = await response.json();
-        setAdminData(data);
+
+        const adminsData = await adminsRes.json();
+        const blocksData = await blocksRes.json();
+        const instructorsData = await instructorsRes.json();
+        const subjectsData = await subjectsRes.json();
+        const studentsData = await studentsRes.json();
+        const applicationsData = await applicationsRes.json();
+
+        // --- Transform data to match frontend schema ---
+        const transformedAdmins = adminsData.records.map((admin: any) => ({
+            id: admin.id,
+            name: admin.name,
+            email: admin.email,
+            role: admin.role,
+            avatar: `https://picsum.photos/seed/${admin.id}/40/40` // Placeholder avatar
+        }));
+
+        const transformedBlocks = blocksData.records.map((block: any) => ({
+            id: block.id,
+            name: block.block_name,
+            capacity: parseInt(block.capacity, 10),
+            enrolled: parseInt(block.enrolled_students, 10),
+            course: block.course_name,
+            specialization: block.specialization,
+            year: block.year_level
+        }));
+
+        const transformedInstructors = instructorsData.records.map((inst: any) => ({
+            id: inst.id,
+            name: inst.name,
+            email: inst.email,
+            subjects: [], // This needs to be fetched or mapped separately if available
+            avatar: `https://picsum.photos/seed/inst-${inst.id}/40/40` // Placeholder avatar
+        }));
+
+        const transformedSubjects = subjectsData.records.reduce((acc: YearLevelSubjects, subj: any) => {
+            const yearKey = subj.year_level;
+            if (!acc[yearKey]) {
+                acc[yearKey] = [];
+            }
+            acc[yearKey].push({
+                id: subj.id,
+                code: subj.code,
+                description: subj.description,
+                units: parseInt(subj.units, 10),
+                prerequisite: subj.prerequisite
+            });
+            return acc;
+        }, {});
+        
+        const availableSubjects = subjectsData.records.map((subj: any) => ({
+          id: subj.code,
+          label: `${subj.code} - ${subj.description}`
+        }));
+
+        const transformedStudents = studentsData.records.map((stud: any) => ({
+            id: stud.user_id,
+            studentId: stud.student_id_number,
+            name: stud.name,
+            avatar: stud.avatar_url,
+            email: stud.email,
+            course: stud.course,
+            year: parseInt(stud.year_level, 10),
+            status: 'Enrolled', // Default status for now
+            block: stud.block,
+            sex: 'Male', // Default
+            phoneNumber: '09123456789', //Default
+            specialization: stud.specialization
+        }));
+
+        const pendingApplications = applicationsData.records.filter((app: any) => app.status === 'pending');
+        const approvedApplications = applicationsData.records.filter((app: any) => app.status === 'approved');
+        const rejectedApplications = applicationsData.records.filter((app: any) => app.status === 'rejected');
+
+
+        // Merge fetched data with initial mock data for parts not yet in backend
+        setAdminData({
+            ...initialAdminData,
+            adminUsers: transformedAdmins,
+            blocks: transformedBlocks,
+            instructors: transformedInstructors,
+            subjects: transformedSubjects,
+            availableSubjects: availableSubjects,
+            students: transformedStudents,
+            pendingApplications: pendingApplications,
+            approvedApplications: approvedApplications,
+            rejectedApplications: rejectedApplications,
+        });
+
       } catch (err: any) {
-        setError(err.message);
+        console.error('API Error:', err);
+        setError(`Could not connect to the backend. Please ensure the PHP server is running and accessible. Details: ${err.message}`)
       } finally {
         setLoading(false);
       }
     };
     
-    // Uncomment the line below to enable API fetching
-    // fetchAdminData();
-    */
-
-    // For now, we are using mock data.
-    setLoading(false);
+    fetchAdminData();
   }, []);
 
 
@@ -277,7 +286,6 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
             const storedUser = sessionStorage.getItem('currentUser');
             if (storedUser) {
                 const user = JSON.parse(storedUser);
-                // Ensure adminData is not null before setting currentUser
                 setAdminData(prev => prev ? { ...prev, currentUser: user } : null);
             }
         } catch (error) {
@@ -294,7 +302,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     );
   }
   if (error) {
-    return <div>Error: {error}</div>;
+    return <div className="flex h-screen w-full items-center justify-center p-4 text-center text-red-600">Error: {error}</div>;
   }
 
   return (

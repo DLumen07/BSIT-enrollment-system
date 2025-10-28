@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useStudent } from '@/app/student/context/student-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { api } from '@/lib/api';
 
 
 const steps = [
@@ -31,7 +32,7 @@ const steps = [
 const personalFamilySchema = z.object({
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
-    middleName: z.string().optional(),
+    middleName: z.string().min(1, 'Middle name is required'),
     email: z.string().email('Invalid email address'),
     phoneNumber: z.string().min(10, 'Invalid phone number'),
     birthdate: z.date({ required_error: "A date of birth is required." }),
@@ -42,11 +43,20 @@ const personalFamilySchema = z.object({
     dialect: z.string().min(1, 'Dialect is required'),
     sex: z.enum(['Male', 'Female']),
     civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated']),
+    status: z.enum(['New', 'Old', 'Transferee']),
     fathersName: z.string().min(1, "Father's name is required"),
     fathersOccupation: z.string().min(1, "Father's occupation is required"),
     mothersName: z.string().min(1, "Mother's name is required"),
     mothersOccupation: z.string().min(1, "Mother's occupation is required"),
     guardiansName: z.string().optional(),
+    guardiansOccupation: z.string().optional(),
+    guardiansAddress: z.string().optional(),
+    livingWithFamily: z.enum(['Yes', 'No']),
+    boarding: z.enum(['Yes', 'No']),
+    differentlyAbled: z.enum(['Yes', 'No']),
+    disability: z.string().optional(),
+    minorityGroup: z.enum(['Yes', 'No']),
+    minority: z.string().optional(),
 });
 
 const additionalInfoSchema = z.object({
@@ -58,6 +68,7 @@ const additionalInfoSchema = z.object({
     secondarySchool: z.string().min(1, 'Secondary school is required'),
     secondaryYearGraduated: z.string().min(4, 'Invalid year'),
     collegiateSchool: z.string().optional(),
+    collegiateYearGraduated: z.string().min(4, 'Invalid year').optional(),
 });
 
 const baseAcademicSchema = z.object({
@@ -147,6 +158,9 @@ function Step1() {
                 <FormField name="civilStatus" render={({ field }) => (
                     <FormItem><FormLabel>Civil Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select civil status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem><SelectItem value="Widowed">Widowed</SelectItem><SelectItem value="Separated">Separated</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                 )} />
+                <FormField name="status" render={({ field }) => (
+                    <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
             </div>
             <div className="border-t pt-6 mt-6">
                 <h3 className="text-lg font-medium">Family Information</h3>
@@ -170,6 +184,36 @@ function Step1() {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField name="guardiansName" render={({ field }) => (
                     <FormItem><FormLabel>Guardian's Name (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="guardiansOccupation" render={({ field }) => (
+                    <FormItem><FormLabel>Guardian's Occupation (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+            </div>
+            <FormField name="guardiansAddress" render={({ field }) => (
+                <FormItem><FormLabel>Guardian's Address (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+            )} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="livingWithFamily" render={({ field }) => (
+                    <FormItem><FormLabel>Living with family?</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+                <FormField name="boarding" render={({ field }) => (
+                    <FormItem><FormLabel>Boarding?</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="differentlyAbled" render={({ field }) => (
+                    <FormItem><FormLabel>Differently Abled?</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+                <FormField name="disability" render={({ field }) => (
+                    <FormItem><FormLabel>Specify Disability</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField name="minorityGroup" render={({ field }) => (
+                    <FormItem><FormLabel>Belong to minority group?</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                )} />
+                <FormField name="minority" render={({ field }) => (
+                    <FormItem><FormLabel>Specify Minority</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
             </div>
         </div>
@@ -213,6 +257,9 @@ function Step2() {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField name="collegiateSchool" render={({ field }) => (
                     <FormItem><FormLabel>Collegiate School (If transferee)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField name="collegiateYearGraduated" render={({ field }) => (
+                    <FormItem><FormLabel>Year Graduated (Collegiate)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
             </div>
         </div>
@@ -492,35 +539,55 @@ export default function EnrollmentFormPage() {
     }, [studentData, methods]);
 
 
-    const processForm = (data: EnrollmentSchemaType) => {
+    const processForm = async (data: EnrollmentSchemaType) => {
         if (!studentData) return;
 
-        const yearLevelMap: Record<string, number> = {
-            '1st Year': 1, '2nd Year': 2, '3rd Year': 3, '4th Year': 4,
-        };
-
-        const newApplication = {
-            id: Date.now(),
-            studentId: studentData.academic.studentId,
-            name: `${data.firstName} ${data.lastName}`,
-            course: data.course,
-            year: yearLevelMap[data.yearLevel],
-            status: data.status,
-            block: data.block,
-            credentials: {
-                birthCertificate: true,
-                grades: true,
-                goodMoral: true,
-                registrationForm: true,
-            },
-        };
-
-        setAdminData(prev => ({
-            ...prev,
-            pendingApplications: [...prev.pendingApplications, newApplication],
-        }));
-
-        setIsSubmitted(true);
+        try {
+            await api.post('/api/v1/endpoints/create_student_profile.php', {
+                user_id: studentData.user.id,
+                student_id_number: studentData.academic.studentId,
+                name: `${data.firstName} ${data.lastName}`,
+                avatar_url: studentData.personal.avatarUrl,
+                course: data.course,
+                year_level: data.yearLevel,
+                specialization: data.specialization,
+                sex: data.sex,
+                phone_number: data.phoneNumber,
+                birthdate: data.birthdate,
+                current_address: data.currentAddress,
+                permanent_address: data.permanentAddress,
+                nationality: data.nationality,
+                religion: data.religion,
+                dialect: data.dialect,
+                civil_status: data.civilStatus,
+                status: data.status,
+                fathers_name: data.fathersName,
+                fathers_occupation: data.fathersOccupation,
+                mothers_name: data.mothersName,
+                mothers_occupation: data.mothersOccupation,
+                guardians_name: data.guardiansName,
+                guardians_occupation: data.guardiansOccupation,
+                guardians_address: data.guardiansAddress,
+                living_with_family: data.livingWithFamily,
+                boarding: data.boarding,
+                differently_abled: data.differentlyAbled,
+                disability: data.disability,
+                minority_group: data.minorityGroup,
+                minority: data.minority,
+                elementary_school: data.elementarySchool,
+                elem_year_graduated: data.elemYearGraduated,
+                secondary_school: data.secondarySchool,
+                secondary_year_graduated: data.secondaryYearGraduated,
+                collegiate_school: data.collegiateSchool,
+                collegiate_year_graduated: data.collegiateYearGraduated,
+                emergency_contact_name: data.emergencyContactName,
+                emergency_contact_address: data.emergencyContactAddress,
+                emergency_contact_number: data.emergencyContactNumber,
+            });
+            setIsSubmitted(true);
+        } catch (error) {
+            console.error('Failed to submit enrollment form:', error);
+        }
     };
     
     type FieldName = keyof EnrollmentSchemaType;

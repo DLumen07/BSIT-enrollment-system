@@ -17,35 +17,50 @@ import { Eye, EyeOff } from 'lucide-react';
 function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { adminData, setAdminData } = useAdmin();
-  const { adminUsers, instructors } = adminData;
+  const { setAdminData } = useAdmin();
 
   const [email, setEmail] = React.useState('alice.j@example.com');
   const [password, setPassword] = React.useState('password123');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
-    const admin = adminUsers.find(user => user.email === email);
-    if (admin) {
-        setAdminData(prev => ({ ...prev, currentUser: admin }));
-        sessionStorage.setItem('currentUser', JSON.stringify(admin));
-        router.push('/admin/dashboard');
-        return;
-    }
+    try {
+      const response = await fetch('/api/v1/endpoints/login.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const instructor = instructors.find(user => user.email === email);
-    if (instructor) {
-      router.push(`/instructor/dashboard?email=${encodeURIComponent(email)}`);
-      return;
-    }
-    
-    toast({
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        const { user } = data;
+        setAdminData(prev => ({ ...prev, currentUser: user }));
+        sessionStorage.setItem('currentUser', JSON.stringify(user));
+
+        if (user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else if (user.role === 'instructor') {
+          router.push(`/instructor/dashboard?email=${encodeURIComponent(user.email)}`);
+        }
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: data.message || 'Invalid credentials',
+        });
+      }
+    } catch (error) {
+      toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: 'No account found with that email address. Please check your credentials.',
-    });
+        description: 'An error occurred while trying to log in. Please try again later.',
+      });
+    }
   };
 
   return (
