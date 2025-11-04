@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAdmin, Block, mockStudents } from '../../../context/admin-context';
+import { useAdmin, Block, Student } from '../../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 
 const yearLevelMap: Record<string, string> = {
@@ -45,6 +45,13 @@ const yearLevelMap: Record<string, string> = {
     '2nd-year': '2nd Year',
     '3rd-year': '3rd Year',
     '4th-year': '4th Year',
+};
+
+const yearLevelNumberMap: Record<string, number> = {
+    '1st-year': 1,
+    '2nd-year': 2,
+    '3rd-year': 3,
+    '4th-year': 4,
 };
 
 const specializations = [
@@ -56,13 +63,51 @@ const specializations = [
 export default function YearLevelBlocksPage() {
     const params = useParams();
     const { toast } = useToast();
-    const { adminData, setAdminData } = useAdmin();
+    const { adminData, refreshAdminData } = useAdmin();
+    const { blocks, students } = adminData;
+    const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api').replace(/\/$/, '');
+    const buildApiUrl = useCallback((endpoint: string) => `${API_BASE_URL}/${endpoint.replace(/^\//, '')}`, [API_BASE_URL]);
+    const callBlockApi = useCallback(async <T = unknown>(endpoint: string, payload: unknown) => {
+        const response = await fetch(buildApiUrl(endpoint), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+        });
+
+        let data: any = null;
+        try {
+            data = await response.json();
+        } catch (error) {
+            // Ignore JSON parse errors and handle below.
+        }
+
+        if (!response.ok) {
+            const message = data?.message ?? `Request failed with status ${response.status}`;
+            throw new Error(message);
+        }
+
+        if (!data || data.status !== 'success') {
+            throw new Error(data?.message ?? 'Request failed due to an unknown server error.');
+        }
+
+        return data as { status: 'success'; data?: T; message?: string };
+    }, [buildApiUrl]);
+    const [busyAction, setBusyAction] = useState<string | null>(null);
+    const isBusy = useCallback((key: string) => busyAction === key, [busyAction]);
     const year = params.year as '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
     const yearLabel = yearLevelMap[year] || 'Unknown Year';
+    const yearNumber = yearLevelNumberMap[year] ?? 0;
     const isUpperYear = year === '3rd-year' || year === '4th-year';
     const course = isUpperYear ? 'BSIT' : 'ACT';
-
-    const blocksForYear = adminData.blocks.filter(b => b.year === year);
+    const coursePrefixPattern = useMemo(() => new RegExp(`^${course}\\s+`, 'i'), [course]);
+    const blocksForYear = useMemo(() => blocks.filter(b => b.year === year), [blocks, year]);
+    const sanitizeSectionInput = useCallback((input: string) => {
+        const lettersOnly = input.toUpperCase().replace(/[^A-Z]/g, '');
+        const suffix = lettersOnly.charAt(0) || 'A';
+        const prefix = yearNumber > 0 ? `${yearNumber}` : '1';
+        return `${prefix}-${suffix}`;
+    }, [yearNumber]);
     
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -73,6 +118,12 @@ export default function YearLevelBlocksPage() {
     const [blockCapacity, setBlockCapacity] = useState('');
     const [blockSpecialization, setBlockSpecialization] = useState(isUpperYear ? 'AP' : undefined);
     const [deleteInput, setDeleteInput] = useState('');
+    const studentsInSelectedBlock = useMemo<Student[]>(() => {
+        if (!selectedBlock) {
+            return [];
+        }
+        return students.filter(student => student.block === selectedBlock.name);
+    }, [students, selectedBlock]);
 
      useEffect(() => {
         setBlockName('');
@@ -80,67 +131,165 @@ export default function YearLevelBlocksPage() {
         setBlockSpecialization(isUpperYear ? 'AP' : undefined);
     }, [isAddDialogOpen, isEditDialogOpen, isUpperYear]);
 
-    const handleAddBlock = () => {
-        if (!blockName || !blockCapacity) {
-             toast({ variant: 'destructive', title: 'Missing Fields', description: 'Block Name and Capacity are required.' });
-             return;
+    const handleAddBlock = async () => {
+        const trimmedName = blockName.trim();
+        if (!trimmedName || !blockCapacity) {
+            toast({ variant: 'destructive', title: 'Missing Fields', description: 'Block name and capacity are required.' });
+            return;
         }
 
         if (isUpperYear && !blockSpecialization) {
-             toast({ variant: 'destructive', title: 'Missing Fields', description: 'Specialization is required for 3rd and 4th year.' });
-             return;
+            toast({ variant: 'destructive', title: 'Missing Fields', description: 'Specialization is required for 3rd and 4th year blocks.' });
+            return;
         }
 
-        const newBlock: Block = {
-            id: Date.now(),
-            name: `${course} ${blockName}`,
-            capacity: parseInt(blockCapacity, 10),
-            enrolled: 0,
-            year,
+        if (yearNumber <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Year Level', description: 'Unable to determine the year level for this block.' });
+            return;
+        }
+
+        const capacityValue = parseInt(blockCapacity, 10);
+        if (Number.isNaN(capacityValue) || capacityValue <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Capacity', description: 'Please enter a capacity greater than zero.' });
+            return;
+        }
+
+        const sectionOnly = trimmedName.replace(coursePrefixPattern, '').trim();
+        if (sectionOnly === '') {
+            toast({ variant: 'destructive', title: 'Missing Section', description: 'Please include the section identifier (e.g., 1-A).' });
+            return;
+        }
+
+        const sanitizedSection = sanitizeSectionInput(sectionOnly);
+        const blockFullName = `${course} ${sanitizedSection}`.replace(/\s+/g, ' ').trim();
+
+        const actionKey = 'create-block';
+        if (isBusy(actionKey)) {
+            return;
+        }
+
+        const payload = {
+            name: blockFullName,
             course,
-            specialization: isUpperYear ? (blockSpecialization as 'AP' | 'DD') : undefined,
+            yearLevel: year,
+            capacity: capacityValue,
+            specialization: isUpperYear ? blockSpecialization : null,
         };
-        setAdminData(prev => ({
-            ...prev, 
-            blocks: [...prev.blocks, newBlock],
-            schedules: { ...prev.schedules, [newBlock.name]: [] }
-        }));
-        setIsAddDialogOpen(false);
+
+        setBusyAction(actionKey);
+        try {
+            const result = await callBlockApi<{ block?: { name?: string } }>('create_block.php', payload);
+            const canonicalName = result?.data?.block?.name ?? blockFullName;
+            await refreshAdminData();
+            toast({ title: 'Block Created', description: `${canonicalName} was added successfully.` });
+            setIsAddDialogOpen(false);
+            setBlockName('');
+            setBlockCapacity('');
+            setBlockSpecialization(isUpperYear ? 'AP' : undefined);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to create block. Please try again.';
+            toast({ variant: 'destructive', title: 'Create Failed', description: message });
+        } finally {
+            setBusyAction(null);
+        }
     };
 
-    const handleEditBlock = () => {
-        if (!selectedBlock || !blockName || !blockCapacity) return;
-
-         if (isUpperYear && !blockSpecialization) {
-             toast({ variant: 'destructive', title: 'Missing Fields', description: 'Specialization is required for 3rd and 4th year.' });
-             return;
+    const handleEditBlock = async () => {
+        if (!selectedBlock) {
+            return;
         }
 
-        const updatedBlock = { 
-            ...selectedBlock, 
-            name: blockName.startsWith(course) ? blockName : `${course} ${blockName}`,
-            capacity: parseInt(blockCapacity, 10), 
-            specialization: isUpperYear ? (blockSpecialization as 'AP' | 'DD') : undefined 
+        const trimmedName = blockName.trim();
+        if (!trimmedName || !blockCapacity) {
+            toast({ variant: 'destructive', title: 'Missing Fields', description: 'Block name and capacity are required.' });
+            return;
+        }
+
+        if (isUpperYear && !blockSpecialization) {
+            toast({ variant: 'destructive', title: 'Missing Fields', description: 'Specialization is required for 3rd and 4th year blocks.' });
+            return;
+        }
+
+        if (yearNumber <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Year Level', description: 'Unable to determine the year level for this block.' });
+            return;
+        }
+
+        const capacityValue = parseInt(blockCapacity, 10);
+        if (Number.isNaN(capacityValue) || capacityValue <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Capacity', description: 'Please enter a capacity greater than zero.' });
+            return;
+        }
+
+        const sectionOnly = trimmedName.replace(coursePrefixPattern, '').trim();
+        if (sectionOnly === '') {
+            toast({ variant: 'destructive', title: 'Missing Section', description: 'Please include the section identifier (e.g., 3-A).' });
+            return;
+        }
+
+        const sanitizedSection = sanitizeSectionInput(sectionOnly);
+        const blockFullName = `${course} ${sanitizedSection}`.replace(/\s+/g, ' ').trim();
+
+        const payload = {
+            blockId: selectedBlock.id,
+            name: blockFullName,
+            capacity: capacityValue,
+            specialization: isUpperYear ? blockSpecialization : null,
         };
-        setAdminData(prev => ({
-            ...prev,
-            blocks: prev.blocks.map(b => b.id === selectedBlock.id ? updatedBlock : b)
-        }));
-        setIsEditDialogOpen(false);
-        setSelectedBlock(null);
+
+        const actionKey = `edit-block-${selectedBlock.id}`;
+        if (isBusy(actionKey)) {
+            return;
+        }
+
+        setBusyAction(actionKey);
+        try {
+            await callBlockApi('update_block.php', payload);
+            await refreshAdminData();
+            toast({ title: 'Block Updated', description: `${blockFullName} was updated successfully.` });
+            setIsEditDialogOpen(false);
+            setSelectedBlock(null);
+            setBlockName('');
+            setBlockCapacity('');
+            setBlockSpecialization(isUpperYear ? 'AP' : undefined);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to update block. Please try again.';
+            toast({ variant: 'destructive', title: 'Update Failed', description: message });
+        } finally {
+            setBusyAction(null);
+        }
     };
     
-    const handleDeleteBlock = () => {
-        if (selectedBlock) {
-            setAdminData(prev => ({...prev, blocks: prev.blocks.filter(b => b.id !== selectedBlock.id)}));
+    const handleDeleteBlock = async () => {
+        if (!selectedBlock) {
+            return;
+        }
+
+        const actionKey = `delete-block-${selectedBlock.id}`;
+        if (isBusy(actionKey)) {
+            return;
+        }
+
+        setBusyAction(actionKey);
+        try {
+            await callBlockApi('delete_block.php', { blockId: selectedBlock.id });
+            await refreshAdminData();
+            toast({ title: 'Block Deleted', description: `${getBlockDisplayName(selectedBlock)} was deleted.` });
             setIsDeleteDialogOpen(false);
             setSelectedBlock(null);
+            setDeleteInput('');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to delete block. Please try again.';
+            toast({ variant: 'destructive', title: 'Delete Failed', description: message });
+        } finally {
+            setBusyAction(null);
         }
     };
 
     const openEditDialog = (block: Block) => {
         setSelectedBlock(block);
-        setBlockName(block.name.replace(`${block.course} `, ''));
+        const sectionOnly = block.name.replace(new RegExp(`^${block.course}\\s+`, 'i'), '').trim();
+        setBlockName(sectionOnly);
         setBlockCapacity(block.capacity.toString());
         setBlockSpecialization(block.specialization || (isUpperYear ? 'AP' : undefined));
         setIsEditDialogOpen(true);
@@ -213,7 +362,9 @@ export default function YearLevelBlocksPage() {
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                                <Button onClick={handleAddBlock} className="rounded-xl">Add Block</Button>
+                                <Button onClick={handleAddBlock} className="rounded-xl" disabled={isBusy('create-block')}>
+                                    {isBusy('create-block') ? 'Adding...' : 'Add Block'}
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -324,7 +475,13 @@ export default function YearLevelBlocksPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                        <Button onClick={handleEditBlock} className="rounded-xl">Save Changes</Button>
+                        <Button
+                            onClick={handleEditBlock}
+                            className="rounded-xl"
+                            disabled={selectedBlock ? isBusy(`edit-block-${selectedBlock.id}`) : false}
+                        >
+                            {selectedBlock && isBusy(`edit-block-${selectedBlock.id}`) ? 'Saving...' : 'Save Changes'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -349,11 +506,11 @@ export default function YearLevelBlocksPage() {
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setDeleteInput('')} className="rounded-xl">Cancel</AlertDialogCancel>
                         <AlertDialogAction 
-                            disabled={deleteInput !== 'delete'}
+                            disabled={deleteInput !== 'delete' || (selectedBlock ? isBusy(`delete-block-${selectedBlock.id}`) : false)}
                             onClick={handleDeleteBlock} 
                             className="bg-destructive hover:bg-destructive/90 rounded-xl"
                         >
-                            Delete
+                            {selectedBlock && isBusy(`delete-block-${selectedBlock.id}`) ? 'Deleting...' : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -376,20 +533,28 @@ export default function YearLevelBlocksPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {mockStudents.map(student => (
-                                    <TableRow key={student.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-8 w-8">
-                                                    <AvatarImage src={student.avatar} alt={student.name} />
-                                                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <span className="font-medium">{student.name}</span>
-                                            </div>
+                                {studentsInSelectedBlock.length > 0 ? (
+                                    studentsInSelectedBlock.map(student => (
+                                        <TableRow key={student.id}>
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage src={student.avatar || undefined} alt={student.name} />
+                                                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="font-medium">{student.name}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{student.studentId}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="text-center h-24">
+                                            No students are currently assigned to this block.
                                         </TableCell>
-                                        <TableCell>{student.id}</TableCell>
                                     </TableRow>
-                                ))}
+                                )}
                             </TableBody>
                         </Table>
                     </div>
