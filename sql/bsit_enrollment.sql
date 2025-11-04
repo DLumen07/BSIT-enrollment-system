@@ -114,6 +114,26 @@ INSERT INTO `instructor_profiles` (`user_id`, `name`, `avatar_url`, `department`
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `instructor_subjects`
+--
+
+CREATE TABLE `instructor_subjects` (
+  `instructor_id` int(11) NOT NULL,
+  `subject_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `instructor_subjects`
+--
+
+INSERT INTO `instructor_subjects` (`instructor_id`, `subject_id`) VALUES
+(5, 8),
+(5, 10),
+(6, 9);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `schedules`
 --
 
@@ -325,6 +345,13 @@ ALTER TABLE `instructor_profiles`
   ADD PRIMARY KEY (`user_id`);
 
 --
+-- Indexes for table `instructor_subjects`
+--
+ALTER TABLE `instructor_subjects`
+  ADD PRIMARY KEY (`instructor_id`, `subject_id`),
+  ADD KEY `idx_instructor_subjects_subject_id` (`subject_id`);
+
+--
 -- Indexes for table `schedules`
 --
 ALTER TABLE `schedules`
@@ -439,6 +466,13 @@ ALTER TABLE `enrollment_applications`
 --
 ALTER TABLE `instructor_profiles`
   ADD CONSTRAINT `instructor_profiles_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `instructor_subjects`
+--
+ALTER TABLE `instructor_subjects`
+  ADD CONSTRAINT `instructor_subjects_ibfk_1` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `instructor_subjects_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `schedules`

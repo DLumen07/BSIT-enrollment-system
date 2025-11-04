@@ -3,16 +3,37 @@ require_once 'db_config.php';
 
 header('Content-Type: application/json');
 
-$allowedOrigins = ['http://localhost:3000'];
+$allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOriginHeader = null;
 
-if (in_array($origin, $allowedOrigins, true)) {
-    header("Access-Control-Allow-Origin: {$origin}");
+if ($origin !== '') {
+    if (in_array($origin, $allowedOrigins, true)) {
+        $allowedOriginHeader = $origin;
+    } else {
+        $parsedOrigin = parse_url($origin);
+        if ($parsedOrigin !== false) {
+            $host = $parsedOrigin['host'] ?? '';
+            $scheme = $parsedOrigin['scheme'] ?? 'http';
+            $port = $parsedOrigin['port'] ?? ($scheme === 'https' ? 443 : 80);
+            $isLoopback = in_array($host, ['localhost', '127.0.0.1'], true);
+            $isPrivateNetwork = preg_match('/^(192\.168|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))\./', $host) === 1;
+            if ($port === 3000 && ($isLoopback || $isPrivateNetwork)) {
+                $allowedOriginHeader = $origin;
+            }
+        }
+    }
+} else {
+    $allowedOriginHeader = $allowedOrigins[0];
+}
+
+if ($allowedOriginHeader !== null) {
+    header("Access-Control-Allow-Origin: {$allowedOriginHeader}");
     header('Access-Control-Allow-Credentials: true');
 }
 
 header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -56,6 +77,21 @@ function default_credentials(): array {
 
 try {
     $conn->set_charset('utf8mb4');
+
+    $ensureInstructorSubjectsSql = <<<SQL
+CREATE TABLE IF NOT EXISTS instructor_subjects (
+    instructor_id INT(11) NOT NULL,
+    subject_id INT(11) NOT NULL,
+    PRIMARY KEY (instructor_id, subject_id),
+    KEY idx_subject_id (subject_id),
+    CONSTRAINT fk_instructor_subjects_instructor FOREIGN KEY (instructor_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_instructor_subjects_subject FOREIGN KEY (subject_id) REFERENCES subjects (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+SQL;
+
+    if (!$conn->query($ensureInstructorSubjectsSql) && $conn->errno !== 1146) {
+        throw new Exception('Failed to ensure instructor_subjects table exists: ' . $conn->error);
+    }
 
     $adminUsers = [];
     $adminQuery = "SELECT u.id, ap.name, u.email, ap.admin_role, ap.avatar_url
@@ -254,6 +290,37 @@ try {
         $result->free();
     } else {
         throw new Exception('Failed to fetch instructor subjects: ' . $conn->error);
+    }
+
+    $manualInstructorSubjects = [];
+    $manualSubjectsQuery = "SELECT ins.instructor_id, subj.code
+                             FROM instructor_subjects ins
+                             INNER JOIN subjects subj ON subj.id = ins.subject_id";
+    $manualResult = $conn->query($manualSubjectsQuery);
+    if ($manualResult instanceof mysqli_result) {
+        while ($row = $manualResult->fetch_assoc()) {
+            $instId = (int) $row['instructor_id'];
+            if (!isset($manualInstructorSubjects[$instId])) {
+                $manualInstructorSubjects[$instId] = [];
+            }
+            if (!in_array($row['code'], $manualInstructorSubjects[$instId], true)) {
+                $manualInstructorSubjects[$instId][] = $row['code'];
+            }
+        }
+        $manualResult->free();
+    } elseif ($conn->errno !== 1146) { // 1146: table doesn't exist yet
+        throw new Exception('Failed to fetch instructor subject assignments: ' . $conn->error);
+    }
+
+    foreach ($manualInstructorSubjects as $instId => $subjectsForInstructor) {
+        if (!isset($instructorSubjects[$instId])) {
+            $instructorSubjects[$instId] = [];
+        }
+        foreach ($subjectsForInstructor as $subjectCode) {
+            if (!in_array($subjectCode, $instructorSubjects[$instId], true)) {
+                $instructorSubjects[$instId][] = $subjectCode;
+            }
+        }
     }
 
     if ($result = $conn->query($instructorQuery)) {

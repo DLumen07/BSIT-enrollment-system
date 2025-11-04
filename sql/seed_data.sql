@@ -71,6 +71,14 @@ ON DUPLICATE KEY UPDATE
   avatar_url = VALUES(avatar_url),
   department = VALUES(department);
 
+-- Instructor subjects
+INSERT INTO instructor_subjects (instructor_id, subject_id) VALUES
+  (5, 8),
+  (5, 10),
+  (6, 9)
+ON DUPLICATE KEY UPDATE
+  subject_id = VALUES(subject_id);
+
 -- Enrollment applications
 INSERT INTO enrollment_applications (id, student_user_id, status, block_name, `submitted_.at`, rejection_reason, form_data) VALUES
   (1, 2, 'pending', 'BSIT 3-A', NOW(), NULL, '{"birthCertificate": true, "grades": true, "goodMoral": false, "registrationForm": true}'),

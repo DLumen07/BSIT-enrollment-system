@@ -1,7 +1,5 @@
-
-
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -21,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MoreHorizontal, PlusCircle, Trash2, Pencil, Calendar, ChevronDown, Check, Eye, EyeOff } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Pencil, Calendar, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -53,6 +51,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAdmin, Instructor } from '../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
+
+type ApiSuccessResponse<T = unknown> = {
+    status: 'success';
+    data?: T;
+    message?: string;
+};
 
 
 const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedSubjects: string[], onSelectionChange: (selected: string[]) => void }) => {
@@ -95,15 +99,45 @@ const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedS
 
 
 export default function InstructorsPage() {
-    const { adminData, setAdminData } = useAdmin();
+    const { adminData, refreshAdminData } = useAdmin();
     const { instructors } = adminData;
     const { toast } = useToast();
+    const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api').replace(/\/$/, '').trim();
+    const buildApiUrl = useCallback((endpoint: string) => `${API_BASE_URL}/${endpoint.replace(/^\//, '')}`, [API_BASE_URL]);
+    const callInstructorApi = useCallback(async (endpoint: string, payload: unknown): Promise<ApiSuccessResponse> => {
+        const response = await fetch(buildApiUrl(endpoint), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+        });
+
+        let data: any = null;
+        try {
+            data = await response.json();
+        } catch (error) {
+            // Ignore parse errors; status handling below will surface issues.
+        }
+
+        if (!response.ok) {
+            const message = data?.message ?? `Request failed with status ${response.status}`;
+            throw new Error(message);
+        }
+
+        if (!data || data.status !== 'success') {
+            throw new Error(data?.message ?? 'Request failed due to an unknown server error.');
+        }
+
+        return data as ApiSuccessResponse;
+    }, [buildApiUrl]);
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
     const [deleteInput, setDeleteInput] = useState('');
+    const [busyAction, setBusyAction] = useState<string | null>(null);
+    const isBusy = useCallback((key: string) => busyAction === key, [busyAction]);
 
     // State for form inputs
     const [name, setName] = useState('');
@@ -120,6 +154,8 @@ export default function InstructorsPage() {
         setSubjects([]);
         setPassword('');
         setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
     };
 
     const openAddDialog = () => {
@@ -140,9 +176,10 @@ export default function InstructorsPage() {
         setIsDeleteDialogOpen(true);
         setDeleteInput('');
     };
-    
-    const handleAddInstructor = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+
+    const handleAddInstructor = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
         if (password !== confirmPassword) {
             toast({
                 variant: 'destructive',
@@ -152,46 +189,118 @@ export default function InstructorsPage() {
             return;
         }
 
-        const newInstructor: Instructor = {
-            id: Date.now(),
+        const actionKey = 'create-instructor';
+        if (isBusy(actionKey)) {
+            return;
+        }
+
+        const payload = {
+            name,
+            email,
+            password,
+            subjects,
+            avatar: `https://picsum.photos/seed/instructor-${Date.now()}/64/64`,
+        };
+
+        setBusyAction(actionKey);
+
+        try {
+            await callInstructorApi('create_instructor.php', payload);
+            await refreshAdminData();
+            toast({
+                title: 'Instructor Account Created',
+                description: `An account for ${name} has been successfully created.`,
+            });
+            setIsAddDialogOpen(false);
+            resetForm();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to create instructor.';
+            toast({
+                variant: 'destructive',
+                title: 'Create Failed',
+                description: message,
+            });
+        } finally {
+            setBusyAction(null);
+        }
+    };
+
+    const handleEditInstructor = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        if (!selectedInstructor) {
+            return;
+        }
+
+        const actionKey = `edit-instructor-${selectedInstructor.id}`;
+        if (isBusy(actionKey)) {
+            return;
+        }
+
+        const payload = {
+            instructorId: selectedInstructor.id,
             name,
             email,
             subjects,
-            avatar: `https://picsum.photos/seed/${Date.now()}/40/40`,
+            avatar: selectedInstructor.avatar ?? '',
         };
-        setAdminData(prev => ({...prev, instructors: [...prev.instructors, newInstructor]}));
-        setIsAddDialogOpen(false);
-        toast({
-            title: 'Instructor Account Created',
-            description: `An account for ${name} has been successfully created.`,
-        });
+
+        setBusyAction(actionKey);
+
+        try {
+            await callInstructorApi('update_instructor.php', payload);
+            await refreshAdminData();
+            toast({
+                title: 'Instructor Updated',
+                description: `${name}'s profile has been updated successfully.`,
+            });
+            setIsEditDialogOpen(false);
+            setSelectedInstructor(null);
+            resetForm();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to update instructor.';
+            toast({
+                variant: 'destructive',
+                title: 'Update Failed',
+                description: message,
+            });
+        } finally {
+            setBusyAction(null);
+        }
     };
 
-    const handleEditInstructor = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (!selectedInstructor) return;
-        const updatedInstructor = {
-            ...selectedInstructor,
-            name,
-            email,
-            subjects,
-        };
-        setAdminData(prev => ({
-            ...prev,
-            instructors: prev.instructors.map(u => u.id === selectedInstructor.id ? updatedInstructor : u)
-        }));
-        setIsEditDialogOpen(false);
-        setSelectedInstructor(null);
-    };
+    const handleDeleteInstructor = async () => {
+        if (!selectedInstructor) {
+            return;
+        }
 
-    const handleDeleteInstructor = () => {
-        if (!selectedInstructor) return;
-        setAdminData(prev => ({
-            ...prev,
-            instructors: prev.instructors.filter(u => u.id !== selectedInstructor.id)
-        }));
-        setIsDeleteDialogOpen(false);
-        setSelectedInstructor(null);
+        const actionKey = `delete-instructor-${selectedInstructor.id}`;
+        if (isBusy(actionKey)) {
+            return;
+        }
+
+        setBusyAction(actionKey);
+
+        try {
+            await callInstructorApi('delete_instructor.php', { instructorId: selectedInstructor.id });
+            await refreshAdminData();
+            toast({
+                title: 'Instructor Deleted',
+                description: `${selectedInstructor.name}'s account has been removed.`,
+            });
+            setIsDeleteDialogOpen(false);
+            setSelectedInstructor(null);
+            setDeleteInput('');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to delete instructor.';
+            toast({
+                variant: 'destructive',
+                title: 'Delete Failed',
+                description: message,
+            });
+        } finally {
+            setBusyAction(null);
+        }
     };
 
     return (
@@ -287,7 +396,12 @@ export default function InstructorsPage() {
             </main>
 
             {/* Add Dialog */}
-             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+                setIsAddDialogOpen(open);
+                if (!open) {
+                    resetForm();
+                }
+            }}>
                 <DialogContent className="rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Add New Instructor</DialogTitle>
@@ -330,14 +444,22 @@ export default function InstructorsPage() {
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                        <Button type="submit" form="add-instructor-form" className="rounded-xl">Create Account</Button>
+                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl" disabled={isBusy('create-instructor')}>Cancel</Button>
+                        <Button type="submit" form="add-instructor-form" className="rounded-xl" disabled={isBusy('create-instructor')}>
+                            {isBusy('create-instructor') ? 'Creating...' : 'Create Account'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Edit Dialog */}
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+                setIsEditDialogOpen(open);
+                if (!open) {
+                    setSelectedInstructor(null);
+                    resetForm();
+                }
+            }}>
                 <DialogContent className="rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Edit Instructor</DialogTitle>
@@ -362,14 +484,27 @@ export default function InstructorsPage() {
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                        <Button type="submit" form="edit-instructor-form" className="rounded-xl">Save Changes</Button>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl" disabled={selectedInstructor ? isBusy(`edit-instructor-${selectedInstructor.id}`) : false}>Cancel</Button>
+                        <Button
+                            type="submit"
+                            form="edit-instructor-form"
+                            className="rounded-xl"
+                            disabled={!selectedInstructor || isBusy(`edit-instructor-${selectedInstructor.id}`)}
+                        >
+                            {selectedInstructor && isBusy(`edit-instructor-${selectedInstructor.id}`) ? 'Saving...' : 'Save Changes'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Delete Dialog */}
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+                setIsDeleteDialogOpen(open);
+                if (!open) {
+                    setDeleteInput('');
+                    setSelectedInstructor(null);
+                }
+            }}>
                 <AlertDialogContent className="rounded-xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -389,11 +524,11 @@ export default function InstructorsPage() {
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setDeleteInput('')} className="rounded-xl">Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            disabled={deleteInput !== 'delete'}
+                            disabled={deleteInput !== 'delete' || (selectedInstructor ? isBusy(`delete-instructor-${selectedInstructor.id}`) : false)}
                             className="bg-destructive hover:bg-destructive/90 rounded-xl"
                             onClick={handleDeleteInstructor}
                         >
-                            Delete
+                            {selectedInstructor && isBusy(`delete-instructor-${selectedInstructor.id}`) ? 'Deleting...' : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
