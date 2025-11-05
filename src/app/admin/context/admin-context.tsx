@@ -63,6 +63,7 @@ const normalizeSchedules = (schedules?: Record<string, ScheduleSubject[]>): Reco
         normalized[blockName] = entries.map((entry, index) => ({
             ...entry,
             color: entry.color ?? computeScheduleColor(entry.id, index),
+            room: entry.room ?? null,
         }));
     }
 
@@ -164,13 +165,13 @@ const initialSubjects: YearLevelSubjects = {
 
 // --- Data from schedule ---
 const initialScheduleSubjects: ScheduleSubject[] = [
-    { id: 1, code: 'IT 101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Alan Turing', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
-    { id: 2, code: 'MATH 101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
+    { id: 1, code: 'IT 101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Alan Turing', room: 'Room 101', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
+    { id: 2, code: 'MATH 101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Prof. Ada Lovelace', room: 'Room 202', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
 ];
 const initialSchedules: Record<string, ScheduleSubject[]> = normalizeSchedules({
     "ACT 1-A": initialScheduleSubjects,
-    "ACT 1-B": [{ id: 10, code: 'IT 101', description: 'Intro to Computing', day: 'Tuesday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Grace Hopper', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' }],
-    "ACT 2-A": [{ id: 20, code: 'IT 201', description: 'Data Structures', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' }]
+    "ACT 1-B": [{ id: 10, code: 'IT 101', description: 'Intro to Computing', day: 'Tuesday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Grace Hopper', room: 'Room 103', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' }],
+    "ACT 2-A": [{ id: 20, code: 'IT 201', description: 'Data Structures', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', room: 'Room 204', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' }]
 });
 
 // --- Student Data ---

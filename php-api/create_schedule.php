@@ -95,6 +95,11 @@ $startTimeRaw = isset($input['startTime']) ? (string) $input['startTime'] : '';
 $endTimeRaw = isset($input['endTime']) ? (string) $input['endTime'] : '';
 $instructorIdValue = $input['instructorId'] ?? null;
 $room = isset($input['room']) ? trim((string) $input['room']) : '';
+if ($room === '') {
+    $room = null;
+} elseif (mb_strlen($room) > 100) {
+    $room = mb_substr($room, 0, 100);
+}
 
 $instructorId = null;
 if ($instructorIdValue !== null && $instructorIdValue !== '') {
@@ -234,21 +239,21 @@ try {
     }
 
     if ($instructorId !== null) {
-        $insertStmt = $conn->prepare('INSERT INTO schedules (block_id, subject_id, instructor_id, day_of_week, start_time, end_time' . ($room !== '' ? ', room' : '') . ') VALUES (?, ?, ?, ?, ?, ?' . ($room !== '' ? ', ?' : '') . ')');
+        $insertStmt = $conn->prepare('INSERT INTO schedules (block_id, subject_id, instructor_id, day_of_week, start_time, end_time' . ($room !== null ? ', room' : '') . ') VALUES (?, ?, ?, ?, ?, ?' . ($room !== null ? ', ?' : '') . ')');
         if (!$insertStmt) {
             throw new Exception('Failed to prepare schedule insert: ' . $conn->error);
         }
-        if ($room !== '') {
+        if ($room !== null) {
             $insertStmt->bind_param('iiissss', $blockId, $subjectRowId, $instructorId, $dayOfWeek, $startTime, $endTime, $room);
         } else {
             $insertStmt->bind_param('iiisss', $blockId, $subjectRowId, $instructorId, $dayOfWeek, $startTime, $endTime);
         }
     } else {
-        $insertStmt = $conn->prepare('INSERT INTO schedules (block_id, subject_id, day_of_week, start_time, end_time' . ($room !== '' ? ', room' : '') . ') VALUES (?, ?, ?, ?, ?' . ($room !== '' ? ', ?' : '') . ')');
+        $insertStmt = $conn->prepare('INSERT INTO schedules (block_id, subject_id, day_of_week, start_time, end_time' . ($room !== null ? ', room' : '') . ') VALUES (?, ?, ?, ?, ?' . ($room !== null ? ', ?' : '') . ')');
         if (!$insertStmt) {
             throw new Exception('Failed to prepare schedule insert: ' . $conn->error);
         }
-        if ($room !== '') {
+        if ($room !== null) {
             $insertStmt->bind_param('iissss', $blockId, $subjectRowId, $dayOfWeek, $startTime, $endTime, $room);
         } else {
             $insertStmt->bind_param('iisss', $blockId, $subjectRowId, $dayOfWeek, $startTime, $endTime);
@@ -261,7 +266,8 @@ try {
     $newScheduleId = (int) $conn->insert_id;
 
     $fetchStmt = $conn->prepare('SELECT sch.id, subj.code, subj.description, sch.day_of_week, DATE_FORMAT(sch.start_time, "%H:%i") AS start_time,
-                                        DATE_FORMAT(sch.end_time, "%H:%i") AS end_time, sch.instructor_id, IFNULL(instr.name, "TBA") AS instructor_name
+                                        DATE_FORMAT(sch.end_time, "%H:%i") AS end_time, sch.instructor_id, IFNULL(instr.name, "TBA") AS instructor_name,
+                                        sch.room
                                  FROM schedules sch
                                  INNER JOIN subjects subj ON subj.id = sch.subject_id
                                  LEFT JOIN instructor_profiles instr ON instr.user_id = sch.instructor_id
@@ -295,6 +301,7 @@ try {
                 'endTime' => $scheduleRow['end_time'],
                 'instructor' => $scheduleRow['instructor_name'],
                 'instructorId' => isset($scheduleRow['instructor_id']) ? (int) $scheduleRow['instructor_id'] : null,
+                'room' => $scheduleRow['room'] !== null ? $scheduleRow['room'] : null,
             ],
         ],
     ], $conn);

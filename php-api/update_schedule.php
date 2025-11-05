@@ -105,7 +105,11 @@ $dayOfWeek = isset($input['dayOfWeek']) ? trim((string) $input['dayOfWeek']) : '
 $startTimeRaw = isset($input['startTime']) ? (string) $input['startTime'] : '';
 $endTimeRaw = isset($input['endTime']) ? (string) $input['endTime'] : '';
 $instructorIdValue = $input['instructorId'] ?? null;
-$room = isset($input['room']) ? trim((string) $input['room']) : '';
+$roomRaw = isset($input['room']) ? trim((string) $input['room']) : '';
+$room = $roomRaw === '' ? null : $roomRaw;
+if ($room !== null && mb_strlen($room) > 100) {
+    $room = mb_substr($room, 0, 100);
+}
 
 if ($scheduleId <= 0) {
     respond(400, [
@@ -269,7 +273,7 @@ try {
     $types .= 's';
     $params[] = $endTime;
 
-    if ($room !== '') {
+    if ($room !== null) {
         $assignments[] = 'room = ?';
         $types .= 's';
         $params[] = $room;
@@ -291,7 +295,8 @@ try {
     $updateStmt->close();
 
     $fetchStmt = $conn->prepare('SELECT sch.id, subj.code, subj.description, sch.day_of_week, DATE_FORMAT(sch.start_time, "%H:%i") AS start_time,
-                                        DATE_FORMAT(sch.end_time, "%H:%i") AS end_time, sch.instructor_id, IFNULL(instr.name, "TBA") AS instructor_name
+                                        DATE_FORMAT(sch.end_time, "%H:%i") AS end_time, sch.instructor_id, IFNULL(instr.name, "TBA") AS instructor_name,
+                                        sch.room
                                  FROM schedules sch
                                  INNER JOIN subjects subj ON subj.id = sch.subject_id
                                  LEFT JOIN instructor_profiles instr ON instr.user_id = sch.instructor_id
@@ -325,6 +330,7 @@ try {
                 'endTime' => $scheduleRow['end_time'],
                 'instructor' => $scheduleRow['instructor_name'],
                 'instructorId' => isset($scheduleRow['instructor_id']) ? (int) $scheduleRow['instructor_id'] : null,
+                'room' => $scheduleRow['room'] !== null ? $scheduleRow['room'] : null,
             ],
         ],
     ], $conn);

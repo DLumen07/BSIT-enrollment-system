@@ -1,10 +1,10 @@
 
 'use client';
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock, UserX, AlertTriangle } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock, UserX, AlertTriangle, MapPin } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -33,6 +33,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useAdmin, Instructor } from '../../../context/admin-context';
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +48,7 @@ export type Subject = {
     endTime: string;
     instructorId?: number | null;
     instructor?: string;
+    room?: string | null;
     color: string;
 };
 
@@ -95,6 +97,7 @@ const colorChoices = [
 ];
 
 const TBA_INSTRUCTOR = 'TBA';
+const TBA_ROOM = 'TBA';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
     .replace(/\/$/, '')
@@ -232,6 +235,10 @@ export default function SchedulePage() {
     const [isAddSubmitting, setIsAddSubmitting] = useState(false);
     const [isEditSubmitting, setIsEditSubmitting] = useState(false);
     const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+    const [addRoom, setAddRoom] = useState('');
+    const [isAddRoomTBA, setIsAddRoomTBA] = useState(false);
+    const [editRoom, setEditRoom] = useState('');
+    const [isEditRoomTBA, setIsEditRoomTBA] = useState(false);
 
     const studentsInBlock = useMemo(() => students.filter(s => s.block === blockId), [students, blockId]);
     
@@ -290,6 +297,23 @@ export default function SchedulePage() {
         return matches;
     }, [findInstructorsForSubject, subjectToEdit, instructors, instructorsByName]);
 
+    useEffect(() => {
+        if (subjectToEdit) {
+            const rawRoom = subjectToEdit.room ?? '';
+            const trimmedRoom = rawRoom.trim();
+            if (trimmedRoom === '' || trimmedRoom.toUpperCase() === TBA_ROOM) {
+                setIsEditRoomTBA(true);
+                setEditRoom('');
+            } else {
+                setIsEditRoomTBA(false);
+                setEditRoom(rawRoom);
+            }
+        } else {
+            setIsEditRoomTBA(false);
+            setEditRoom('');
+        }
+    }, [subjectToEdit]);
+
 
     const hasConflict = (newSubject: Omit<Subject, 'id' | 'color' | 'description'>, editingSubjectId: number | null = null) => {
         const toMinutes = (time: string) => {
@@ -306,6 +330,9 @@ export default function SchedulePage() {
         const normalizedNewInstructorName = newInstructorName.toUpperCase();
         const hasInstructor = (newInstructorId !== null && newInstructorId > 0)
             || (newInstructorName !== '' && normalizedNewInstructorName !== TBA_INSTRUCTOR);
+        const newRoomRaw = (newSubject.room ?? '').trim();
+        const normalizedNewRoom = newRoomRaw.toUpperCase();
+        const hasRoom = normalizedNewRoom !== '' && normalizedNewRoom !== TBA_ROOM;
 
         const instructorDisplayName = newInstructorName !== ''
             ? newInstructorName
@@ -325,6 +352,9 @@ export default function SchedulePage() {
                 const normalizedExistingInstructor = existingInstructorName.toUpperCase();
                 const existingHasInstructor = (existingInstructorId !== null && existingInstructorId > 0)
                     || (existingInstructorName !== '' && normalizedExistingInstructor !== TBA_INSTRUCTOR);
+                const existingRoomRaw = (existingSubject.room ?? '').trim();
+                const normalizedExistingRoom = existingRoomRaw.toUpperCase();
+                const existingHasRoom = normalizedExistingRoom !== '' && normalizedExistingRoom !== TBA_ROOM;
                 
                 const timeOverlap = newStartTime < existingEndTime && newEndTime > existingStartTime;
 
@@ -343,6 +373,15 @@ export default function SchedulePage() {
                         variant: "destructive",
                         title: "Scheduling Conflict",
                         description: `${instructorDisplayName} is already scheduled for ${existingSubject.code} in ${blockName} at this time.`,
+                    });
+                    return true;
+                }
+
+                if (hasRoom && existingHasRoom && normalizedExistingRoom === normalizedNewRoom && timeOverlap) {
+                    toast({
+                        variant: "destructive",
+                        title: "Room Conflict",
+                        description: `Room ${newRoomRaw} is already booked for ${existingSubject.code} in ${blockName} at this time.`,
                     });
                     return true;
                 }
@@ -384,6 +423,11 @@ export default function SchedulePage() {
 
         const instructorSelection = parseInstructorSelection(formData.get('instructor'));
 
+        const normalizedAddRoom = isAddRoomTBA ? null : (() => {
+            const raw = addRoom.trim();
+            return raw === '' || raw.toUpperCase() === TBA_ROOM ? null : raw;
+        })();
+
         const newSubjectData: Omit<Subject, 'id' | 'color' | 'description'> = {
             code: selectedSubject.code,
             instructor: instructorSelection.name,
@@ -391,6 +435,7 @@ export default function SchedulePage() {
             day: (formData.get('day') as string) ?? '',
             startTime: (formData.get('startTime') as string) ?? '',
             endTime: (formData.get('endTime') as string) ?? '',
+            room: normalizedAddRoom,
         };
 
         if (!newSubjectData.day || !newSubjectData.startTime || !newSubjectData.endTime) {
@@ -422,6 +467,7 @@ export default function SchedulePage() {
                     startTime: newSubjectData.startTime,
                     endTime: newSubjectData.endTime,
                     instructorId: instructorSelection.id,
+                    room: normalizedAddRoom,
                 }),
             });
 
@@ -441,11 +487,14 @@ export default function SchedulePage() {
                     description: createdSchedule.description ?? selectedSubject.description,
                     instructor: createdSchedule.instructor ?? newSubjectData.instructor,
                     instructorId: createdSchedule.instructorId ?? instructorSelection.id,
+                    room: createdSchedule.room ?? newSubjectData.room ?? null,
                 },
             ]);
 
             setIsAddDialogOpen(false);
             setSelectedSubjectCode('');
+            setAddRoom('');
+            setIsAddRoomTBA(false);
             toast({
                 title: "Schedule Added",
                 description: `${createdSchedule.code} has been added to the schedule for ${blockId}.`,
@@ -495,6 +544,11 @@ export default function SchedulePage() {
 
         const instructorSelection = parseInstructorSelection(formData.get('instructor'));
 
+        const normalizedEditRoom = isEditRoomTBA ? null : (() => {
+            const raw = editRoom.trim();
+            return raw === '' || raw.toUpperCase() === TBA_ROOM ? null : raw;
+        })();
+
         const updatedSubjectData: Omit<Subject, 'id' | 'color' | 'description'> = {
             code: selectedSubject.code,
             instructor: instructorSelection.name,
@@ -502,6 +556,7 @@ export default function SchedulePage() {
             day: (formData.get('day') as string) ?? '',
             startTime: (formData.get('startTime') as string) ?? '',
             endTime: (formData.get('endTime') as string) ?? '',
+            room: normalizedEditRoom,
         };
 
         if (hasConflict(updatedSubjectData, subjectToEdit.id)) {
@@ -523,6 +578,7 @@ export default function SchedulePage() {
                     startTime: updatedSubjectData.startTime,
                     endTime: updatedSubjectData.endTime,
                     instructorId: instructorSelection.id,
+                    room: normalizedEditRoom,
                 }),
             });
 
@@ -543,12 +599,15 @@ export default function SchedulePage() {
                         description: updatedSchedule.description ?? selectedSubject.description ?? item.description,
                         instructor: updatedSchedule.instructor ?? updatedSubjectData.instructor,
                         instructorId: updatedSchedule.instructorId ?? instructorSelection.id,
+                        room: updatedSchedule.room ?? updatedSubjectData.room ?? null,
                     }
                     : item,
             ));
 
             setIsEditDialogOpen(false);
             setSubjectToEdit(null);
+            setEditRoom('');
+            setIsEditRoomTBA(false);
             toast({
                 title: "Schedule Updated",
                 description: `${updatedSchedule.code} has been updated.`,
@@ -579,6 +638,15 @@ export default function SchedulePage() {
     const openEditDialog = (subject: Subject) => {
         if (isEditSubmitting) {
             return;
+        }
+        const rawRoom = subject.room ?? '';
+        const trimmedRoom = rawRoom.trim();
+        if (trimmedRoom === '' || trimmedRoom.toUpperCase() === TBA_ROOM) {
+            setIsEditRoomTBA(true);
+            setEditRoom('');
+        } else {
+            setIsEditRoomTBA(false);
+            setEditRoom(rawRoom);
         }
         setSubjectToEdit(subject);
         setIsEditDialogOpen(true);
@@ -667,8 +735,14 @@ export default function SchedulePage() {
                             return;
                         }
                         setIsAddDialogOpen(open);
-                        if (!open) {
+                        if (open) {
                             setSelectedSubjectCode('');
+                            setAddRoom('');
+                            setIsAddRoomTBA(false);
+                        } else {
+                            setSelectedSubjectCode('');
+                            setAddRoom('');
+                            setIsAddRoomTBA(false);
                         }
                     }}>
                     <DialogTrigger asChild>
@@ -753,6 +827,29 @@ export default function SchedulePage() {
                                             )}
                                         </SelectContent>
                                     </Select>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="room" className="text-right">Room</Label>
+                                    <div className="col-span-3 flex items-center gap-3">
+                                        <Input
+                                            id="room"
+                                            name="room"
+                                            value={isAddRoomTBA ? '' : addRoom}
+                                            onChange={(event) => setAddRoom(event.target.value)}
+                                            disabled={isAddSubmitting || isAddRoomTBA}
+                                            placeholder="e.g., Room 101"
+                                            className="rounded-xl"
+                                        />
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <Switch
+                                                id="room-tba"
+                                                checked={isAddRoomTBA}
+                                                onCheckedChange={setIsAddRoomTBA}
+                                                disabled={isAddSubmitting}
+                                            />
+                                            <span>TBA</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="day" className="text-right">Day</Label>
@@ -844,6 +941,8 @@ export default function SchedulePage() {
 
                                 const hasInstructor = !!subject.instructor;
                                 const cardColor = hasInstructor ? subject.color : 'bg-red-200/50 dark:bg-red-900/50 border-red-500';
+                                const normalizedRoom = (subject.room ?? '').trim();
+                                const hasRoomAssigned = normalizedRoom !== '' && normalizedRoom.toUpperCase() !== TBA_ROOM;
 
                                 return (
                                     <div
@@ -864,6 +963,17 @@ export default function SchedulePage() {
                                             <div className="flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
                                                 <UserX className="h-3 w-3 shrink-0" />
                                                 <span>No Instructor</span>
+                                            </div>
+                                        )}
+                                        {hasRoomAssigned ? (
+                                            <div className="mt-1 flex items-center gap-1 text-muted-foreground text-[10px]">
+                                                <MapPin className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{normalizedRoom}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="mt-1 flex items-center gap-1 text-amber-600 dark:text-amber-400 text-[10px]">
+                                                <AlertTriangle className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">Room TBA</span>
                                             </div>
                                         )}
                                         
@@ -906,6 +1016,11 @@ export default function SchedulePage() {
                         return;
                     }
                     setIsEditDialogOpen(open);
+                    if (!open) {
+                        setSubjectToEdit(null);
+                        setEditRoom('');
+                        setIsEditRoomTBA(false);
+                    }
                 }}
             >
                 <DialogContent>
@@ -948,6 +1063,29 @@ export default function SchedulePage() {
                                         ) : null}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="edit-room" className="text-right">Room</Label>
+                                <div className="col-span-3 flex items-center gap-3">
+                                    <Input
+                                        id="edit-room"
+                                        name="room"
+                                        value={isEditRoomTBA ? '' : editRoom}
+                                        onChange={(event) => setEditRoom(event.target.value)}
+                                        disabled={isEditSubmitting || isEditRoomTBA}
+                                        placeholder="e.g., Room 101"
+                                        className="rounded-xl"
+                                    />
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <Switch
+                                            id="edit-room-tba"
+                                            checked={isEditRoomTBA}
+                                            onCheckedChange={setIsEditRoomTBA}
+                                            disabled={isEditSubmitting}
+                                        />
+                                        <span>TBA</span>
+                                    </div>
+                                </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-day" className="text-right">Day</Label>

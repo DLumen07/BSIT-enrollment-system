@@ -344,7 +344,8 @@ SQL;
                               sch.day_of_week, DATE_FORMAT(sch.start_time, '%H:%i') AS start_time,
                               DATE_FORMAT(sch.end_time, '%H:%i') AS end_time,
                               sch.instructor_id,
-                              IFNULL(instr.name, 'TBA') AS instructor_name
+                              IFNULL(instr.name, 'TBA') AS instructor_name,
+                              sch.room
                        FROM schedules sch
                        INNER JOIN blocks b ON b.id = sch.block_id
                        INNER JOIN subjects subj ON subj.id = sch.subject_id
@@ -364,6 +365,7 @@ SQL;
                 'endTime' => $row['end_time'],
                 'instructorId' => isset($row['instructor_id']) ? (int) $row['instructor_id'] : null,
                 'instructor' => $row['instructor_name'],
+                'room' => $row['room'] ?? null,
                 'color' => 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400',
             ];
         }
