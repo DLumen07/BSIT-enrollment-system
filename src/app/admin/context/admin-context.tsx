@@ -28,6 +28,47 @@ export const availableSubjects = [
     { id: 'ENG 101', label: 'ENG 101 - English Composition' },
 ];
 
+const scheduleColorPalette = [
+    'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400',
+    'bg-green-200/50 dark:bg-green-800/50 border-green-400',
+    'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400',
+    'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400',
+    'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400',
+    'bg-pink-200/50 dark:bg-pink-800/50 border-pink-400',
+    'bg-red-200/50 dark:bg-red-900/50 border-red-500',
+    'bg-indigo-200/50 dark:bg-indigo-800/50 border-indigo-400',
+];
+
+const computeScheduleColor = (scheduleId?: number | null, fallbackIndex?: number): string => {
+    const paletteLength = scheduleColorPalette.length;
+    if (paletteLength === 0) {
+        return 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400';
+    }
+
+    const base = typeof scheduleId === 'number' && Number.isFinite(scheduleId)
+        ? Math.abs(scheduleId)
+        : Math.abs(fallbackIndex ?? 0);
+
+    return scheduleColorPalette[base % paletteLength];
+};
+
+const normalizeSchedules = (schedules?: Record<string, ScheduleSubject[]>): Record<string, ScheduleSubject[]> => {
+    if (!schedules) {
+        return {};
+    }
+
+    const normalized: Record<string, ScheduleSubject[]> = {};
+
+    for (const [blockName, entries] of Object.entries(schedules)) {
+        normalized[blockName] = entries.map((entry, index) => ({
+            ...entry,
+            color: entry.color ?? computeScheduleColor(entry.id, index),
+        }));
+    }
+
+    return normalized;
+};
+
 
 // --- Data from manage-applications ---
 export type ApplicationStatus = 'New' | 'Old' | 'Transferee';
@@ -126,11 +167,11 @@ const initialScheduleSubjects: ScheduleSubject[] = [
     { id: 1, code: 'IT 101', description: 'Intro to Computing', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Alan Turing', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
     { id: 2, code: 'MATH 101', description: 'Calculus I', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
 ];
-const initialSchedules: Record<string, ScheduleSubject[]> = {
+const initialSchedules: Record<string, ScheduleSubject[]> = normalizeSchedules({
     "ACT 1-A": initialScheduleSubjects,
     "ACT 1-B": [{ id: 10, code: 'IT 101', description: 'Intro to Computing', day: 'Tuesday', startTime: '09:00', endTime: '10:30', instructor: 'Dr. Grace Hopper', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' }],
     "ACT 2-A": [{ id: 20, code: 'IT 201', description: 'Data Structures', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' }]
-};
+});
 
 // --- Student Data ---
 export type Student = {
@@ -302,6 +343,7 @@ const createAdminDataFromPayload = (
 ): AdminDataType => {
     const subjects = normalizeSubjects(payload?.subjectsByYear);
     const grades = normalizeGrades(payload?.grades);
+    const schedules = normalizeSchedules(payload?.schedules);
 
     return {
         ...mockAdminData,
@@ -310,7 +352,7 @@ const createAdminDataFromPayload = (
         instructors: payload?.instructors ?? [],
         blocks: payload?.blocks ?? [],
         subjects,
-        schedules: payload?.schedules ?? {},
+        schedules,
         students: payload?.students ?? [],
         grades,
         pendingApplications: payload?.pendingApplications ?? [],

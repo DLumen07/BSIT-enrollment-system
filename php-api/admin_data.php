@@ -343,6 +343,7 @@ SQL;
     $scheduleQuery = "SELECT sch.id, b.name AS block_name, subj.code, subj.description,
                               sch.day_of_week, DATE_FORMAT(sch.start_time, '%H:%i') AS start_time,
                               DATE_FORMAT(sch.end_time, '%H:%i') AS end_time,
+                              sch.instructor_id,
                               IFNULL(instr.name, 'TBA') AS instructor_name
                        FROM schedules sch
                        INNER JOIN blocks b ON b.id = sch.block_id
@@ -361,6 +362,7 @@ SQL;
                 'day' => $row['day_of_week'],
                 'startTime' => $row['start_time'],
                 'endTime' => $row['end_time'],
+                'instructorId' => isset($row['instructor_id']) ? (int) $row['instructor_id'] : null,
                 'instructor' => $row['instructor_name'],
                 'color' => 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400',
             ];

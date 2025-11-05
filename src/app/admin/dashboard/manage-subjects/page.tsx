@@ -144,23 +144,24 @@ export default function ManageSubjectsPage() {
     );
 
     const prerequisiteOptions = useMemo(() => {
-        const options: Subject[] = [];
         const activeYearIndex = yearLevels.findIndex((yl) => yl.value === activeTab);
 
-        if (activeYearIndex < 0) {
-            return options;
+        if (activeYearIndex <= 0) {
+            return [] as Subject[];
         }
 
-        for (let i = 0; i <= activeYearIndex; i += 1) {
-            const yearKey = yearLevels[i].value;
-            options.push(...(subjectsByYear[yearKey] ?? []));
+        const previousYearKey = yearLevels[activeYearIndex - 1]?.value;
+        if (!previousYearKey) {
+            return [] as Subject[];
         }
+
+        const candidates = [...(subjectsByYear[previousYearKey] ?? [])];
 
         if (currentSubject) {
-            return options.filter((subject) => subject.id !== currentSubject.id);
+            return candidates.filter((subject) => subject.id !== currentSubject.id);
         }
 
-        return options;
+        return candidates;
     }, [activeTab, currentSubject, subjectsByYear]);
 
     const openAddDialog = useCallback(() => {

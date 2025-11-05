@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useAdmin } from '../../../context/admin-context';
+import { useAdmin, Instructor } from '../../../context/admin-context';
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
@@ -45,9 +45,24 @@ export type Subject = {
     day: string;
     startTime: string;
     endTime: string;
+    instructorId?: number | null;
     instructor?: string;
     color: string;
 };
+
+type ScheduleMutationResponse =
+    | {
+        status: 'success';
+        message?: string;
+        data?: {
+            schedule?: Subject;
+            scheduleId?: number;
+        };
+    }
+    | {
+        status: 'error';
+        message?: string;
+    };
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const timeSlots = Array.from({ length: 12 }, (_, i) => `${(i + 7).toString().padStart(2, '0')}:00`); // 7 AM to 6 PM
@@ -79,6 +94,12 @@ const colorChoices = [
     'bg-indigo-200/50 dark:bg-indigo-800/50 border-indigo-400',
 ];
 
+const TBA_INSTRUCTOR = 'TBA';
+
+const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+    .replace(/\/$/, '')
+    .trim();
+
 const detailedTimeSlots = Array.from({ length: 12 * 2 }, (_, i) => {
     const hour = Math.floor(i / 2) + 7;
     const minute = (i % 2) * 30;
@@ -90,10 +111,116 @@ export default function SchedulePage() {
     const params = useParams();
     const blockId = decodeURIComponent(params.blockId as string);
     const { toast } = useToast();
-    const { adminData, setAdminData } = useAdmin();
+    const { adminData, setAdminData, refreshAdminData } = useAdmin();
     const { schedules, instructors, subjects: allSubjectsFromContext, students } = adminData;
 
-    const subjects = schedules[blockId] || [];
+    const instructorMap = useMemo(() => new Map(instructors.map((ins) => [ins.id, ins])), [instructors]);
+    const instructorsByName = useMemo(() => {
+        const map = new Map<string, Instructor>();
+        instructors.forEach((ins) => {
+            map.set(ins.name.toUpperCase(), ins);
+        });
+        return map;
+    }, [instructors]);
+
+    const assignColor = useCallback((id?: number | null, fallbackIndex?: number) => {
+        const paletteLength = colorChoices.length;
+        if (paletteLength === 0) {
+            return 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400';
+        }
+        const base = typeof id === 'number' && Number.isFinite(id)
+            ? Math.abs(id)
+            : Math.abs(fallbackIndex ?? 0);
+        return colorChoices[base % paletteLength];
+    }, []);
+
+    const subjects = useMemo(() => {
+        const blockSchedules = schedules[blockId] ?? [];
+        return blockSchedules.map((subject, index) => ({
+            ...subject,
+            color: subject.color ?? assignColor(subject.id, index),
+        }));
+    }, [assignColor, blockId, schedules]);
+
+    const dayOrder = useMemo(() => {
+        const order = new Map<string, number>();
+        days.forEach((day, index) => {
+            order.set(day, index);
+        });
+        return order;
+    }, []);
+
+    const sortSchedulesForBlock = useCallback((entries: Subject[]) => {
+        return [...entries].sort((a, b) => {
+            const dayDelta = (dayOrder.get(a.day) ?? 0) - (dayOrder.get(b.day) ?? 0);
+            if (dayDelta !== 0) {
+                return dayDelta;
+            }
+            return a.startTime.localeCompare(b.startTime);
+        });
+    }, [dayOrder]);
+
+    const updateBlockSchedules = useCallback((transform: (current: Subject[]) => Subject[]) => {
+        setAdminData((prev) => {
+            const current = prev.schedules[blockId] ?? [];
+            const transformed = transform([...current]);
+            const normalized = transformed.map((entry, index) => ({
+                ...entry,
+                color: entry.color ?? assignColor(entry.id, index),
+            }));
+
+            return {
+                ...prev,
+                schedules: {
+                    ...prev.schedules,
+                    [blockId]: sortSchedulesForBlock(normalized),
+                },
+            };
+        });
+    }, [assignColor, blockId, setAdminData, sortSchedulesForBlock]);
+
+    const parseInstructorSelection = useCallback((value: FormDataEntryValue | null | undefined): { id: number | null; name: string } => {
+        const raw = typeof value === 'string' ? value : '';
+
+        if (!raw || raw.startsWith('__') || raw === TBA_INSTRUCTOR) {
+            return { id: null, name: TBA_INSTRUCTOR };
+        }
+
+        const numericId = Number.parseInt(raw, 10);
+        if (Number.isNaN(numericId)) {
+            return { id: null, name: TBA_INSTRUCTOR };
+        }
+
+        const instructor = instructorMap.get(numericId);
+        if (!instructor) {
+            return { id: null, name: TBA_INSTRUCTOR };
+        }
+
+        return { id: numericId, name: instructor.name };
+    }, [instructorMap]);
+
+    const getInstructorSelectValue = useCallback((subject?: Subject | null) => {
+        if (!subject) {
+            return undefined;
+        }
+
+        if (subject.instructorId && instructorMap.has(subject.instructorId)) {
+            return subject.instructorId.toString();
+        }
+
+        if (subject.instructor) {
+            const normalizedName = subject.instructor.toUpperCase();
+            if (normalizedName === TBA_INSTRUCTOR) {
+                return TBA_INSTRUCTOR;
+            }
+            const instructor = instructorsByName.get(normalizedName);
+            if (instructor) {
+                return instructor.id.toString();
+            }
+        }
+
+        return TBA_INSTRUCTOR;
+    }, [instructorMap, instructorsByName]);
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -101,6 +228,10 @@ export default function SchedulePage() {
     const [subjectToEdit, setSubjectToEdit] = useState<Subject | null>(null);
     const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
     const [deleteInput, setDeleteInput] = useState('');
+    const [selectedSubjectCode, setSelectedSubjectCode] = useState<string>('');
+    const [isAddSubmitting, setIsAddSubmitting] = useState(false);
+    const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+    const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
 
     const studentsInBlock = useMemo(() => students.filter(s => s.block === blockId), [students, blockId]);
     
@@ -111,6 +242,54 @@ export default function SchedulePage() {
         return allSubjectsFromContext[blockYear] || [];
     }, [allSubjectsFromContext, blockYear]);
 
+    const findInstructorsForSubject = useCallback(
+        (subjectCode?: string | null): Instructor[] => {
+            if (!subjectCode) {
+                return [];
+            }
+
+            const normalizedCode = subjectCode.toUpperCase();
+
+            return instructors.filter((instructor) =>
+                (instructor.subjects ?? []).some((subjectId) => subjectId.toUpperCase() === normalizedCode),
+            );
+        },
+        [instructors],
+    );
+
+    const eligibleInstructorsForAdd = useMemo(
+        () => findInstructorsForSubject(selectedSubjectCode),
+        [findInstructorsForSubject, selectedSubjectCode],
+    );
+
+    const eligibleInstructorsForEdit = useMemo(() => {
+        if (!subjectToEdit) {
+            return [] as Instructor[];
+        }
+
+        const matches = [...findInstructorsForSubject(subjectToEdit.code)];
+
+        if (subjectToEdit.instructorId) {
+            const alreadyIncluded = matches.some((instructor) => instructor.id === subjectToEdit.instructorId);
+            if (!alreadyIncluded) {
+                const fallback = instructors.find((instructor) => instructor.id === subjectToEdit.instructorId);
+                if (fallback) {
+                    matches.push(fallback);
+                }
+            }
+        } else if (subjectToEdit.instructor) {
+            const normalizedName = subjectToEdit.instructor.toUpperCase();
+            if (normalizedName !== TBA_INSTRUCTOR) {
+                const fallbackByName = instructorsByName.get(normalizedName);
+                if (fallbackByName && !matches.some((instructor) => instructor.id === fallbackByName.id)) {
+                    matches.push(fallbackByName);
+                }
+            }
+        }
+
+        return matches;
+    }, [findInstructorsForSubject, subjectToEdit, instructors, instructorsByName]);
+
 
     const hasConflict = (newSubject: Omit<Subject, 'id' | 'color' | 'description'>, editingSubjectId: number | null = null) => {
         const toMinutes = (time: string) => {
@@ -120,6 +299,17 @@ export default function SchedulePage() {
 
         const newStartTime = toMinutes(newSubject.startTime);
         const newEndTime = toMinutes(newSubject.endTime);
+        const newInstructorId = typeof newSubject.instructorId === 'number' && Number.isFinite(newSubject.instructorId)
+            ? newSubject.instructorId
+            : null;
+        const newInstructorName = (newSubject.instructor ?? '').trim();
+        const normalizedNewInstructorName = newInstructorName.toUpperCase();
+        const hasInstructor = (newInstructorId !== null && newInstructorId > 0)
+            || (newInstructorName !== '' && normalizedNewInstructorName !== TBA_INSTRUCTOR);
+
+        const instructorDisplayName = newInstructorName !== ''
+            ? newInstructorName
+            : (newInstructorId !== null ? instructorMap.get(newInstructorId)?.name ?? 'Selected instructor' : TBA_INSTRUCTOR);
 
         for (const [blockName, schedule] of Object.entries(schedules)) {
             for (const existingSubject of schedule) {
@@ -128,14 +318,31 @@ export default function SchedulePage() {
 
                 const existingStartTime = toMinutes(existingSubject.startTime);
                 const existingEndTime = toMinutes(existingSubject.endTime);
+                const existingInstructorId = typeof existingSubject.instructorId === 'number' && Number.isFinite(existingSubject.instructorId)
+                    ? existingSubject.instructorId
+                    : null;
+                const existingInstructorName = (existingSubject.instructor ?? '').trim();
+                const normalizedExistingInstructor = existingInstructorName.toUpperCase();
+                const existingHasInstructor = (existingInstructorId !== null && existingInstructorId > 0)
+                    || (existingInstructorName !== '' && normalizedExistingInstructor !== TBA_INSTRUCTOR);
                 
                 const timeOverlap = newStartTime < existingEndTime && newEndTime > existingStartTime;
 
-                if (newSubject.instructor && newSubject.instructor === existingSubject.instructor && timeOverlap) {
+                const instructorConflict = hasInstructor && existingHasInstructor && (
+                    (newInstructorId !== null && existingInstructorId !== null && newInstructorId === existingInstructorId)
+                    || (
+                        (newInstructorId === null || newInstructorId <= 0)
+                        && (existingInstructorId === null || existingInstructorId <= 0)
+                        && newInstructorName !== ''
+                        && newInstructorName === existingInstructorName
+                    )
+                );
+
+                if (instructorConflict && timeOverlap) {
                      toast({
                         variant: "destructive",
                         title: "Scheduling Conflict",
-                        description: `${newSubject.instructor} is already scheduled for ${existingSubject.code} in ${blockName} at this time.`,
+                        description: `${instructorDisplayName} is already scheduled for ${existingSubject.code} in ${blockName} at this time.`,
                     });
                     return true;
                 }
@@ -153,12 +360,18 @@ export default function SchedulePage() {
         return false;
     }
 
-    const handleAddSubject = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleAddSubject = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (isAddSubmitting) {
+            return;
+        }
+
         const formData = new FormData(e.currentTarget);
-        
-        const selectedSubjectId = formData.get('subject') as string;
-        const selectedSubject = availableSubjectsForBlock.find(s => s.code === selectedSubjectId);
+
+        const selectedSubjectCodeValue = formData.get('subject');
+        const selectedSubject = typeof selectedSubjectCodeValue === 'string'
+            ? availableSubjectsForBlock.find((s) => s.code === selectedSubjectCodeValue)
+            : undefined;
 
         if (!selectedSubject) {
             toast({
@@ -169,15 +382,18 @@ export default function SchedulePage() {
             return;
         }
 
-        const newSubjectData = {
+        const instructorSelection = parseInstructorSelection(formData.get('instructor'));
+
+        const newSubjectData: Omit<Subject, 'id' | 'color' | 'description'> = {
             code: selectedSubject.code,
-            instructor: formData.get('instructor') as string,
-            day: formData.get('day') as string,
-            startTime: formData.get('startTime') as string,
-            endTime: formData.get('endTime') as string,
+            instructor: instructorSelection.name,
+            instructorId: instructorSelection.id,
+            day: (formData.get('day') as string) ?? '',
+            startTime: (formData.get('startTime') as string) ?? '',
+            endTime: (formData.get('endTime') as string) ?? '',
         };
 
-        if (Object.values(newSubjectData).some(val => val === null || val === '')) {
+        if (!newSubjectData.day || !newSubjectData.startTime || !newSubjectData.endTime) {
             toast({
                 variant: "destructive",
                 title: "Missing Information",
@@ -190,96 +406,250 @@ export default function SchedulePage() {
             return;
         }
 
-        const randomColor = colorChoices[Math.floor(Math.random() * colorChoices.length)];
-        
-        const newSubject: Subject = { 
-            ...newSubjectData, 
-            id: Date.now(), 
-            description: selectedSubject.description,
-            color: randomColor 
-        };
+        setIsAddSubmitting(true);
 
-        const newSchedules = {
-            ...schedules,
-            [blockId]: [...(schedules[blockId] || []), newSubject]
-        };
+        try {
+            const response = await fetch(`${API_BASE_URL}/create_schedule.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    blockName: blockId,
+                    subjectId: selectedSubject.id,
+                    dayOfWeek: newSubjectData.day,
+                    startTime: newSubjectData.startTime,
+                    endTime: newSubjectData.endTime,
+                    instructorId: instructorSelection.id,
+                }),
+            });
 
-        setAdminData(prev => ({...prev, schedules: newSchedules}));
-        setIsAddDialogOpen(false);
-         toast({
-            title: "Schedule Added",
-            description: `${newSubject.code} has been added to the schedule for ${blockId}.`,
-        });
+            const payload = await response.json().catch(() => null) as ScheduleMutationResponse | null;
+
+            if (!response.ok || !payload || payload.status !== 'success' || !payload.data?.schedule) {
+                const message = payload?.message ?? `Failed to create schedule (${response.status})`;
+                throw new Error(message);
+            }
+
+            const createdSchedule = payload.data.schedule;
+
+            updateBlockSchedules((current) => [
+                ...current,
+                {
+                    ...createdSchedule,
+                    description: createdSchedule.description ?? selectedSubject.description,
+                    instructor: createdSchedule.instructor ?? newSubjectData.instructor,
+                    instructorId: createdSchedule.instructorId ?? instructorSelection.id,
+                },
+            ]);
+
+            setIsAddDialogOpen(false);
+            setSelectedSubjectCode('');
+            toast({
+                title: "Schedule Added",
+                description: `${createdSchedule.code} has been added to the schedule for ${blockId}.`,
+            });
+
+            try {
+                await refreshAdminData();
+            } catch (refreshError) {
+                console.error('Failed to refresh admin data after creating schedule', refreshError);
+                toast({
+                    variant: "default",
+                    title: "Refresh Failed",
+                    description: "Schedule saved but the latest data could not be fetched automatically. Please reload to confirm.",
+                });
+            }
+        } catch (error) {
+            console.error('Failed to add schedule', error);
+            toast({
+                variant: "destructive",
+                title: "Failed to Add Schedule",
+                description: error instanceof Error ? error.message : 'Unexpected error occurred while creating the schedule.',
+            });
+        } finally {
+            setIsAddSubmitting(false);
+        }
     };
-    
-    const handleEditSubject = (e: React.FormEvent<HTMLFormElement>) => {
+
+    const handleEditSubject = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!subjectToEdit) return;
-
-        const formData = new FormData(e.currentTarget);
-        const subjectCodeFromState = subjectToEdit.code;
-        
-        const selectedSubject = availableSubjectsForBlock.find(s => s.code === subjectCodeFromState);
-
-        if (!selectedSubject) {
-            toast({ variant: "destructive", title: "Invalid Subject", description: "An error occurred while trying to find the subject details." });
+        if (!subjectToEdit || isEditSubmitting) {
             return;
         }
 
-        const updatedSubjectData = {
+        const formData = new FormData(e.currentTarget);
+        const subjectCodeFromState = subjectToEdit.code;
+
+        const selectedSubject = availableSubjectsForBlock.find((s) => s.code === subjectCodeFromState);
+
+        if (!selectedSubject) {
+            toast({
+                variant: "destructive",
+                title: "Invalid Subject",
+                description: "An error occurred while trying to find the subject details.",
+            });
+            return;
+        }
+
+        const instructorSelection = parseInstructorSelection(formData.get('instructor'));
+
+        const updatedSubjectData: Omit<Subject, 'id' | 'color' | 'description'> = {
             code: selectedSubject.code,
-            instructor: formData.get('instructor') as string,
-            day: formData.get('day') as string,
-            startTime: formData.get('startTime') as string,
-            endTime: formData.get('endTime') as string,
+            instructor: instructorSelection.name,
+            instructorId: instructorSelection.id,
+            day: (formData.get('day') as string) ?? '',
+            startTime: (formData.get('startTime') as string) ?? '',
+            endTime: (formData.get('endTime') as string) ?? '',
         };
 
         if (hasConflict(updatedSubjectData, subjectToEdit.id)) {
             return;
         }
 
-        const updatedSubject: Subject = { 
-            ...subjectToEdit,
-            ...updatedSubjectData,
-            description: selectedSubject.description,
-        };
-        
-        const updatedSubjects = subjects.map(s => s.id === subjectToEdit.id ? updatedSubject : s);
-        const updatedSchedules = {...schedules, [blockId]: updatedSubjects };
+        setIsEditSubmitting(true);
 
-        setAdminData(prev => ({...prev, schedules: updatedSchedules}));
+        try {
+            const response = await fetch(`${API_BASE_URL}/update_schedule.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    scheduleId: subjectToEdit.id,
+                    dayOfWeek: updatedSubjectData.day,
+                    startTime: updatedSubjectData.startTime,
+                    endTime: updatedSubjectData.endTime,
+                    instructorId: instructorSelection.id,
+                }),
+            });
 
-        setIsEditDialogOpen(false);
-        setSubjectToEdit(null);
-        toast({
-            title: "Schedule Updated",
-            description: `${updatedSubject.code} has been updated.`,
-        });
+            const payload = await response.json().catch(() => null) as ScheduleMutationResponse | null;
+
+            if (!response.ok || !payload || payload.status !== 'success' || !payload.data?.schedule) {
+                const message = payload?.message ?? `Failed to update schedule (${response.status})`;
+                throw new Error(message);
+            }
+
+            const updatedSchedule = payload.data.schedule;
+
+            updateBlockSchedules((current) => current.map((item) =>
+                item.id === subjectToEdit.id
+                    ? {
+                        ...item,
+                        ...updatedSchedule,
+                        description: updatedSchedule.description ?? selectedSubject.description ?? item.description,
+                        instructor: updatedSchedule.instructor ?? updatedSubjectData.instructor,
+                        instructorId: updatedSchedule.instructorId ?? instructorSelection.id,
+                    }
+                    : item,
+            ));
+
+            setIsEditDialogOpen(false);
+            setSubjectToEdit(null);
+            toast({
+                title: "Schedule Updated",
+                description: `${updatedSchedule.code} has been updated.`,
+            });
+
+            try {
+                await refreshAdminData();
+            } catch (refreshError) {
+                console.error('Failed to refresh admin data after updating schedule', refreshError);
+                toast({
+                    variant: "default",
+                    title: "Refresh Failed",
+                    description: "Schedule updated but the latest data could not be fetched automatically. Please reload to confirm.",
+                });
+            }
+        } catch (error) {
+            console.error('Failed to update schedule', error);
+            toast({
+                variant: "destructive",
+                title: "Failed to Update Schedule",
+                description: error instanceof Error ? error.message : 'Unexpected error occurred while updating the schedule.',
+            });
+        } finally {
+            setIsEditSubmitting(false);
+        }
     };
 
     const openEditDialog = (subject: Subject) => {
+        if (isEditSubmitting) {
+            return;
+        }
         setSubjectToEdit(subject);
         setIsEditDialogOpen(true);
     };
 
     const openDeleteDialog = (subject: Subject) => {
+        if (isDeleteSubmitting) {
+            return;
+        }
         setSubjectToDelete(subject);
         setIsDeleteDialogOpen(true);
         setDeleteInput('');
     };
 
-    const handleDeleteSubject = () => {
-        if (subjectToDelete) {
-            const updatedSubjects = subjects.filter(s => s.id !== subjectToDelete.id);
-            const updatedSchedules = {...schedules, [blockId]: updatedSubjects };
-            setAdminData(prev => ({...prev, schedules: updatedSchedules}));
+    const handleDeleteSubject = async () => {
+        if (!subjectToDelete || isDeleteSubmitting) {
+            return;
+        }
+
+        setIsDeleteSubmitting(true);
+        const scheduleId = subjectToDelete.id;
+        const deletedCode = subjectToDelete.code;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/delete_schedule.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    scheduleId,
+                }),
+            });
+
+            const payload = await response.json().catch(() => null) as ScheduleMutationResponse | null;
+
+            if (!response.ok || !payload || payload.status !== 'success') {
+                const message = payload?.message ?? `Failed to delete schedule (${response.status})`;
+                throw new Error(message);
+            }
+
+            updateBlockSchedules((current) => current.filter((item) => item.id !== scheduleId));
 
             setIsDeleteDialogOpen(false);
             setSubjectToDelete(null);
+            setDeleteInput('');
             toast({
                 title: "Schedule Removed",
-                description: `${subjectToDelete.code} has been removed from the schedule.`,
+                description: `${deletedCode} has been removed from the schedule.`,
             });
+
+            try {
+                await refreshAdminData();
+            } catch (refreshError) {
+                console.error('Failed to refresh admin data after deleting schedule', refreshError);
+                toast({
+                    variant: "default",
+                    title: "Refresh Failed",
+                    description: "Schedule deleted but the latest data could not be fetched automatically. Please reload to confirm.",
+                });
+            }
+        } catch (error) {
+            console.error('Failed to delete schedule', error);
+            toast({
+                variant: "destructive",
+                title: "Failed to Delete Schedule",
+                description: error instanceof Error ? error.message : 'Unexpected error occurred while deleting the schedule.',
+            });
+        } finally {
+            setIsDeleteSubmitting(false);
         }
     };
 
@@ -292,9 +662,17 @@ export default function SchedulePage() {
                         Manage the subjects, schedule, and instructors for this block.
                     </p>
                 </div>
-                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                 <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+                        if (isAddSubmitting) {
+                            return;
+                        }
+                        setIsAddDialogOpen(open);
+                        if (!open) {
+                            setSelectedSubjectCode('');
+                        }
+                    }}>
                     <DialogTrigger asChild>
-                        <Button className="rounded-full">
+                        <Button className="rounded-full" disabled={isAddSubmitting}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Add Schedule
                         </Button>
@@ -310,7 +688,13 @@ export default function SchedulePage() {
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="subject" className="text-right">Subject</Label>
-                                    <Select name="subject" required>
+                                    <Select
+                                        name="subject"
+                                        required
+                                        disabled={isAddSubmitting}
+                                        value={selectedSubjectCode}
+                                        onValueChange={(value) => setSelectedSubjectCode(value)}
+                                    >
                                         <SelectTrigger className="col-span-3 rounded-xl">
                                             <SelectValue placeholder="Select a subject" />
                                         </SelectTrigger>
@@ -346,18 +730,33 @@ export default function SchedulePage() {
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="instructor" className="text-right">Instructor</Label>
-                                     <Select name="instructor">
+                                     <Select name="instructor" disabled={isAddSubmitting}>
                                         <SelectTrigger className="col-span-3 rounded-xl">
                                             <SelectValue placeholder="Select an instructor (optional)" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {instructors.map(ins => <SelectItem key={ins.id} value={ins.name}>{ins.name}</SelectItem>)}
+                                            {selectedSubjectCode.length === 0 ? (
+                                                <SelectItem value="__select-subject" disabled>
+                                                    Select a subject first
+                                                </SelectItem>
+                                            ) : (
+                                                <>
+                                                    {eligibleInstructorsForAdd.map((ins) => (
+                                                        <SelectItem key={ins.id} value={ins.id.toString()}>{ins.name}</SelectItem>
+                                                    ))}
+                                                    <SelectItem value={TBA_INSTRUCTOR}>
+                                                        {eligibleInstructorsForAdd.length > 0
+                                                            ? 'Assign Later (TBA)'
+                                                            : 'No eligible instructors – set to TBA'}
+                                                    </SelectItem>
+                                                </>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="day" className="text-right">Day</Label>
-                                    <Select name="day" required>
+                                    <Select name="day" required disabled={isAddSubmitting}>
                                         <SelectTrigger className="col-span-3 rounded-xl">
                                             <SelectValue placeholder="Select a day" />
                                         </SelectTrigger>
@@ -368,7 +767,7 @@ export default function SchedulePage() {
                                 </div>
                                  <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="startTime" className="text-right">Start Time</Label>
-                                    <Select name="startTime" required>
+                                    <Select name="startTime" required disabled={isAddSubmitting}>
                                         <SelectTrigger className="col-span-3 rounded-xl">
                                             <SelectValue placeholder="Select start time" />
                                         </SelectTrigger>
@@ -379,7 +778,7 @@ export default function SchedulePage() {
                                 </div>
                                  <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="endTime" className="text-right">End Time</Label>
-                                    <Select name="endTime" required>
+                                    <Select name="endTime" required disabled={isAddSubmitting}>
                                         <SelectTrigger className="col-span-3 rounded-xl">
                                             <SelectValue placeholder="Select end time" />
                                         </SelectTrigger>
@@ -391,8 +790,22 @@ export default function SchedulePage() {
                             </div>
                         </form>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                            <Button type="submit" form="add-subject-form" className="rounded-xl">Create Schedule</Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsAddDialogOpen(false)}
+                                className="rounded-xl"
+                                disabled={isAddSubmitting}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                form="add-subject-form"
+                                className="rounded-xl"
+                                disabled={isAddSubmitting}
+                            >
+                                {isAddSubmitting ? 'Saving...' : 'Create Schedule'}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -486,7 +899,15 @@ export default function SchedulePage() {
             </Card>
 
             {/* Edit Dialog */}
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <Dialog
+                open={isEditDialogOpen}
+                onOpenChange={(open) => {
+                    if (isEditSubmitting) {
+                        return;
+                    }
+                    setIsEditDialogOpen(open);
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Edit Schedule</DialogTitle>
@@ -506,18 +927,31 @@ export default function SchedulePage() {
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-instructor" className="text-right">Instructor</Label>
-                                <Select name="instructor" defaultValue={subjectToEdit?.instructor}>
+                                <Select
+                                    name="instructor"
+                                    defaultValue={getInstructorSelectValue(subjectToEdit)}
+                                    disabled={isEditSubmitting}
+                                >
                                     <SelectTrigger className="col-span-3 rounded-xl">
                                         <SelectValue placeholder="Select an instructor (optional)" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {instructors.map(ins => <SelectItem key={ins.id} value={ins.name}>{ins.name}</SelectItem>)}
+                                        {subjectToEdit ? (
+                                            <>
+                                                {eligibleInstructorsForEdit.map((ins) => (
+                                                    <SelectItem key={ins.id} value={ins.id.toString()}>{ins.name}</SelectItem>
+                                                ))}
+                                                <SelectItem value={TBA_INSTRUCTOR}>
+                                                    Assign Later (TBA)
+                                                </SelectItem>
+                                            </>
+                                        ) : null}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-day" className="text-right">Day</Label>
-                                <Select name="day" defaultValue={subjectToEdit?.day} required>
+                                <Select name="day" defaultValue={subjectToEdit?.day} required disabled={isEditSubmitting}>
                                     <SelectTrigger className="col-span-3 rounded-xl">
                                         <SelectValue placeholder="Select a day" />
                                     </SelectTrigger>
@@ -528,7 +962,7 @@ export default function SchedulePage() {
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-startTime" className="text-right">Start Time</Label>
-                                <Select name="startTime" defaultValue={subjectToEdit?.startTime} required>
+                                <Select name="startTime" defaultValue={subjectToEdit?.startTime} required disabled={isEditSubmitting}>
                                     <SelectTrigger className="col-span-3 rounded-xl">
                                         <SelectValue placeholder="Select start time" />
                                     </SelectTrigger>
@@ -539,7 +973,7 @@ export default function SchedulePage() {
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-endTime" className="text-right">End Time</Label>
-                                <Select name="endTime" defaultValue={subjectToEdit?.endTime} required>
+                                <Select name="endTime" defaultValue={subjectToEdit?.endTime} required disabled={isEditSubmitting}>
                                     <SelectTrigger className="col-span-3 rounded-xl">
                                         <SelectValue placeholder="Select end time" />
                                     </SelectTrigger>
@@ -551,13 +985,38 @@ export default function SchedulePage() {
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl">Cancel</Button>
-                        <Button type="submit" form="edit-subject-form" className="rounded-xl">Save Changes</Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsEditDialogOpen(false)}
+                            className="rounded-xl"
+                            disabled={isEditSubmitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            form="edit-subject-form"
+                            className="rounded-xl"
+                            disabled={isEditSubmitting}
+                        >
+                            {isEditSubmitting ? 'Saving...' : 'Save Changes'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialog
+                open={isDeleteDialogOpen}
+                onOpenChange={(open) => {
+                    if (isDeleteSubmitting) {
+                        return;
+                    }
+                    setIsDeleteDialogOpen(open);
+                    if (!open) {
+                        setDeleteInput('');
+                    }
+                }}
+            >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -571,17 +1030,18 @@ export default function SchedulePage() {
                             name="delete-confirm"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
+                            disabled={isDeleteSubmitting}
                             className="mt-4"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')} disabled={isDeleteSubmitting}>Cancel</AlertDialogCancel>
                         <AlertDialogAction 
-                            disabled={deleteInput !== 'delete'}
+                            disabled={deleteInput !== 'delete' || isDeleteSubmitting}
                             onClick={handleDeleteSubject}
                             className="bg-destructive hover:bg-destructive/90"
                         >
-                            Delete
+                            {isDeleteSubmitting ? 'Deleting...' : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
