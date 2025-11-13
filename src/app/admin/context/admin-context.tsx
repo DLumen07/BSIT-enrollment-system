@@ -207,43 +207,65 @@ const initialStudentsList: Student[] = [
 ];
 
 // --- Academic Records ---
-type Grade = { subjectCode: string; grade: number; };
+type GradeTermKey = 'prelim' | 'midterm' | 'final';
+type GradeTerm = {
+    term: GradeTermKey;
+    grade: number | null;
+    weight: number | null;
+    encodedAt: string | null;
+};
+
+type GradeTermMap = Partial<Record<GradeTermKey, GradeTerm>>;
+
+type Grade = {
+    id?: number | null;
+    subjectCode: string;
+    subjectDescription?: string | null;
+    units?: number | null;
+    grade: number | null;
+    academicYear?: string | null;
+    semester?: string | null;
+    remark?: string | null;
+    gradedAt?: string | null;
+    terms: GradeTermMap;
+};
+
 type StudentGrades = {
     [studentId: string]: Grade[];
 };
 const initialGrades: StudentGrades = {
     '21-00-0123': [
-        { subjectCode: 'IT 101', grade: 1.5 },
-        { subjectCode: 'MATH 101', grade: 2.0 },
-        { subjectCode: 'IT 201', grade: 1.75 },
+        { subjectCode: 'IT 101', grade: 1.5, terms: {} },
+        { subjectCode: 'MATH 101', grade: 2.0, terms: {} },
+        { subjectCode: 'IT 201', grade: 1.75, terms: {} },
     ],
     '22-00-0234': [
-        { subjectCode: 'IT 101', grade: 1.25 },
-        { subjectCode: 'MATH 101', grade: 1.5 },
-        { subjectCode: 'IT 201', grade: 1.75 },
+        { subjectCode: 'IT 101', grade: 1.25, terms: {} },
+        { subjectCode: 'MATH 101', grade: 1.5, terms: {} },
+        { subjectCode: 'IT 201', grade: 1.75, terms: {} },
     ],
     '23-00-0345': [
-        { subjectCode: 'IT 101', grade: 3.0 },
+        { subjectCode: 'IT 101', grade: 3.0, terms: {} },
     ],
     '23-00-0456': [ // David Wilson, not enrolled
-         { subjectCode: 'IT 101', grade: 1.0 },
-         { subjectCode: 'MATH 101', grade: 1.25 },
+         { subjectCode: 'IT 101', grade: 1.0, terms: {} },
+         { subjectCode: 'MATH 101', grade: 1.25, terms: {} },
     ],
     '24-00-0101': [], // Frank Miller, 1st year, no grades yet
     '23-00-0102': [ // Grace Lee, 2nd year ACT
-        { subjectCode: 'IT 101', grade: 1.5 },
-        { subjectCode: 'MATH 101', grade: 2.0 },
+        { subjectCode: 'IT 101', grade: 1.5, terms: {} },
+        { subjectCode: 'MATH 101', grade: 2.0, terms: {} },
     ],
     '22-00-0103': [ // Henry Taylor, 3rd year BSIT
-        { subjectCode: 'IT 101', grade: 1.25 },
-        { subjectCode: 'MATH 101', grade: 1.5 },
-        { subjectCode: 'IT 201', grade: 2.0 },
+        { subjectCode: 'IT 101', grade: 1.25, terms: {} },
+        { subjectCode: 'MATH 101', grade: 1.5, terms: {} },
+        { subjectCode: 'IT 201', grade: 2.0, terms: {} },
     ],
     '21-00-0104': [ // Ivy Clark, 4th year BSIT
-        { subjectCode: 'IT 101', grade: 1.0 },
-        { subjectCode: 'MATH 101', grade: 1.25 },
-        { subjectCode: 'IT 201', grade: 1.5 },
-        { subjectCode: 'IT 301', grade: 1.75 }, // Placeholder for 3rd year subjects
+        { subjectCode: 'IT 101', grade: 1.0, terms: {} },
+        { subjectCode: 'MATH 101', grade: 1.25, terms: {} },
+        { subjectCode: 'IT 201', grade: 1.5, terms: {} },
+        { subjectCode: 'IT 301', grade: 1.75, terms: {} }, // Placeholder for 3rd year subjects
     ],
     '24-00-1001': [], // Gabby New, 1st year, no grades
 };
@@ -281,7 +303,7 @@ const mockAdminData = {
     grades: initialGrades,
     getCompletedSubjects(studentId: string): { code: string, units: number }[] {
         const studentGrades = this.grades[studentId] || [];
-        const passedGrades = studentGrades.filter(g => g.grade <= 3.0);
+        const passedGrades = studentGrades.filter(g => typeof g.grade === 'number' && g.grade <= 3.0);
         
         const allSubjects: Subject[] = Object.values(this.subjects).flat();
 
@@ -319,7 +341,21 @@ const normalizeSubjects = (subjects?: YearLevelSubjects): YearLevelSubjects => {
 };
 
 const normalizeGrades = (grades?: StudentGrades): StudentGrades => {
-    return grades ?? {};
+    if (!grades) {
+        return {};
+    }
+
+    const normalized: StudentGrades = {};
+
+    for (const [studentId, entries] of Object.entries(grades)) {
+        normalized[studentId] = entries.map((entry) => ({
+            ...entry,
+            grade: typeof entry.grade === 'number' ? entry.grade : null,
+            terms: entry.terms ?? {},
+        }));
+    }
+
+    return normalized;
 };
 
 const buildGetCompletedSubjects = (

@@ -106,20 +106,37 @@ Defines the schedule for each subject within a specific block, taught by a speci
 ---
 
 ### 8. `student_grades` Table
-Stores the academic records (grades) for each student.
+Stores the computed (final) academic records for each student and subject pairing.
 
-| Column          | Type        | Description                               | Notes                                 |
-|-----------------|-------------|-------------------------------------------|---------------------------------------|
-| `id`            | UUID/String | Primary Key.                            |                                       |
-| `student_user_id` | UUID/String | Foreign Key to `users.id`.              | Identifies the student.               |
-| `subject_id`    | UUID/String | Foreign Key to `subjects.id`.           | Identifies the subject.               |
-| `grade`         | Decimal     | The final numerical grade (e.g., 1.75).   |                                       |
-| `academic_year` | String      | The A.Y. the grade was earned (e.g., "2023-2024"). |                                       |
-| `semester`      | String      | The semester the grade was earned.      |                                       |
+| Column              | Type        | Description                                                 | Notes                                                          |
+|---------------------|-------------|-------------------------------------------------------------|----------------------------------------------------------------|
+| `id`                | Integer     | Primary Key.                                                | Auto-increment.                                                |
+| `student_user_id`   | Integer     | Foreign Key to `users.id`.                                  | Identifies the student.                                        |
+| `subject_id`        | Integer     | Foreign Key to `subjects.id`.                               | Identifies the subject.                                        |
+| `grade`             | Decimal     | Final numerical grade. Nullable until all terms are posted. | Rounded weighted average of the term grades.                   |
+| `academic_year`     | String      | Academic year the grade was earned (e.g., "2025-2026").    | Part of the uniqueness constraint per student/subject/term.    |
+| `semester`          | String      | Semester code (e.g., `1st-sem`, `2nd-sem`).                 | Part of the uniqueness constraint.                             |
+| `instructor_user_id`| Integer     | Foreign Key to `users.id`. Nullable.                        | Instructor who last updated the grade.                         |
+| `remark`            | Enum        | 'Passed', 'Failed', 'Incomplete', 'Dropped', 'In Progress'. | Auto-derived unless overridden manually.                       |
+| `graded_at`         | Datetime    | Timestamp of the latest final grade computation.           | Null while the grade is still in progress.                     |
 
 ---
 
-### 9. `enrollment_applications` Table
+### 9. `student_grade_terms` Table
+Captures individual grading-period scores (prelim, midterm, final) that roll up into `student_grades`.
+
+| Column            | Type        | Description                                               | Notes                                                 |
+|-------------------|-------------|-----------------------------------------------------------|-------------------------------------------------------|
+| `id`              | Integer     | Primary Key.                                              | Auto-increment.                                       |
+| `student_grade_id`| Integer     | Foreign Key to `student_grades.id`.                       | Cascades on delete.                                   |
+| `term`            | Enum        | 'prelim', 'midterm', or 'final'.                          | Uniquely identifies the grading period per row.       |
+| `grade`           | Decimal     | Raw grade for the specific term. Nullable.                | Accepts the same numeric scale (1.0 - 5.0).           |
+| `weight`          | Decimal     | Weight contribution of the term to the final grade.       | Defaults to 0.30/0.30/0.40 for prelim/midterm/final.  |
+| `encoded_at`      | Datetime    | Timestamp when the term grade was last captured.          | Used for audit/history.                               |
+
+---
+
+### 10. `enrollment_applications` Table
 A temporary table to hold pending enrollment applications for admin review.
 
 | Column           | Type        | Description                                          | Notes                                                     |

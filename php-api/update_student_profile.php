@@ -300,6 +300,53 @@ function fetch_student_profile_data(mysqli $conn, int $userId): array {
         ];
     }
 
+    $grades = [];
+    $gradesSql = "SELECT sg.id, sg.academic_year, sg.semester, sg.grade, sg.remark, sg.graded_at,
+                          subj.code, subj.description, subj.units,
+                          term.term AS term_key, term.grade AS term_grade, term.weight AS term_weight, term.encoded_at AS term_encoded_at
+                   FROM student_grades sg
+                   INNER JOIN subjects subj ON subj.id = sg.subject_id
+                   LEFT JOIN student_grade_terms term ON term.student_grade_id = sg.id
+                   WHERE sg.student_user_id = ?
+                   ORDER BY sg.academic_year DESC, sg.semester ASC, subj.code ASC";
+    $gradesStmt = $conn->prepare($gradesSql);
+    if ($gradesStmt) {
+        $gradesStmt->bind_param('i', $studentUserId);
+        $gradesStmt->execute();
+        $gradesResult = $gradesStmt->get_result();
+        $gradesById = [];
+        while ($gradesResult && ($row = $gradesResult->fetch_assoc())) {
+            $gradeId = isset($row['id']) ? (int) $row['id'] : 0;
+            if (!isset($gradesById[$gradeId])) {
+                $remarkValue = format_output_string($row['remark'] ?? '');
+                $gradesById[$gradeId] = [
+                    'id' => $gradeId,
+                    'academicYear' => format_output_string($row['academic_year'] ?? ''),
+                    'semester' => format_output_string($row['semester'] ?? ''),
+                    'subjectCode' => format_output_string($row['code'] ?? ''),
+                    'subjectDescription' => format_output_string($row['description'] ?? ''),
+                    'units' => isset($row['units']) ? (int) $row['units'] : 0,
+                    'grade' => isset($row['grade']) ? (float) $row['grade'] : null,
+                    'remark' => $remarkValue !== '' ? $remarkValue : null,
+                    'gradedAt' => isset($row['graded_at']) ? format_output_string($row['graded_at']) : null,
+                    'terms' => [],
+                ];
+            }
+
+            $termKey = $row['term_key'] ?? null;
+            if ($termKey !== null && $termKey !== '') {
+                $gradesById[$gradeId]['terms'][$termKey] = [
+                    'term' => format_output_string($termKey),
+                    'grade' => isset($row['term_grade']) ? (float) $row['term_grade'] : null,
+                    'weight' => isset($row['term_weight']) ? (float) $row['term_weight'] : null,
+                    'encodedAt' => isset($row['term_encoded_at']) ? format_output_string($row['term_encoded_at']) : null,
+                ];
+            }
+        }
+        $grades = array_values($gradesById);
+        $gradesStmt->close();
+    }
+
     return [
         'personal' => [
             'firstName' => $firstName,
@@ -354,6 +401,7 @@ function fetch_student_profile_data(mysqli $conn, int $userId): array {
             'registeredSubjects' => $registeredSubjects,
         ],
         'schedule' => $schedule,
+        'grades' => $grades,
     ];
 }
 

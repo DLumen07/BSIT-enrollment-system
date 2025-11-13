@@ -187,21 +187,62 @@ SQL;
     }
 
     $gradesMap = [];
-    $gradesQuery = "SELECT sg.student_user_id, s.code AS subject_code, sg.grade
-                     FROM student_grades sg
-                     INNER JOIN subjects s ON sg.subject_id = s.id";
+    $gradesQuery = "SELECT
+                        sg.id AS grade_id,
+                        sg.student_user_id,
+                        sg.grade AS final_grade,
+                        sg.academic_year,
+                        sg.semester,
+                        sg.remark,
+                        sg.graded_at,
+                        subj.code AS subject_code,
+                        subj.description AS subject_description,
+                        subj.units AS subject_units,
+                        term.term AS term_key,
+                        term.grade AS term_grade,
+                        term.weight AS term_weight,
+                        term.encoded_at AS term_encoded_at
+                    FROM student_grades sg
+                    INNER JOIN subjects subj ON subj.id = sg.subject_id
+                    LEFT JOIN student_grade_terms term ON term.student_grade_id = sg.id";
     if ($result = $conn->query($gradesQuery)) {
         while ($row = $result->fetch_assoc()) {
             $studentId = (int) $row['student_user_id'];
+            $gradeId = isset($row['grade_id']) ? (int) $row['grade_id'] : 0;
+
             if (!isset($gradesMap[$studentId])) {
                 $gradesMap[$studentId] = [];
             }
-            $gradesMap[$studentId][] = [
-                'subjectCode' => $row['subject_code'],
-                'grade' => (float) $row['grade'],
-            ];
+            if (!isset($gradesMap[$studentId][$gradeId])) {
+                $gradesMap[$studentId][$gradeId] = [
+                    'id' => $gradeId,
+                    'subjectCode' => $row['subject_code'],
+                    'subjectDescription' => $row['subject_description'],
+                    'units' => isset($row['subject_units']) ? (int) $row['subject_units'] : null,
+                    'grade' => isset($row['final_grade']) ? (float) $row['final_grade'] : null,
+                    'academicYear' => $row['academic_year'],
+                    'semester' => $row['semester'],
+                    'remark' => $row['remark'] ?? null,
+                    'gradedAt' => $row['graded_at'] ?? null,
+                    'terms' => [],
+                ];
+            }
+
+            $termKey = $row['term_key'] ?? null;
+            if ($termKey !== null && $termKey !== '') {
+                $gradesMap[$studentId][$gradeId]['terms'][$termKey] = [
+                    'term' => $termKey,
+                    'grade' => isset($row['term_grade']) ? (float) $row['term_grade'] : null,
+                    'weight' => isset($row['term_weight']) ? (float) $row['term_weight'] : null,
+                    'encodedAt' => $row['term_encoded_at'] ?? null,
+                ];
+            }
         }
         $result->free();
+
+        foreach ($gradesMap as $studentId => $gradeEntries) {
+            $gradesMap[$studentId] = array_values($gradeEntries);
+        }
     } else {
         throw new Exception('Failed to fetch grades: ' . $conn->error);
     }

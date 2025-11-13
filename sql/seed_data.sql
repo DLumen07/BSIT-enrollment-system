@@ -102,14 +102,31 @@ ON DUPLICATE KEY UPDATE
   subject_id = VALUES(subject_id);
 
 -- Student grades
-INSERT INTO student_grades (id, student_user_id, subject_id, grade, academic_year, semester) VALUES
-  (1, 2, 8, 1.50, '2024-2025', '1st Semester'),
-  (2, 2, 9, 1.75, '2024-2025', '1st Semester'),
-  (3, 3, 8, 2.00, '2024-2025', '1st Semester')
+INSERT INTO student_grades (id, student_user_id, subject_id, grade, academic_year, semester, remark, graded_at) VALUES
+  (1, 2, 8, 1.63, '2024-2025', '1st-sem', 'Passed', '2025-03-30 10:30:00'),
+  (2, 2, 9, NULL, '2024-2025', '1st-sem', 'In Progress', NULL),
+  (3, 3, 8, 2.00, '2024-2025', '1st-sem', 'Passed', '2025-03-30 10:30:00')
 ON DUPLICATE KEY UPDATE
   grade = VALUES(grade),
+  remark = VALUES(remark),
+  graded_at = VALUES(graded_at),
   academic_year = VALUES(academic_year),
   semester = VALUES(semester);
+
+-- Student grade term breakdowns
+INSERT INTO student_grade_terms (id, student_grade_id, term, grade, weight, encoded_at) VALUES
+  (1, 1, 'prelim', 1.50, 0.30, '2025-01-15 09:00:00'),
+  (2, 1, 'midterm', 1.75, 0.30, '2025-02-20 09:00:00'),
+  (3, 1, 'final', 1.60, 0.40, '2025-03-30 10:30:00'),
+  (4, 2, 'prelim', 1.80, 0.30, '2025-01-15 09:15:00'),
+  (5, 2, 'midterm', NULL, 0.30, '2025-02-20 09:15:00'),
+  (6, 3, 'prelim', 2.10, 0.30, '2025-01-15 09:30:00'),
+  (7, 3, 'midterm', 2.00, 0.30, '2025-02-21 09:00:00'),
+  (8, 3, 'final', 1.90, 0.40, '2025-03-30 10:30:00')
+ON DUPLICATE KEY UPDATE
+  grade = VALUES(grade),
+  weight = VALUES(weight),
+  encoded_at = VALUES(encoded_at);
 
 -- Schedules
 INSERT INTO schedules (id, block_id, subject_id, instructor_id, day_of_week, start_time, end_time, room) VALUES

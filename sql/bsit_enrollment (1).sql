@@ -161,12 +161,27 @@ CREATE TABLE `student_grades` (
   `id` int(11) NOT NULL,
   `student_user_id` int(11) NOT NULL,
   `subject_id` int(11) NOT NULL,
-  `grade` decimal(3,2) NOT NULL,
+  `grade` decimal(4,2) DEFAULT NULL,
   `academic_year` varchar(255) NOT NULL,
   `semester` varchar(255) NOT NULL,
   `instructor_user_id` int(11) DEFAULT NULL,
-  `remark` enum('Passed','Failed','Incomplete','Dropped') DEFAULT NULL,
+  `remark` enum('Passed','Failed','Incomplete','Dropped','In Progress') DEFAULT 'In Progress',
   `graded_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_grade_terms`
+--
+
+CREATE TABLE `student_grade_terms` (
+  `id` int(11) NOT NULL,
+  `student_grade_id` int(11) NOT NULL,
+  `term` enum('prelim','midterm','final') NOT NULL,
+  `grade` decimal(4,2) DEFAULT NULL,
+  `weight` decimal(4,2) DEFAULT NULL,
+  `encoded_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -351,24 +366,38 @@ ALTER TABLE `student_grades`
   ADD KEY `idx_instructor_user_id` (`instructor_user_id`);
 
 --
--- Indexes for table `student_profiles`
---
 ALTER TABLE `student_profiles`
   ADD PRIMARY KEY (`user_id`),
   ADD UNIQUE KEY `student_id_number` (`student_id_number`),
   ADD KEY `idx_block_id` (`block_id`);
 
 --
--- Indexes for table `student_subjects`
+
 --
+-- Indexes for table `student_grade_terms`
+--
+ALTER TABLE `student_grade_terms`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_grade_term` (`student_grade_id`,`term`),
+  ADD KEY `idx_grade_terms_grade_id` (`student_grade_id`);
 ALTER TABLE `student_subjects`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_student_user_id` (`student_user_id`),
-  ADD KEY `idx_subject_id` (`subject_id`);
+
+--
+-- AUTO_INCREMENT for table `student_grade_terms`
+--
+ALTER TABLE `student_grade_terms`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Indexes for table `subjects`
 --
+
+--
+-- Constraints for table `student_grade_terms`
+--
+ALTER TABLE `student_grade_terms`
+  ADD CONSTRAINT `student_grade_terms_ibfk_1` FOREIGN KEY (`student_grade_id`) REFERENCES `student_grades` (`id`) ON DELETE CASCADE;
 ALTER TABLE `subjects`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `code` (`code`),

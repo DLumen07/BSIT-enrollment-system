@@ -24,6 +24,28 @@ export type StudentScheduleEntry = {
   color: string;
 };
 
+export type GradeTermKey = 'prelim' | 'midterm' | 'final';
+
+export type StudentGradeTerm = {
+  term: GradeTermKey;
+  grade: number | null;
+  weight: number | null;
+  encodedAt: string | null;
+};
+
+export type StudentGradeRecord = {
+  id: number;
+  academicYear: string;
+  semester: string;
+  subjectCode: string;
+  subjectDescription: string;
+  units: number;
+  grade: number | null;
+  remark: string | null;
+  gradedAt: string | null;
+  terms: Partial<Record<GradeTermKey, StudentGradeTerm>>;
+};
+
 export type StudentDataType = {
   personal: {
     firstName: string;
@@ -78,6 +100,7 @@ export type StudentDataType = {
     registeredSubjects: StudentRegisteredSubject[];
   };
   schedule: StudentScheduleEntry[];
+  grades: StudentGradeRecord[];
 };
 
 interface StudentContextType {
