@@ -1,195 +1,241 @@
 
 'use client';
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAdmin } from '@/app/admin/context/admin-context';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
-// Define the shape of your data
-// This combines all the disparate mock data into a single structure.
-const mockStudentData = {
-    personal: {
-        firstName: 'Student',
-        lastName: 'Name',
-        middleName: 'Dela Cruz',
-        birthdate: 'January 1, 2004',
-        sex: 'Male' as 'Male' | 'Female',
-        civilStatus: 'Single',
-        nationality: 'Filipino',
-        religion: 'Roman Catholic',
-        dialect: 'Tagalog',
-    },
-    contact: {
-        email: 'student.name@example.com',
-        phoneNumber: '09123456789',
-    },
-    address: {
-        currentAddress: '123 Main St, Quezon City, Metro Manila',
-        permanentAddress: '456 Provincial Rd, Cebu City, Cebu',
-    },
-    family: {
-        fathersName: "Father's Name",
-        fathersOccupation: "Father's Occupation",
-        mothersName: "Mother's Name",
-        mothersOccupation: "Mother's Occupation",
-        guardiansName: "Guardian's Name",
-    },
-    additional: {
-        emergencyContactName: 'Emergency Contact',
-        emergencyContactAddress: 'Emergency Address',
-        emergencyContactNumber: '09876543210',
-    },
-    education: {
-        elementarySchool: 'Central Elementary School',
-        elemYearGraduated: '2016',
-        secondarySchool: 'National High School',
-        secondaryYearGraduated: '2022',
-        collegiateSchool: 'Previous University (if transferee)',
-    },
-    academic: {
-        studentId: '22-01-0001',
-        course: 'BS in Information Technology',
-        yearLevel: '2nd Year',
-        block: 'BSIT 2-A',
-    status: 'Old' as 'New' | 'Old' | 'Transferee',
-    enrollmentStatus: 'Enrolled' as 'Enrolled' | 'Not Enrolled' | 'Graduated',
-        dateEnrolled: 'August 15, 2024',
-        specialization: undefined as 'AP' | 'DD' | undefined,
-    },
-    enrollment: {
-        isEnrolled: true,
-        registeredSubjects: [
-            { code: 'IT 201', description: 'Data Structures & Algorithms', units: 3, schedule: 'M 09:00-10:30', instructor: 'Prof. Ada Lovelace' },
-            { code: 'IT 202', description: 'Web Development', units: 3, schedule: 'T 13:00-14:30', instructor: 'Dr. Grace Hopper' },
-            { code: 'MATH 201', description: 'Discrete Mathematics', units: 3, schedule: 'W 11:00-12:30', instructor: 'Dr. Alan Turing' },
-            { code: 'FIL 102', description: 'Filipino sa Iba\'t Ibang Disiplina', units: 3, schedule: 'Th 14:00-15:30', instructor: 'G. Jose Rizal' },
-            { code: 'PE 104', description: 'Physical Education 4', units: 2, schedule: 'F 08:00-10:00', instructor: 'Coach Dave' },
-        ],
-    },
-    schedule: [
-        { id: 1, code: 'IT 201', description: 'Data Structures & Algorithms', day: 'Monday', startTime: '09:00', endTime: '10:30', instructor: 'Prof. Ada Lovelace', room: 'Lab 501', color: 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400' },
-        { id: 2, code: 'IT 202', description: 'Web Development', day: 'Tuesday', startTime: '13:00', endTime: '14:30', instructor: 'Dr. Grace Hopper', room: 'Lab 502', color: 'bg-green-200/50 dark:bg-green-800/50 border-green-400' },
-        { id: 3, code: 'MATH 201', description: 'Discrete Mathematics', day: 'Wednesday', startTime: '11:00', endTime: '12:30', instructor: 'Dr. Alan Turing', room: 'Room 301', color: 'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400' },
-        { id: 4, code: 'FIL 102', description: 'Filipino sa Iba\'t Ibang Disiplina', day: 'Thursday', startTime: '14:00', endTime: '15:30', instructor: 'G. Jose Rizal', room: 'Room 305', color: 'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400' },
-        { id: 5, code: 'PE 104', description: 'Physical Education 4', day: 'Friday', startTime: '08:00', endTime: '10:00', instructor: 'Coach Dave', room: 'Gymnasium', color: 'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400' },
-    ]
+export type StudentRegisteredSubject = {
+  code: string;
+  description: string;
+  units: number;
+  schedule: string;
+  instructor: string;
 };
 
-type StudentDataType = typeof mockStudentData;
+export type StudentScheduleEntry = {
+  id: number;
+  code: string;
+  description: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+  instructor: string;
+  room: string;
+  color: string;
+};
+
+export type StudentDataType = {
+  personal: {
+    firstName: string;
+    lastName: string;
+    middleName: string;
+    birthdate: string;
+    sex: string;
+    civilStatus: string;
+    nationality: string;
+    religion: string;
+    dialect: string;
+  };
+  contact: {
+    email: string;
+    phoneNumber: string;
+  };
+  address: {
+    currentAddress: string;
+    permanentAddress: string;
+  };
+  family: {
+    fathersName: string;
+    fathersOccupation: string;
+    mothersName: string;
+    mothersOccupation: string;
+    guardiansName: string;
+  };
+  additional: {
+    emergencyContactName: string;
+    emergencyContactAddress: string;
+    emergencyContactNumber: string;
+  };
+  education: {
+    elementarySchool: string;
+    elemYearGraduated: string;
+    secondarySchool: string;
+    secondaryYearGraduated: string;
+    collegiateSchool: string;
+  };
+  academic: {
+    studentId: string;
+    course: string;
+    yearLevel: string;
+    block: string;
+    status: string;
+    enrollmentStatus: string;
+    dateEnrolled: string;
+    specialization: string;
+  };
+  enrollment: {
+    isEnrolled: boolean;
+    registeredSubjects: StudentRegisteredSubject[];
+  };
+  schedule: StudentScheduleEntry[];
+};
 
 interface StudentContextType {
   studentData: StudentDataType | null;
   setStudentData: React.Dispatch<React.SetStateAction<StudentDataType | null>>;
+  loading: boolean;
+  error: string | null;
 }
 
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
 
+const buildUrlHelper = (baseUrl: string) => {
+  return (endpoint: string) => `${baseUrl}/${endpoint.replace(/^\//, '')}`;
+};
+
 export const StudentProvider = ({ children }: { children: React.ReactNode }) => {
-  const { adminData } = useAdmin();
-  const [studentData, setStudentData] = useState<StudentDataType | null>(null);
   const searchParams = useSearchParams();
   const studentEmail = searchParams.get('email');
+  const [studentData, setStudentData] = useState<StudentDataType | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const apiBaseUrl = useMemo(() => {
+    return (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+      .replace(/\/$/, '')
+      .trim();
+  }, []);
+
+  const buildApiUrl = useMemo(() => buildUrlHelper(apiBaseUrl), [apiBaseUrl]);
 
   useEffect(() => {
-    if (adminData && studentEmail) {
-      const currentStudent = adminData.students.find(s => s.email === studentEmail);
-      if (currentStudent) {
-  const studentSchedule = adminData.schedules[currentStudent.block || ''] || [];
-  const isEnrolled = currentStudent.status === 'Enrolled';
-        
-        const [firstName, ...lastNameParts] = currentStudent.name.split(' ');
-        const lastName = lastNameParts.join(' ');
-        
-        const yearLevelMap: {[key: number]: string} = {
-            1: '1st Year',
-            2: '2nd Year',
-            3: '3rd Year',
-            4: '4th Year'
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const handleCleanup = () => {
+      isMounted = false;
+      controller.abort();
+    };
+
+    const resolveStudentEmail = (): string | null => {
+      if (studentEmail) {
+        return studentEmail;
+      }
+      if (typeof window !== 'undefined') {
+        const cached = window.sessionStorage.getItem('bsit_student_email');
+        return cached && cached.trim() !== '' ? cached : null;
+      }
+      return null;
+    };
+
+    const effectiveEmail = resolveStudentEmail();
+
+    if (!effectiveEmail) {
+      setStudentData(null);
+      setError('Missing student email in the URL.');
+      setLoading(false);
+      return handleCleanup;
+    }
+
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('bsit_student_email', effectiveEmail);
+    }
+
+    const fetchStudentProfile = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(
+          buildApiUrl(`student_profile.php?email=${encodeURIComponent(effectiveEmail)}`),
+          {
+            method: 'GET',
+            credentials: 'include',
+            signal: controller.signal,
+          },
+        );
+
+        let payload: unknown = null;
+        try {
+          payload = await response.json();
+        } catch (parseError) {
+          payload = null;
         }
 
-        const data: StudentDataType = {
-          personal: {
-            firstName: firstName,
-            lastName: lastName,
-            middleName: '',
-            birthdate: 'January 1, 2004',
-            sex: currentStudent.sex,
-            civilStatus: 'Single',
-            nationality: 'Filipino',
-            religion: 'Roman Catholic',
-            dialect: 'Tagalog',
-          },
-          contact: {
-            email: currentStudent.email,
-            phoneNumber: currentStudent.phoneNumber,
-          },
-          address: {
-            currentAddress: '123 Main St, Quezon City, Metro Manila',
-            permanentAddress: '456 Provincial Rd, Cebu City, Cebu',
-          },
-          family: {
-            fathersName: "Father's Name",
-            fathersOccupation: "Father's Occupation",
-            mothersName: "Mother's Name",
-            mothersOccupation: "Mother's Occupation",
-            guardiansName: "Guardian's Name",
-          },
-          additional: {
-            emergencyContactName: 'Emergency Contact',
-            emergencyContactAddress: 'Emergency Address',
-            emergencyContactNumber: '09876543210',
-          },
-          education: {
-            elementarySchool: 'Central Elementary School',
-            elemYearGraduated: '2016',
-            secondarySchool: 'National High School',
-            secondaryYearGraduated: '2022',
-            collegiateSchool: 'Previous University (if transferee)',
-          },
-          academic: {
-            studentId: currentStudent.studentId,
-            course: currentStudent.course,
-            yearLevel: yearLevelMap[currentStudent.year] || `${currentStudent.year}th Year`,
-            block: currentStudent.block || 'N/A',
-            status: currentStudent.profileStatus ?? 'Old',
-            enrollmentStatus: currentStudent.status,
-            dateEnrolled: 'August 15, 2024',
-            specialization: currentStudent.specialization,
-          },
-          enrollment: {
-            isEnrolled: isEnrolled,
-            registeredSubjects: isEnrolled ? (currentStudent.enlistedSubjects || []).map(sub => ({
-                 code: sub.code,
-                 description: sub.description,
-                 units: sub.units,
-                 schedule: studentSchedule.find(ss => ss.code === sub.code) ? `${studentSchedule.find(ss => ss.code === sub.code)!.day.substring(0,1)} ${studentSchedule.find(ss => ss.code === sub.code)!.startTime}-${studentSchedule.find(ss => ss.code === sub.code)!.endTime}` : 'TBA',
-                 instructor: studentSchedule.find(ss => ss.code === sub.code)?.instructor || 'TBA'
-            })) : [],
-          },
-          schedule: isEnrolled
-            ? studentSchedule.map(s => ({
-                ...s,
-                instructor: s.instructor ?? 'TBA',
-                room: 'TBA',
-              }))
-            : []
-        };
-        setStudentData(data);
-      }
-    }
-  }, [adminData, studentEmail]);
+        if (!response.ok) {
+          const message =
+            payload && typeof payload === 'object' && payload !== null && 'message' in payload && typeof (payload as Record<string, unknown>).message === 'string'
+              ? String((payload as Record<string, unknown>).message)
+              : `Failed to load student profile (status ${response.status}).`;
+          throw new Error(message);
+        }
 
+        if (!payload || typeof payload !== 'object' || !('status' in payload)) {
+          throw new Error('Unexpected response format from the server.');
+        }
+
+        const typedPayload = payload as { status?: string; data?: StudentDataType | null; message?: string };
+
+        if (typedPayload.status !== 'success' || !typedPayload.data) {
+          throw new Error(typedPayload.message ?? 'Student profile not found.');
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setStudentData(typedPayload.data);
+        setError(null);
+      } catch (fetchError) {
+        if (!isMounted || controller.signal.aborted) {
+          return;
+        }
+        setStudentData(null);
+        setError(fetchError instanceof Error ? fetchError.message : 'Unable to load student profile.');
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchStudentProfile();
+
+    return handleCleanup;
+  }, [studentEmail, buildApiUrl]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <LoadingSpinner className="h-8 w-8" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center px-6 text-center">
+        <div className="space-y-2">
+          <p className="text-lg font-semibold">Unable to load student profile.</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!studentData) {
     return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <LoadingSpinner className="h-8 w-8" />
+      <div className="flex h-screen w-full items-center justify-center px-6 text-center">
+        <div className="space-y-2">
+          <p className="text-lg font-semibold">Student profile not found.</p>
+          <p className="text-sm text-muted-foreground">Please verify the link or contact the administrator for assistance.</p>
         </div>
+      </div>
     );
   }
 
   return (
-    <StudentContext.Provider value={{ studentData, setStudentData }}>
+    <StudentContext.Provider value={{ studentData, setStudentData, loading: false, error: null }}>
       {children}
     </StudentContext.Provider>
   );

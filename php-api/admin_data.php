@@ -388,7 +388,24 @@ SQL;
             if (!is_array($decodedForm)) {
                 $decodedForm = [];
             }
-            $credentials = array_merge(default_credentials(), $decodedForm);
+
+            $credentialDefaults = default_credentials();
+            $credentials = $credentialDefaults;
+            foreach ($credentialDefaults as $credentialKey => $defaultValue) {
+                if (array_key_exists($credentialKey, $decodedForm)) {
+                    $credentials[$credentialKey] = (bool) $decodedForm[$credentialKey];
+                    unset($decodedForm[$credentialKey]);
+                }
+            }
+
+            $formSnapshot = null;
+            if (isset($decodedForm['_application']) && is_array($decodedForm['_application'])) {
+                $formSnapshot = $decodedForm['_application'];
+                unset($decodedForm['_application']);
+            } elseif (!empty($decodedForm)) {
+                $formSnapshot = $decodedForm;
+            }
+
             $application = [
                 'id' => (int) $row['id'],
                 'studentId' => $row['student_id_number'],
@@ -401,6 +418,7 @@ SQL;
                 'credentials' => $credentials,
                 'rejectionReason' => $row['rejection_reason'] ?? null,
                 'submittedAt' => $row['submitted_at'],
+                'formSnapshot' => $formSnapshot,
             ];
             switch ($row['status']) {
                 case 'approved':

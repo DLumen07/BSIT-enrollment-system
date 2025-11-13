@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,7 +19,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { useStudent } from '@/app/student/context/student-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useRouter } from 'next/navigation';
+import { isStudentProfileComplete } from '@/app/student/utils/profile-completeness';
+import { useToast } from '@/hooks/use-toast';
 
 
 const steps = [
@@ -27,6 +29,24 @@ const steps = [
     { id: 'Step 2', name: 'Additional & Educational Background' },
     { id: 'Step 3', name: 'Academic Information' },
 ];
+
+const safeParseDate = (value?: string | null): Date | undefined => {
+    if (!value) {
+        return undefined;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
+const deriveCourseForYearLevel = (year?: string, fallback: string = 'ACT'): 'ACT' | 'BSIT' => {
+    if (year === '1st Year' || year === '2nd Year') {
+        return 'ACT';
+    }
+    if (year === '3rd Year' || year === '4th Year') {
+        return 'BSIT';
+    }
+    return fallback === 'BSIT' ? 'BSIT' : 'ACT';
+};
 
 const personalFamilySchema = z.object({
     firstName: z.string().min(1, 'First name is required'),
@@ -115,18 +135,34 @@ function Step1() {
                     <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input {...field} type="tel" className="rounded-xl" /></FormControl><FormMessage /></FormItem>
                 )} />
             </div>
-            <FormField name="birthdate" render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Birthdate</FormLabel><Popover><PopoverTrigger asChild>
-                    <FormControl>
-                        <Button variant={"outline"} className={cn("pl-3 text-left font-normal rounded-xl", !field.value && "text-muted-foreground")}>
-                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                    </FormControl>
-                </PopoverTrigger><PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
-                </PopoverContent></Popover><FormMessage /></FormItem>
-            )} />
+            <FormField name="birthdate" render={({ field }) => {
+                const selectedDate = field.value instanceof Date ? field.value : safeParseDate(field.value as unknown as string);
+                return (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Birthdate</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button variant={"outline"} className={cn("pl-3 text-left font-normal rounded-xl", !selectedDate && "text-muted-foreground")}>
+                                        {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={selectedDate}
+                                    onSelect={field.onChange}
+                                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                );
+            }} />
             <FormField name="currentAddress" render={({ field }) => (
                 <FormItem><FormLabel>Current Address</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
             )} />
@@ -232,6 +268,19 @@ function Step3() {
     const selectedSpecialization = form.watch('specialization');
     const isUpperYear = selectedYear === '3rd Year' || selectedYear === '4th Year';
     const isFourthYear = selectedYear === '4th Year';
+
+    const derivedCourse = useMemo(
+        () => deriveCourseForYearLevel(selectedYear, selectedCourse ?? 'ACT'),
+        [selectedYear, selectedCourse],
+    );
+
+    useEffect(() => {
+        if (derivedCourse !== selectedCourse) {
+            form.setValue('course', derivedCourse, {
+                shouldDirty: Boolean(selectedCourse),
+            });
+        }
+    }, [derivedCourse, selectedCourse, form]);
     
     const yearLevelMap: Record<string, '1st-year' | '2nd-year' | '3rd-year' | '4th-year'> = {
         '1st Year': '1st-year',
@@ -241,20 +290,20 @@ function Step3() {
     };
 
     const availableBlocks = useMemo(() => {
-        if (!selectedYear || !selectedCourse) return [];
+        if (!selectedYear) return [];
         const yearKey = yearLevelMap[selectedYear];
         if (!yearKey) return [];
 
         return adminData.blocks
             .filter(b => {
                 const yearMatch = b.year === yearKey;
-                const courseMatch = b.course === selectedCourse;
+                const courseMatch = b.course === derivedCourse;
                 const specMatch = !isUpperYear || b.specialization === selectedSpecialization;
                 const capacityMatch = b.capacity > b.enrolled;
                 return yearMatch && courseMatch && specMatch && capacityMatch;
             })
             .map(b => ({ value: b.name, label: b.name }));
-    }, [selectedYear, selectedCourse, selectedSpecialization, adminData.blocks, isUpperYear, form]);
+    }, [selectedYear, selectedSpecialization, adminData.blocks, isUpperYear, derivedCourse]);
 
     const availableSubjects = useMemo(() => {
         if (!selectedYear) return [];
@@ -419,12 +468,51 @@ function Step3() {
 
 export default function EnrollmentFormPage() {
     const { studentData } = useStudent();
-    const { setAdminData } = useAdmin();
+    const { refreshAdminData } = useAdmin();
+    const { toast } = useToast();
+    const router = useRouter();
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const profileComplete = studentData ? isStudentProfileComplete(studentData) : false;
+
+    const API_BASE_URL = useMemo(() => {
+        return (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+            .replace(/\/+$/, '')
+            .trim();
+    }, []);
+
+    const buildApiUrl = useCallback((endpoint: string) => {
+        return `${API_BASE_URL}/${endpoint.replace(/^\/+/, '')}`;
+    }, [API_BASE_URL]);
+
+    useEffect(() => {
+        if (studentData && !profileComplete) {
+            const profileUrl = studentData.contact.email
+                ? `/student/dashboard/profile?email=${encodeURIComponent(studentData.contact.email)}`
+                : '/student/dashboard/profile';
+            router.replace(profileUrl);
+        }
+    }, [studentData, profileComplete, router]);
+
+    if (!studentData || !profileComplete) {
+        return (
+            <main className="flex-1 p-4 sm:p-6">
+                <Card className="max-w-3xl mx-auto rounded-xl">
+                    <CardHeader>
+                        <CardTitle>Redirecting to Profile</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-muted-foreground">
+                            We need to confirm your profile information before you can complete the enrollment form. You will be redirected shortly.
+                        </p>
+                    </CardContent>
+                </Card>
+            </main>
+        );
+    }
     
     const isNewStudent = useMemo(() => {
-        if (!studentData) return true;
         const yearNumber = parseInt(studentData.academic.yearLevel, 10);
         return yearNumber === 1 && studentData.academic.status !== 'Old';
     }, [studentData]);
@@ -450,14 +538,14 @@ export default function EnrollmentFormPage() {
                 middleName: studentData.personal.middleName,
                 email: studentData.contact.email,
                 phoneNumber: studentData.contact.phoneNumber,
-                birthdate: new Date(studentData.personal.birthdate),
+                birthdate: safeParseDate(studentData.personal.birthdate),
                 currentAddress: studentData.address.currentAddress,
                 permanentAddress: studentData.address.permanentAddress,
                 nationality: studentData.personal.nationality,
                 religion: studentData.personal.religion,
                 dialect: studentData.personal.dialect,
                 sex: studentData.personal.sex,
-                civilStatus: 'Single',
+                civilStatus: studentData.personal.civilStatus || 'Single',
                 fathersName: studentData.family.fathersName,
                 fathersOccupation: studentData.family.fathersOccupation,
                 mothersName: studentData.family.mothersName,
@@ -473,7 +561,10 @@ export default function EnrollmentFormPage() {
                 collegiateSchool: studentData.education.collegiateSchool,
                 status: yearNumber > 1 ? 'Old' : 'New',
                 yearLevel: studentData.academic.yearLevel,
-                course: studentData.academic.course,
+                course: deriveCourseForYearLevel(
+                    studentData.academic.yearLevel,
+                    studentData.academic.course,
+                ),
                 specialization: studentData.academic.specialization || '',
                 subjects: [],
                 block: '',
@@ -484,66 +575,223 @@ export default function EnrollmentFormPage() {
     useEffect(() => {
         if (studentData) {
             const yearNumber = parseInt(studentData.academic.yearLevel, 10);
+            const normalizedCourse = deriveCourseForYearLevel(
+                studentData.academic.yearLevel,
+                studentData.academic.course,
+            );
             methods.reset({
                 ...methods.getValues(),
                 status: yearNumber > 1 ? 'Old' : 'New',
                 yearLevel: studentData.academic.yearLevel,
-                course: studentData.academic.course,
+                course: normalizedCourse,
                 specialization: studentData.academic.specialization || '',
             });
         }
     }, [studentData, methods]);
 
 
-    const processForm = (data: EnrollmentSchemaType) => {
-        if (!studentData) return;
+    const resolveString = (value: unknown, fallback: string): string => {
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed !== '') {
+                return trimmed;
+            }
+        }
+        return fallback;
+    };
 
-        const yearLevelMap: Record<string, number> = {
-            '1st Year': 1, '2nd Year': 2, '3rd Year': 3, '4th Year': 4,
-        };
+    const resolveOptionalString = (value: unknown, fallback?: string | null): string | null => {
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            return trimmed === '' ? null : trimmed;
+        }
+        if (typeof fallback === 'string') {
+            const trimmedFallback = fallback.trim();
+            return trimmedFallback === '' ? null : trimmedFallback;
+        }
+        return fallback ?? null;
+    };
 
-        const newApplication = {
-            id: Date.now(),
-            studentId: studentData.academic.studentId,
-            name: `${data.firstName} ${data.lastName}`,
-            course: data.course,
-            year: yearLevelMap[data.yearLevel],
-            status: data.status,
-            block: data.block,
-            credentials: {
-                birthCertificate: true,
-                grades: true,
-                goodMoral: true,
-                registrationForm: true,
+    const normalizeDateValue = (value: unknown, fallback?: string | null): string | null => {
+        if (value instanceof Date) {
+            return format(value, 'yyyy-MM-dd');
+        }
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed === '') {
+                return fallback ?? null;
+            }
+            const parsed = new Date(trimmed);
+            if (!Number.isNaN(parsed.getTime())) {
+                return format(parsed, 'yyyy-MM-dd');
+            }
+            return trimmed;
+        }
+        return fallback ?? null;
+    };
+
+    const buildFormSnapshot = (values: EnrollmentSchemaType) => {
+        if (!studentData) {
+            return null;
+        }
+
+        return {
+            personal: {
+                firstName: resolveString(values.firstName, studentData.personal.firstName),
+                lastName: resolveString(values.lastName, studentData.personal.lastName),
+                middleName: resolveOptionalString(values.middleName, studentData.personal.middleName),
+                birthdate: normalizeDateValue(values.birthdate, studentData.personal.birthdate),
+                sex: resolveString(values.sex, studentData.personal.sex),
+                civilStatus: resolveString(values.civilStatus, studentData.personal.civilStatus ?? 'Single'),
+                nationality: resolveString(values.nationality, studentData.personal.nationality),
+                religion: resolveString(values.religion, studentData.personal.religion),
+                dialect: resolveString(values.dialect, studentData.personal.dialect),
+            },
+            contact: {
+                email: resolveString(values.email, studentData.contact.email),
+                phoneNumber: resolveString(values.phoneNumber, studentData.contact.phoneNumber),
+            },
+            address: {
+                currentAddress: resolveString(values.currentAddress, studentData.address.currentAddress),
+                permanentAddress: resolveString(values.permanentAddress, studentData.address.permanentAddress),
+            },
+            family: {
+                fathersName: resolveString(values.fathersName, studentData.family.fathersName),
+                fathersOccupation: resolveString(values.fathersOccupation, studentData.family.fathersOccupation),
+                mothersName: resolveString(values.mothersName, studentData.family.mothersName),
+                mothersOccupation: resolveString(values.mothersOccupation, studentData.family.mothersOccupation),
+                guardiansName: resolveOptionalString(values.guardiansName, studentData.family.guardiansName),
+            },
+            additional: {
+                emergencyContactName: resolveString(values.emergencyContactName, studentData.additional.emergencyContactName),
+                emergencyContactAddress: resolveString(values.emergencyContactAddress, studentData.additional.emergencyContactAddress),
+                emergencyContactNumber: resolveString(values.emergencyContactNumber, studentData.additional.emergencyContactNumber),
+            },
+            education: {
+                elementarySchool: resolveString(values.elementarySchool, studentData.education.elementarySchool),
+                elemYearGraduated: resolveString(values.elemYearGraduated, studentData.education.elemYearGraduated),
+                secondarySchool: resolveString(values.secondarySchool, studentData.education.secondarySchool),
+                secondaryYearGraduated: resolveString(values.secondaryYearGraduated, studentData.education.secondaryYearGraduated),
+                collegiateSchool: resolveOptionalString(values.collegiateSchool, studentData.education.collegiateSchool),
+            },
+            academic: {
+                course: values.course,
+                yearLevel: values.yearLevel,
+                status: values.status,
+                block: values.block,
+                specialization: resolveOptionalString(values.specialization, studentData.academic.specialization),
+                subjects: values.subjects,
             },
         };
+    };
 
-        setAdminData(prev => ({
-            ...prev,
-            pendingApplications: [...prev.pendingApplications, newApplication],
-        }));
+    const buildCredentialSnapshot = (values: EnrollmentSchemaType) => {
+        const isOldStudent = values.status === 'Old';
+        return {
+            birthCertificate: !isOldStudent,
+            grades: true,
+            goodMoral: !isOldStudent,
+            registrationForm: true,
+        };
+    };
 
-        setIsSubmitted(true);
+    const processForm = async (data: EnrollmentSchemaType) => {
+        if (!studentData || isSubmitting) {
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            const formSnapshot = buildFormSnapshot(data);
+            const specializationValue = resolveOptionalString(data.specialization, studentData.academic.specialization);
+
+            const payload = {
+                studentIdNumber: studentData.academic.studentId,
+                studentEmail: studentData.contact.email,
+                studentName: `${studentData.personal.firstName} ${studentData.personal.lastName}`.trim(),
+                blockName: data.block,
+                course: data.course,
+                yearLevel: data.yearLevel,
+                studentStatus: data.status,
+                specialization: specializationValue,
+                subjects: data.subjects,
+                credentials: buildCredentialSnapshot(data),
+                formSnapshot,
+            };
+
+            const response = await fetch(buildApiUrl('submit_enrollment.php'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+
+            let responseBody: any = null;
+            try {
+                responseBody = await response.json();
+            } catch (parseError) {
+                responseBody = null;
+            }
+
+            if (!response.ok) {
+                const message = responseBody?.message ?? `Failed to submit enrollment (status ${response.status}).`;
+                throw new Error(message);
+            }
+
+            if (!responseBody || responseBody.status !== 'success') {
+                throw new Error(responseBody?.message ?? 'Server returned an unexpected response while processing the enrollment submission.');
+            }
+
+            try {
+                await refreshAdminData();
+            } catch (refreshError) {
+                console.warn('Failed to refresh admin data after enrollment submission:', refreshError);
+            }
+
+            setIsSubmitted(true);
+            toast({
+                title: 'Enrollment submitted',
+                description: 'Your application has been sent to the registrar for review.',
+            });
+        } catch (error) {
+            const message = error instanceof Error
+                ? error.message
+                : 'An unexpected error occurred while submitting your enrollment application.';
+            toast({
+                variant: 'destructive',
+                title: 'Submission failed',
+                description: message,
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
     
     type FieldName = keyof EnrollmentSchemaType;
 
     const next = async () => {
+        if (isSubmitting) {
+            return;
+        }
+
         const fieldsByStep: FieldName[][] = [
             Object.keys(personalFamilySchema.shape) as FieldName[],
             Object.keys(additionalInfoSchema.shape) as FieldName[],
             Object.keys(baseAcademicSchema.shape) as FieldName[],
         ];
-        
-    const fieldsToValidate = fieldsByStep[currentStep].map(field => field as string);
-    const output = await methods.trigger(fieldsToValidate, { shouldFocus: true });
+
+        const fieldsToValidate = fieldsByStep[currentStep].map(field => field as string);
+        const output = await methods.trigger(fieldsToValidate, { shouldFocus: true });
 
         if (!output) return;
 
         if (currentStep < steps.length - 1) {
              setCurrentStep(step => step + 1);
         } else {
-             methods.handleSubmit(processForm)();
+             await methods.handleSubmit(processForm)();
         }
     };
 
@@ -601,18 +849,18 @@ export default function EnrollmentFormPage() {
                         <CardFooter>
                            <div className="flex justify-between w-full">
                                 {currentStep > 0 && isNewStudent && (
-                                    <Button type="button" onClick={prev} variant="outline" className="rounded-xl">
+                                    <Button type="button" onClick={prev} variant="outline" className="rounded-xl" disabled={isSubmitting}>
                                         Previous
                                     </Button>
                                 )}
                                 
                                 {currentStep < 2 && isNewStudent ? (
-                                     <Button type="button" onClick={next} className="rounded-xl ml-auto">
+                                     <Button type="button" onClick={next} className="rounded-xl ml-auto" disabled={isSubmitting}>
                                         Next
                                     </Button>
                                 ) : (
-                                    <Button type="submit" className="rounded-xl w-full">
-                                        Submit Enrollment
+                                    <Button type="submit" className="rounded-xl w-full" disabled={isSubmitting}>
+                                        {isSubmitting ? 'Submitting...' : 'Submit Enrollment'}
                                     </Button>
                                 )}
                             </div>

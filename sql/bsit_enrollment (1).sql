@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 04, 2025 at 02:27 PM
+-- Generation Time: Nov 05, 2025 at 01:31 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -39,7 +39,9 @@ CREATE TABLE `admin_profiles` (
 --
 
 INSERT INTO `admin_profiles` (`user_id`, `name`, `avatar_url`, `admin_role`) VALUES
-(1, 'Jane Superadmin', 'https://picsum.photos/seed/admin/64/64', 'Super Admin');
+(1, 'Daren SuperAdmin', 'https://picsum.photos/seed/admin/64/64', 'Super Admin'),
+(10, 'Quen Mercado', '', 'Admin'),
+(11, 'Micca Tubal', '', 'Moderator');
 
 -- --------------------------------------------------------
 
@@ -63,7 +65,9 @@ CREATE TABLE `blocks` (
 INSERT INTO `blocks` (`id`, `name`, `year_level`, `course`, `specialization`, `capacity`) VALUES
 (1, 'BSIT 3-A', 3, 'BSIT', 'AP', 40),
 (2, 'BSIT 3-B', 3, 'BSIT', 'DD', 40),
-(3, 'ACT 1-A', 1, 'ACT', NULL, 40);
+(3, 'ACT 1-A', 1, 'ACT', NULL, 40),
+(11, 'ACT 2-A', 2, 'ACT', NULL, 30),
+(14, 'BSIT 3-A', 3, 'BSIT', 'DD', 25);
 
 -- --------------------------------------------------------
 
@@ -80,15 +84,6 @@ CREATE TABLE `enrollment_applications` (
   `rejection_reason` text DEFAULT NULL,
   `form_data` text NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `enrollment_applications`
---
-
-INSERT INTO `enrollment_applications` (`id`, `student_user_id`, `status`, `block_name`, `submitted_.at`, `rejection_reason`, `form_data`) VALUES
-(1, 2, 'approved', 'BSIT 3-A', '2025-11-04 11:19:32', NULL, '{\"birthCertificate\": true, \"grades\": true, \"goodMoral\": false, \"registrationForm\": true}'),
-(2, 3, 'rejected', 'BSIT 3-B', '2025-11-04 11:19:32', 'Incomplete or missing documents.', '{\"birthCertificate\": true, \"grades\": true, \"goodMoral\": true, \"registrationForm\": true}'),
-(3, 4, 'rejected', 'ACT 1-A', '2025-11-04 11:19:32', 'Incomplete or missing documents.', '{\"birthCertificate\": false, \"grades\": true, \"goodMoral\": true, \"registrationForm\": false}');
 
 -- --------------------------------------------------------
 
@@ -108,8 +103,8 @@ CREATE TABLE `instructor_profiles` (
 --
 
 INSERT INTO `instructor_profiles` (`user_id`, `name`, `avatar_url`, `department`) VALUES
-(5, 'Dr. Alan Turing', 'https://picsum.photos/seed/turing/64/64', 'College of Computer Studies'),
-(6, 'Prof. Ada Lovelace', 'https://picsum.photos/seed/lovelace/64/64', 'College of Computer Studies');
+(7, 'Daren De Lumen', 'https://picsum.photos/seed/instructor-1762274031438/64/64', ''),
+(8, 'Reniel Santiago', 'https://picsum.photos/seed/instructor-1762321577856/64/64', '');
 
 -- --------------------------------------------------------
 
@@ -127,9 +122,10 @@ CREATE TABLE `instructor_subjects` (
 --
 
 INSERT INTO `instructor_subjects` (`instructor_id`, `subject_id`) VALUES
-(5, 8),
-(5, 10),
-(6, 9);
+(7, 10),
+(8, 9),
+(8, 10),
+(8, 13);
 
 -- --------------------------------------------------------
 
@@ -153,9 +149,7 @@ CREATE TABLE `schedules` (
 --
 
 INSERT INTO `schedules` (`id`, `block_id`, `subject_id`, `instructor_id`, `day_of_week`, `start_time`, `end_time`, `room`) VALUES
-(1, 1, 8, 5, 'Monday', '09:00:00', '10:30:00', 'Room 301'),
-(2, 1, 9, 6, 'Wednesday', '11:00:00', '12:30:00', 'Room 302'),
-(3, 3, 8, 5, 'Tuesday', '08:00:00', '09:30:00', 'Room 101');
+(6, 1, 10, 7, 'Monday', '08:00:00', '11:30:00', 'Room 101');
 
 -- --------------------------------------------------------
 
@@ -169,17 +163,11 @@ CREATE TABLE `student_grades` (
   `subject_id` int(11) NOT NULL,
   `grade` decimal(3,2) NOT NULL,
   `academic_year` varchar(255) NOT NULL,
-  `semester` varchar(255) NOT NULL
+  `semester` varchar(255) NOT NULL,
+  `instructor_user_id` int(11) DEFAULT NULL,
+  `remark` enum('Passed','Failed','Incomplete','Dropped') DEFAULT NULL,
+  `graded_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `student_grades`
---
-
-INSERT INTO `student_grades` (`id`, `student_user_id`, `subject_id`, `grade`, `academic_year`, `semester`) VALUES
-(1, 2, 8, 1.50, '2024-2025', '1st Semester'),
-(2, 2, 9, 1.75, '2024-2025', '1st Semester'),
-(3, 3, 8, 2.00, '2024-2025', '1st Semester');
 
 -- --------------------------------------------------------
 
@@ -237,9 +225,9 @@ CREATE TABLE `student_profiles` (
 --
 
 INSERT INTO `student_profiles` (`user_id`, `student_id_number`, `name`, `avatar_url`, `course`, `year_level`, `enrollment_status`, `block_id`, `specialization`, `sex`, `phone_number`, `middle_name`, `birthdate`, `current_address`, `permanent_address`, `nationality`, `religion`, `dialect`, `civil_status`, `status`, `fathers_name`, `fathers_occupation`, `mothers_name`, `mothers_occupation`, `guardians_name`, `guardians_occupation`, `guardians_address`, `living_with_family`, `boarding`, `differently_abled`, `disability`, `minority_group`, `minority`, `elementary_school`, `elem_year_graduated`, `secondary_school`, `secondary_year_graduated`, `collegiate_school`, `collegiate_year_graduated`, `emergency_contact_name`, `emergency_contact_address`, `emergency_contact_number`) VALUES
-(2, '24-00-0001', 'Alice Johnson', NULL, 'BSIT', 3, 'Enrolled', 1, 'AP', 'Female', '09123456789', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Old', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(3, '24-00-0002', 'Bob Williams', NULL, 'BSIT', 3, 'Not Enrolled', 2, 'DD', 'Male', '09123456780', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Old', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(4, '24-00-0003', 'Charlie Brown', NULL, 'ACT', 1, 'Enrolled', 3, NULL, 'Male', '09123456781', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+(3, '24-00-0002', 'Bob Williams', NULL, 'BSIT', 3, 'Enrolled', 2, 'DD', 'Male', '09123456780', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Old', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(13, '25-00-0001', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(14, '25-00-0002', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -252,16 +240,6 @@ CREATE TABLE `student_subjects` (
   `student_user_id` int(11) NOT NULL,
   `subject_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `student_subjects`
---
-
-INSERT INTO `student_subjects` (`id`, `student_user_id`, `subject_id`) VALUES
-(1, 2, 8),
-(2, 2, 9),
-(3, 3, 8),
-(4, 4, 8);
 
 -- --------------------------------------------------------
 
@@ -283,10 +261,10 @@ CREATE TABLE `subjects` (
 --
 
 INSERT INTO `subjects` (`id`, `code`, `description`, `units`, `prerequisite_id`, `year_level`) VALUES
-(8, 'IT 101', 'Introduction to Computing', 3, NULL, 1),
-(9, 'IT 201', 'Data Structures & Algorithms', 3, 8, 2),
+(9, 'IT 201', 'Data Structures & Algorithms', 3, NULL, 2),
 (10, 'IT 301', 'Web Development', 3, 9, 3),
-(11, 'MATH 101', 'Calculus I', 3, NULL, 1);
+(11, 'MATH 101', 'Calculus I', 3, NULL, 1),
+(13, 'CAP 100', 'Capstone', 3, NULL, 4);
 
 -- --------------------------------------------------------
 
@@ -307,12 +285,14 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `email`, `password_hash`, `role`, `created_at`) VALUES
-(1, 'superadmin@bsit.edu', '$2y$10$d4mcotUPb4BxGRK8VCHrFuC0lyQihxri11bXLla8YCsJYqyMlYkLW', 'admin', '2025-10-30 02:59:37'),
-(2, 'student1@bsit.edu', '$2y$10$BIv9VZq4bYxDJc5/WTpiw.EMGNEZSOK9af47ac9d0njQ5c4PdbWUC', 'student', '2025-11-04 11:19:32'),
+(1, 'superadmin@bsit.edu', '$2y$10$hc5KJFXO4MpqgaZ7ZwPvE.UnhoOvf7XGN2rXOg8iWKnLlVm0zSmYK', 'admin', '2025-10-30 02:59:37'),
 (3, 'student2@bsit.edu', '$2y$10$BIv9VZq4bYxDJc5/WTpiw.EMGNEZSOK9af47ac9d0njQ5c4PdbWUC', 'student', '2025-11-04 11:19:32'),
-(4, 'student3@bsit.edu', '$2y$10$BIv9VZq4bYxDJc5/WTpiw.EMGNEZSOK9af47ac9d0njQ5c4PdbWUC', 'student', '2025-11-04 11:19:32'),
-(5, 'instructor1@bsit.edu', '$2y$10$BIv9VZq4bYxDJc5/WTpiw.EMGNEZSOK9af47ac9d0njQ5c4PdbWUC', 'instructor', '2025-11-04 11:19:32'),
-(6, 'instructor2@bsit.edu', '$2y$10$BIv9VZq4bYxDJc5/WTpiw.EMGNEZSOK9af47ac9d0njQ5c4PdbWUC', 'instructor', '2025-11-04 11:19:32');
+(7, 'darendl@gmail.com', '$2y$10$0iILq0DkdLD.F82lFYOciO44zmzdD.8VdK/iiOVw0iUOZ7Km/t5lq', 'instructor', '2025-11-04 16:33:51'),
+(8, 'reniel@gmail.com', '$2y$10$gxCekTj4Gc8jpUkUd/Lh5.jqrRf3UEERZvLWplKyGOs3yvymrWUFG', 'instructor', '2025-11-05 05:46:18'),
+(10, 'quen@bsit.edu', '$2y$10$jESTWBJXi8QJ4e/dCwhFje48fOWsq.wk49kk4d/NDIMjGi60M4NJi', 'admin', '2025-11-05 10:03:11'),
+(11, 'micca@bsit.edu', '$2y$10$3KG7Cw9rtqqgE5tFCIGX.uRY.FYCyAe6W4AovIRBTQ2zy6IpXnD/6', 'admin', '2025-11-05 11:12:10'),
+(13, 'Daren@07.com', '$2y$10$DDnXi0y3c9WwWoQf85RdTeUBKeU9myJI9GQ4xVmQZxpQL67r1/VmC', 'student', '2025-11-05 11:54:38'),
+(14, 'daren@gmail.com', '$2y$10$XsPilVA9pNVbSqtrljn7d.DARdzFAn99AoE/BwWdiTh9XZX0Qx9fG', 'student', '2025-11-05 12:21:19');
 
 --
 -- Indexes for dumped tables
@@ -329,7 +309,7 @@ ALTER TABLE `admin_profiles`
 --
 ALTER TABLE `blocks`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `name` (`name`);
+  ADD UNIQUE KEY `unique_block` (`name`,`specialization`);
 
 --
 -- Indexes for table `enrollment_applications`
@@ -348,8 +328,8 @@ ALTER TABLE `instructor_profiles`
 -- Indexes for table `instructor_subjects`
 --
 ALTER TABLE `instructor_subjects`
-  ADD PRIMARY KEY (`instructor_id`, `subject_id`),
-  ADD KEY `idx_instructor_subjects_subject_id` (`subject_id`);
+  ADD PRIMARY KEY (`instructor_id`,`subject_id`),
+  ADD KEY `idx_subject_id` (`subject_id`);
 
 --
 -- Indexes for table `schedules`
@@ -365,8 +345,10 @@ ALTER TABLE `schedules`
 --
 ALTER TABLE `student_grades`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_student_grade` (`student_user_id`,`subject_id`,`academic_year`,`semester`),
   ADD KEY `idx_student_user_id` (`student_user_id`),
-  ADD KEY `idx_subject_id` (`subject_id`);
+  ADD KEY `idx_subject_id` (`subject_id`),
+  ADD KEY `idx_instructor_user_id` (`instructor_user_id`);
 
 --
 -- Indexes for table `student_profiles`
@@ -407,7 +389,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `blocks`
 --
 ALTER TABLE `blocks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `enrollment_applications`
@@ -419,7 +401,7 @@ ALTER TABLE `enrollment_applications`
 -- AUTO_INCREMENT for table `schedules`
 --
 ALTER TABLE `schedules`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `student_grades`
@@ -437,13 +419,13 @@ ALTER TABLE `student_subjects`
 -- AUTO_INCREMENT for table `subjects`
 --
 ALTER TABLE `subjects`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- Constraints for dumped tables
@@ -471,8 +453,8 @@ ALTER TABLE `instructor_profiles`
 -- Constraints for table `instructor_subjects`
 --
 ALTER TABLE `instructor_subjects`
-  ADD CONSTRAINT `instructor_subjects_ibfk_1` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `instructor_subjects_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_instructor_subjects_instructor` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_instructor_subjects_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `schedules`
@@ -487,7 +469,8 @@ ALTER TABLE `schedules`
 --
 ALTER TABLE `student_grades`
   ADD CONSTRAINT `student_grades_ibfk_1` FOREIGN KEY (`student_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `student_grades_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `student_grades_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `student_grades_ibfk_3` FOREIGN KEY (`instructor_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `student_profiles`

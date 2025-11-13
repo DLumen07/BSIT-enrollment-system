@@ -1,7 +1,7 @@
 
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { AdminUser, initialAdminUsers, roles as adminRoles } from '../dashboard/administrators/page';
+import { AdminUser, initialAdminUsers, roles as adminRoles } from '../data/admin-users';
 import { Subject as ScheduleSubject } from '../dashboard/schedule/[blockId]/page';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
@@ -80,6 +80,8 @@ export type ApplicationCredentials = {
     registrationForm: boolean;
 };
 
+export type EnrollmentApplicationSnapshot = Record<string, unknown> | null;
+
 export type Application = {
     id: number;
     studentId: string;
@@ -92,6 +94,7 @@ export type Application = {
     credentials: ApplicationCredentials;
     rejectionReason?: string | null;
     submittedAt?: string | null;
+    formSnapshot?: EnrollmentApplicationSnapshot;
 };
 
 const initialPendingApplications: Application[] = [

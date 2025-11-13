@@ -1,7 +1,7 @@
 
 'use client';
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,13 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera } from 'lucide-react';
-import { useStudent } from '@/app/student/context/student-context';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useStudent, type StudentDataType } from '@/app/student/context/student-context';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
 
 
 const InfoField = ({ label, value }: { label: string; value?: string | null }) => {
@@ -28,119 +24,292 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
     );
 };
 
+type EditableStudentProfile = {
+    firstName: string;
+    lastName: string;
+    middleName: string;
+    birthdate: string;
+    sex: string;
+    civilStatus: string;
+    nationality: string;
+    religion: string;
+    dialect: string;
+    email: string;
+    phoneNumber: string;
+    currentAddress: string;
+    permanentAddress: string;
+    fathersName: string;
+    fathersOccupation: string;
+    mothersName: string;
+    mothersOccupation: string;
+    guardiansName: string;
+    emergencyContactName: string;
+    emergencyContactAddress: string;
+    emergencyContactNumber: string;
+    elementarySchool: string;
+    elemYearGraduated: string;
+    secondarySchool: string;
+    secondaryYearGraduated: string;
+    collegiateSchool: string;
+};
+
+const createEditableDataFromStudent = (student: StudentDataType): EditableStudentProfile => ({
+    firstName: student.personal.firstName ?? '',
+    lastName: student.personal.lastName ?? '',
+    middleName: student.personal.middleName ?? '',
+    birthdate: student.personal.birthdate ?? '',
+    sex: student.personal.sex ?? '',
+    civilStatus: student.personal.civilStatus ?? '',
+    nationality: student.personal.nationality ?? '',
+    religion: student.personal.religion ?? '',
+    dialect: student.personal.dialect ?? '',
+    email: student.contact.email ?? '',
+    phoneNumber: student.contact.phoneNumber ?? '',
+    currentAddress: student.address.currentAddress ?? '',
+    permanentAddress: student.address.permanentAddress ?? '',
+    fathersName: student.family.fathersName ?? '',
+    fathersOccupation: student.family.fathersOccupation ?? '',
+    mothersName: student.family.mothersName ?? '',
+    mothersOccupation: student.family.mothersOccupation ?? '',
+    guardiansName: student.family.guardiansName ?? '',
+    emergencyContactName: student.additional.emergencyContactName ?? '',
+    emergencyContactAddress: student.additional.emergencyContactAddress ?? '',
+    emergencyContactNumber: student.additional.emergencyContactNumber ?? '',
+    elementarySchool: student.education.elementarySchool ?? '',
+    elemYearGraduated: student.education.elemYearGraduated ?? '',
+    secondarySchool: student.education.secondarySchool ?? '',
+    secondaryYearGraduated: student.education.secondaryYearGraduated ?? '',
+    collegiateSchool: student.education.collegiateSchool ?? '',
+});
+
+const EMPTY_EDITABLE_PROFILE: EditableStudentProfile = {
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    birthdate: '',
+    sex: '',
+    civilStatus: '',
+    nationality: '',
+    religion: '',
+    dialect: '',
+    email: '',
+    phoneNumber: '',
+    currentAddress: '',
+    permanentAddress: '',
+    fathersName: '',
+    fathersOccupation: '',
+    mothersName: '',
+    mothersOccupation: '',
+    guardiansName: '',
+    emergencyContactName: '',
+    emergencyContactAddress: '',
+    emergencyContactNumber: '',
+    elementarySchool: '',
+    elemYearGraduated: '',
+    secondarySchool: '',
+    secondaryYearGraduated: '',
+    collegiateSchool: '',
+};
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const normalizeDateForApi = (value: string): string => {
+    const trimmed = value.trim();
+    if (trimmed === '') {
+        return '';
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return trimmed;
+    }
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) {
+        return '';
+    }
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 
 export default function StudentProfilePage() {
     const { toast } = useToast();
     const { studentData, setStudentData } = useStudent();
-    
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const apiBaseUrl = React.useMemo(() => {
+        return (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+            .replace(/\/$/, '')
+            .trim();
+    }, []);
+
+    const [editableData, setEditableData] = React.useState<EditableStudentProfile>(() =>
+        studentData ? createEditableDataFromStudent(studentData) : EMPTY_EDITABLE_PROFILE,
+    );
+    const [saving, setSaving] = React.useState(false);
+    const [formError, setFormError] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (studentData) {
+            setEditableData(createEditableDataFromStudent(studentData));
+        }
+    }, [studentData]);
+
+    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = event.target;
+        setEditableData(prev => {
+            if (!(id in prev)) {
+                return prev;
+            }
+            return {
+                ...prev,
+                [id]: value,
+            } as EditableStudentProfile;
+        });
+    };
+
+    const handleSelectChange = (field: keyof EditableStudentProfile, value: string) => {
+        setEditableData(prev => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!studentData) {
+            return;
+        }
+
+        setSaving(true);
+        setFormError(null);
+
+        const previousEmail = studentData.contact.email ?? '';
+        const payload = {
+            email: previousEmail,
+            profile: {
+                firstName: editableData.firstName.trim(),
+                lastName: editableData.lastName.trim(),
+                middleName: editableData.middleName.trim(),
+                birthdate: normalizeDateForApi(editableData.birthdate),
+                sex: editableData.sex.trim(),
+                civilStatus: editableData.civilStatus.trim(),
+                nationality: editableData.nationality.trim(),
+                religion: editableData.religion.trim(),
+                dialect: editableData.dialect.trim(),
+                email: editableData.email.trim(),
+                phoneNumber: editableData.phoneNumber.trim(),
+                currentAddress: editableData.currentAddress.trim(),
+                permanentAddress: editableData.permanentAddress.trim(),
+                fathersName: editableData.fathersName.trim(),
+                fathersOccupation: editableData.fathersOccupation.trim(),
+                mothersName: editableData.mothersName.trim(),
+                mothersOccupation: editableData.mothersOccupation.trim(),
+                guardiansName: editableData.guardiansName.trim(),
+                emergencyContactName: editableData.emergencyContactName.trim(),
+                emergencyContactAddress: editableData.emergencyContactAddress.trim(),
+                emergencyContactNumber: editableData.emergencyContactNumber.trim(),
+                elementarySchool: editableData.elementarySchool.trim(),
+                elemYearGraduated: editableData.elemYearGraduated.trim(),
+                secondarySchool: editableData.secondarySchool.trim(),
+                secondaryYearGraduated: editableData.secondaryYearGraduated.trim(),
+                collegiateSchool: editableData.collegiateSchool.trim(),
+            },
+        };
+
+        if (!payload.profile.firstName || !payload.profile.lastName) {
+            const message = 'First name and last name are required.';
+            setFormError(message);
+            toast({
+                title: 'Missing information',
+                description: message,
+                variant: 'destructive',
+            });
+            setSaving(false);
+            return;
+        }
+
+        if (!payload.profile.email || !EMAIL_REGEX.test(payload.profile.email)) {
+            const message = 'A valid email address is required.';
+            setFormError(message);
+            toast({
+                title: 'Invalid email',
+                description: message,
+                variant: 'destructive',
+            });
+            setSaving(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(`${apiBaseUrl}/update_student_profile.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+
+            let result: { status?: string; message?: string; data?: StudentDataType } | null = null;
+            try {
+                result = await response.json();
+            } catch {
+                result = null;
+            }
+
+            if (!response.ok || !result || result.status !== 'success' || !result.data) {
+                const message =
+                    result?.message ?? `Failed to update profile (status ${response.status}).`;
+                throw new Error(message);
+            }
+
+            setStudentData(result.data);
+            setEditableData(createEditableDataFromStudent(result.data));
+
+            const updatedEmail = result.data.contact.email ?? '';
+            if (typeof window !== 'undefined' && updatedEmail !== '') {
+                window.sessionStorage.setItem('bsit_student_email', updatedEmail);
+            }
+
+            if (updatedEmail && updatedEmail !== previousEmail) {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('email', updatedEmail);
+                const queryString = params.toString();
+                router.replace(
+                    queryString !== ''
+                        ? `/student/dashboard/profile?${queryString}`
+                        : '/student/dashboard/profile',
+                );
+            }
+
+            toast({
+                title: 'Profile saved',
+                description: 'Your profile has been updated successfully.',
+            });
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : 'Unable to update profile.';
+            setFormError(message);
+            toast({
+                title: 'Update failed',
+                description: message,
+                variant: 'destructive',
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     if (!studentData) {
         return <div>Loading profile...</div>;
     }
 
-    // Create a temporary state for editing
-    const [editableData, setEditableData] = React.useState({
-        firstName: studentData.personal.firstName,
-        lastName: studentData.personal.lastName,
-        middleName: studentData.personal.middleName,
-        birthdate: studentData.personal.birthdate,
-        sex: studentData.personal.sex,
-        civilStatus: studentData.personal.civilStatus,
-        nationality: studentData.personal.nationality,
-        religion: studentData.personal.religion,
-        dialect: studentData.personal.dialect,
-        email: studentData.contact.email,
-        phoneNumber: studentData.contact.phoneNumber,
-        currentAddress: studentData.address.currentAddress,
-        permanentAddress: studentData.address.permanentAddress,
-        fathersName: studentData.family.fathersName,
-        fathersOccupation: studentData.family.fathersOccupation,
-        mothersName: studentData.family.mothersName,
-        mothersOccupation: studentData.family.mothersOccupation,
-        guardiansName: studentData.family.guardiansName,
-        emergencyContactName: studentData.additional.emergencyContactName,
-        emergencyContactAddress: studentData.additional.emergencyContactAddress,
-        emergencyContactNumber: studentData.additional.emergencyContactNumber,
-        elementarySchool: studentData.education.elementarySchool,
-        elemYearGraduated: studentData.education.elemYearGraduated,
-        secondarySchool: studentData.education.secondarySchool,
-        secondaryYearGraduated: studentData.education.secondaryYearGraduated,
-        collegiateSchool: studentData.education.collegiateSchool,
-    });
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { id, value } = e.target;
-        setEditableData(prev => ({ ...prev, [id]: value }));
-    }
-
-    const handleSelectChange = (id: keyof typeof editableData, value: string) => {
-        setEditableData(prev => ({ ...prev, [id]: value }));
-    };
-
-    const handleDateChange = (id: keyof typeof editableData, value: string) => {
-        setEditableData(prev => ({ ...prev, [id]: value }));
-    };
-
-
-    const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (!setStudentData) return;
-        
-        setStudentData(prev => {
-            if (!prev) return null;
-            return {
-                ...prev,
-                personal: {
-                    ...prev.personal,
-                    firstName: editableData.firstName,
-                    lastName: editableData.lastName,
-                    middleName: editableData.middleName,
-                    birthdate: editableData.birthdate,
-                    sex: editableData.sex,
-                    civilStatus: editableData.civilStatus,
-                    nationality: editableData.nationality,
-                    religion: editableData.religion,
-                    dialect: editableData.dialect,
-                },
-                contact: {
-                    ...prev.contact,
-                    email: editableData.email,
-                    phoneNumber: editableData.phoneNumber,
-                },
-                address: {
-                    ...prev.address,
-                    currentAddress: editableData.currentAddress,
-                    permanentAddress: editableData.permanentAddress,
-                },
-                family: {
-                    ...prev.family,
-                    fathersName: editableData.fathersName,
-                    fathersOccupation: editableData.fathersOccupation,
-                    mothersName: editableData.mothersName,
-                    mothersOccupation: editableData.mothersOccupation,
-                    guardiansName: editableData.guardiansName,
-                },
-                additional: {
-                     ...prev.additional,
-                     emergencyContactName: editableData.emergencyContactName,
-                     emergencyContactAddress: editableData.emergencyContactAddress,
-                     emergencyContactNumber: editableData.emergencyContactNumber,
-                },
-                education: {
-                    ...prev.education,
-                    elementarySchool: editableData.elementarySchool,
-                    elemYearGraduated: editableData.elemYearGraduated,
-                    secondarySchool: editableData.secondarySchool,
-                    secondaryYearGraduated: editableData.secondaryYearGraduated,
-                    collegiateSchool: editableData.collegiateSchool,
-                }
-            }
-        });
-
-        toast({
-            title: `Profile Updated`,
-            description: `Your information has been successfully updated.`,
-        });
-    };
+    const avatarInitials = (
+        `${editableData.firstName.slice(0, 1)}${editableData.lastName.slice(0, 1)}`.toUpperCase() ||
+        'SN'
+    );
 
     return (
         <main className="flex-1 p-4 sm:p-6 space-y-6">
@@ -159,7 +328,7 @@ export default function StudentProfilePage() {
                                 <div className="relative mb-4">
                                     <Avatar className="h-24 w-24">
                                         <AvatarImage src="https://picsum.photos/seed/student-avatar/128/128" alt="Student Name" data-ai-hint="person avatar"/>
-                                        <AvatarFallback>SN</AvatarFallback>
+                                        <AvatarFallback>{avatarInitials}</AvatarFallback>
                                     </Avatar>
                                     <Button variant="ghost" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-background hover:bg-muted">
                                         <Camera className="h-4 w-4" />
@@ -211,25 +380,41 @@ export default function StudentProfilePage() {
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="middleName">Middle Name</Label>
-                                                <Input id="middleName" value={editableData.middleName || ''} onChange={handleInputChange} className="rounded-xl" />
+                                                <Input id="middleName" value={editableData.middleName} onChange={handleInputChange} className="rounded-xl" />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="birthdate">Date of Birth</Label>
-                                                <Input id="birthdate" value={editableData.birthdate} onChange={(e) => handleDateChange('birthdate', e.target.value)} placeholder="MM/DD/YYYY" className="rounded-xl" />
+                                                <Input
+                                                    id="birthdate"
+                                                    type="date"
+                                                    value={editableData.birthdate || ''}
+                                                    onChange={handleInputChange}
+                                                    className="rounded-xl"
+                                                />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label>Sex</Label>
-                                                <Select value={editableData.sex} onValueChange={(value) => handleSelectChange('sex', value)}>
-                                                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                                                <Select
+                                                    value={editableData.sex || undefined}
+                                                    onValueChange={(value) => handleSelectChange('sex', value)}
+                                                >
+                                                    <SelectTrigger className="rounded-xl">
+                                                        <SelectValue placeholder="Select sex" />
+                                                    </SelectTrigger>
                                                     <SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem></SelectContent>
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label>Civil Status</Label>
-                                                 <Select value={editableData.civilStatus} onValueChange={(value) => handleSelectChange('civilStatus', value)}>
-                                                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                                                 <Select
+                                                    value={editableData.civilStatus || undefined}
+                                                    onValueChange={(value) => handleSelectChange('civilStatus', value)}
+                                                >
+                                                    <SelectTrigger className="rounded-xl">
+                                                        <SelectValue placeholder="Select status" />
+                                                    </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="Single">Single</SelectItem>
                                                         <SelectItem value="Married">Married</SelectItem>
@@ -256,11 +441,23 @@ export default function StudentProfilePage() {
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="email">Email Address</Label>
-                                                <Input id="email" value={editableData.email} onChange={handleInputChange} className="rounded-xl" />
+                                                <Input
+                                                    id="email"
+                                                    type="email"
+                                                    value={editableData.email}
+                                                    onChange={handleInputChange}
+                                                    className="rounded-xl"
+                                                />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="phoneNumber">Contact Number</Label>
-                                                <Input id="phoneNumber" value={editableData.phoneNumber} onChange={handleInputChange} className="rounded-xl" />
+                                                <Input
+                                                    id="phoneNumber"
+                                                    type="tel"
+                                                    value={editableData.phoneNumber}
+                                                    onChange={handleInputChange}
+                                                    className="rounded-xl"
+                                                />
                                             </div>
                                         </div>
                                     </CardContent>
@@ -301,7 +498,7 @@ export default function StudentProfilePage() {
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="guardiansName">Guardian's Name</Label>
-                                                <Input id="guardiansName" value={editableData.guardiansName || ''} onChange={handleInputChange} className="rounded-xl" />
+                                                <Input id="guardiansName" value={editableData.guardiansName} onChange={handleInputChange} className="rounded-xl" />
                                             </div>
                                         </div>
                                     </CardContent>
@@ -324,7 +521,13 @@ export default function StudentProfilePage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="emergencyContactNumber">Emergency Number</Label>
-                                            <Input id="emergencyContactNumber" value={editableData.emergencyContactNumber} onChange={handleInputChange} className="rounded-xl" />
+                                            <Input
+                                                id="emergencyContactNumber"
+                                                type="tel"
+                                                value={editableData.emergencyContactNumber}
+                                                onChange={handleInputChange}
+                                                className="rounded-xl"
+                                            />
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -358,14 +561,21 @@ export default function StudentProfilePage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="collegiateSchool">Collegiate School (if transferee)</Label>
-                                            <Input id="collegiateSchool" value={editableData.collegiateSchool || ''} onChange={handleInputChange} className="rounded-xl" />
+                                            <Input id="collegiateSchool" value={editableData.collegiateSchool} onChange={handleInputChange} className="rounded-xl" />
                                         </div>
                                     </CardContent>
                                 </Card>
                             </TabsContent>
                         </Tabs>
-                        <div className="flex justify-end mt-6">
-                            <Button type="submit" className="rounded-xl">Save All Changes</Button>
+                        <div className="flex flex-col items-end gap-2 mt-6">
+                            {formError && (
+                                <p className="text-sm text-destructive text-right max-w-xl">
+                                    {formError}
+                                </p>
+                            )}
+                            <Button type="submit" className="rounded-xl" disabled={saving}>
+                                {saving ? 'Saving...' : 'Save All Changes'}
+                            </Button>
                         </div>
                     </div>
                 </div>

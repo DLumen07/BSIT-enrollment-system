@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Settings as SettingsIcon, Eye, EyeOff, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Camera, Eye, EyeOff, Calendar as CalendarIcon } from 'lucide-react';
 import { useAdmin } from '../../context/admin-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -27,18 +27,10 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
     );
 };
 
-type YearLevelKey = '1st-year' | '2nd-year' | '3rd-year' | '4th-year';
-
-const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
-    const hour = Math.floor(i / 2);
-    const minute = (i % 2) * 30;
-    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-});
-
 export default function AdminSettingsPage() {
     const { toast } = useToast();
-    const { adminData, setAdminData } = useAdmin();
-    const { currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate, academicYearOptions, semesterOptions, phasedEnrollmentSchedule } = adminData;
+    const { adminData, setAdminData, refreshAdminData } = useAdmin();
+    const { currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate, academicYearOptions, semesterOptions } = adminData;
 
     const [editableData, setEditableData] = React.useState({
         name: '',
@@ -51,25 +43,53 @@ export default function AdminSettingsPage() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
     
     const [currentAcademicYear, setCurrentAcademicYear] = useState(academicYear);
     const [currentSemester, setCurrentSemester] = useState(semester);
 
     const [startDate, setStartDate] = useState<Date | undefined>(enrollmentStartDate);
     const [endDate, setEndDate] = useState<Date | undefined>(enrollmentEndDate);
-    
-    const [phasedSchedule, setPhasedSchedule] = useState(phasedEnrollmentSchedule);
-    
-    const handlePhasedScheduleChange = (year: YearLevelKey, field: 'date' | 'startTime' | 'endTime', value: Date | string | undefined) => {
-        if (value === undefined) return;
-        setPhasedSchedule(prev => ({
-            ...prev,
-            [year]: {
-                ...prev[year],
-                [field]: value,
+
+    const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+        .replace(/\/$/, '')
+        .trim();
+
+    const buildApiUrl = useCallback(
+        (endpoint: string) => `${API_BASE_URL}/${endpoint.replace(/^\//, '')}`,
+        [API_BASE_URL],
+    );
+
+    const callAdminApi = useCallback(
+        async (endpoint: string, payload: Record<string, unknown>) => {
+            const response = await fetch(buildApiUrl(endpoint), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+
+            let data: any = null;
+            try {
+                data = await response.json();
+            } catch (error) {
+                // Ignore JSON parse issues; rely on status code + default message.
             }
-        }));
-    };
+
+            if (!response.ok) {
+                const message = data?.message ?? `Request failed with status ${response.status}`;
+                throw new Error(message);
+            }
+
+            if (!data || data.status !== 'success') {
+                throw new Error(data?.message ?? 'Server returned an error status.');
+            }
+
+            return data;
+        },
+        [buildApiUrl],
+    );
 
     useEffect(() => {
         if (currentUser) {
@@ -82,55 +102,109 @@ export default function AdminSettingsPage() {
         setCurrentSemester(semester);
         setStartDate(enrollmentStartDate);
         setEndDate(enrollmentEndDate);
-        setPhasedSchedule(phasedEnrollmentSchedule);
-    }, [currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate, phasedEnrollmentSchedule]);
+    }, [currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setEditableData(prev => ({ ...prev, [id]: value }));
     }
 
-     const handleSaveAll = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!currentUser) return;
+    const handleSaveAll = async (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!currentUser || isSaving) {
+            return;
+        }
+
+        const trimmedName = editableData.name.trim();
+        const trimmedEmail = editableData.email.trim().toLowerCase();
+
+        if (trimmedName === '' || trimmedEmail === '') {
+            toast({
+                variant: 'destructive',
+                title: 'Missing information',
+                description: 'Please provide both name and email before saving.',
+            });
+            return;
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Email',
+                description: 'Please provide a valid email address.',
+            });
+            return;
+        }
 
         if (startDate && endDate && startDate > endDate) {
             toast({ variant: 'destructive', title: 'Invalid Date Range', description: 'General enrollment start date cannot be after the end date.' });
             return;
         }
 
-        setAdminData(prev => {
-            const updatedAdminData: typeof prev = {
-                ...prev,
-                currentUser: { ...currentUser, name: editableData.name, email: editableData.email },
-                adminUsers: prev.adminUsers.map(user => 
-                    user.id === currentUser.id 
-                    ? { ...user, name: editableData.name, email: editableData.email }
-                    : user
-                ),
+        setIsSaving(true);
+
+        try {
+            await callAdminApi('update_admin.php', {
+                userId: currentUser.id,
+                name: trimmedName,
+                email: trimmedEmail,
+                role: currentUser.role,
+                avatar: currentUser.avatar ?? '',
+            });
+
+            const refreshed = await refreshAdminData();
+            const updatedUser = refreshed.adminUsers.find((user) => user.id === currentUser.id) ?? {
+                id: currentUser.id,
+                name: trimmedName,
+                email: trimmedEmail,
+                role: currentUser.role,
+                avatar: currentUser.avatar ?? '',
             };
 
-             if (currentUser.role === 'Super Admin') {
-                return {
-                    ...updatedAdminData,
-                    academicYear: currentAcademicYear,
-                    semester: currentSemester,
-                    enrollmentStartDate: startDate ?? prev.enrollmentStartDate,
-                    enrollmentEndDate: endDate ?? prev.enrollmentEndDate,
-                    phasedEnrollmentSchedule: phasedSchedule,
-                };
-            }
+            sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
-            return updatedAdminData;
-        });
+            setAdminData(prev => ({
+                ...prev,
+                currentUser: updatedUser,
+                adminUsers: prev.adminUsers.map(user => (user.id === updatedUser.id ? updatedUser : user)),
+                academicYear: currentAcademicYear,
+                semester: currentSemester,
+                enrollmentStartDate: startDate ?? prev.enrollmentStartDate,
+                enrollmentEndDate: endDate ?? prev.enrollmentEndDate,
+            }));
 
-        toast({
-            title: `Settings Updated`,
-            description: `All changes have been successfully saved.`,
-        });
+            setEditableData({ name: updatedUser.name, email: updatedUser.email });
+
+            toast({
+                title: 'Settings Updated',
+                description: 'Personal information saved successfully.',
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to update administrator profile.';
+            toast({
+                variant: 'destructive',
+                title: 'Save failed',
+                description: message,
+            });
+        } finally {
+            setIsSaving(false);
+        }
     };
     
-     const handlePasswordChange = () => {
+    const handlePasswordChange = async () => {
+        if (!currentUser || isChangingPassword) {
+            return;
+        }
+
+        if (currentPassword.trim() === '') {
+            toast({
+                variant: 'destructive',
+                title: 'Current Password Required',
+                description: 'Please enter your current password before changing it.',
+            });
+            return;
+        }
+
         if (newPassword !== confirmPassword) {
             toast({
                 variant: 'destructive',
@@ -146,18 +220,59 @@ export default function AdminSettingsPage() {
                 description: "Your new password must be at least 8 characters long.",
             });
             return;
+            return;
         }
-        
-        // In a real app, you'd have an API call here.
-        
-        toast({
-            title: "Password Changed",
-            description: "Your password has been successfully updated.",
-        });
 
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        setIsChangingPassword(true);
+
+        const trimmedName = editableData.name.trim() || currentUser.name;
+        const trimmedEmail = editableData.email.trim().toLowerCase() || currentUser.email;
+
+        try {
+            await callAdminApi('update_admin.php', {
+                userId: currentUser.id,
+                name: trimmedName,
+                email: trimmedEmail,
+                role: currentUser.role,
+                password: newPassword,
+                avatar: currentUser.avatar ?? '',
+            });
+
+            const refreshed = await refreshAdminData();
+            const updatedUser = refreshed.adminUsers.find((user) => user.id === currentUser.id) ?? {
+                id: currentUser.id,
+                name: trimmedName,
+                email: trimmedEmail,
+                role: currentUser.role,
+                avatar: currentUser.avatar ?? '',
+            };
+
+            sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+            setAdminData(prev => ({
+                ...prev,
+                currentUser: updatedUser,
+                adminUsers: prev.adminUsers.map(user => (user.id === updatedUser.id ? updatedUser : user)),
+            }));
+
+            toast({
+                title: 'Password Changed',
+                description: 'Your password has been successfully updated.',
+            });
+
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to update password.';
+            toast({
+                variant: 'destructive',
+                title: 'Password update failed',
+                description: message,
+            });
+        } finally {
+            setIsChangingPassword(false);
+        }
     };
 
     if (!currentUser) {
@@ -192,90 +307,16 @@ export default function AdminSettingsPage() {
                                 <p className="text-sm text-muted-foreground">{currentUser.role}</p>
                             </CardContent>
                         </Card>
-                        {currentUser.role === 'Super Admin' && (
-                            <>
-                            <Card className="rounded-xl">
-                                <CardHeader>
-                                    <CardTitle>System Settings</CardTitle>
-                                    <CardDescription>Manage global settings for the application.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="academic-year">Academic Year</Label>
-                                        <Select value={currentAcademicYear} onValueChange={setCurrentAcademicYear}>
-                                            <SelectTrigger id="academic-year" className="rounded-xl">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {academicYearOptions.map(year => (
-                                                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="semester">Semester</Label>
-                                        <Select value={currentSemester} onValueChange={setCurrentSemester}>
-                                            <SelectTrigger id="semester" className="rounded-xl">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {semesterOptions.map(sem => (
-                                                    <SelectItem key={sem.value} value={sem.value}>{sem.label}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card className="rounded-xl mt-6">
-                                <CardHeader>
-                                    <CardTitle>General Enrollment Schedule</CardTitle>
-                                    <CardDescription>Set the main start and end dates for enrollment.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Start Date</Label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !startDate && "text-muted-foreground")}>
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                                                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>End Date</Label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !endDate && "text-muted-foreground")}>
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                                                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            </>
-                        )}
                     </div>
                     <div className="lg:col-span-2">
-                        <Tabs defaultValue="profile" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2">
+                        <Tabs defaultValue="profile" className="w-full space-y-4">
+                            <TabsList className="grid w-full grid-cols-2 rounded-xl">
                                 <TabsTrigger value="profile">Profile</TabsTrigger>
                                 <TabsTrigger value="password">Password</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="profile">
-                                <Card className="rounded-xl mt-4">
+                                <Card className="rounded-xl h-full">
                                     <CardHeader>
                                         <CardTitle>Personal Information</CardTitle>
                                         <CardDescription>
@@ -293,15 +334,10 @@ export default function AdminSettingsPage() {
                                         </div>
                                         <InfoField label="Role" value={currentUser.role} />
                                     </CardContent>
-                                     {currentUser.role !== 'Super Admin' && (
-                                        <CardFooter>
-                                            <Button type="submit" className="rounded-xl">Save Changes</Button>
-                                        </CardFooter>
-                                    )}
                                 </Card>
                             </TabsContent>
                             <TabsContent value="password">
-                                <Card className="rounded-xl mt-4">
+                                <Card className="rounded-xl h-full">
                                     <CardHeader>
                                         <CardTitle>Change Password</CardTitle>
                                         <CardDescription>
@@ -338,73 +374,112 @@ export default function AdminSettingsPage() {
                                         </div>
                                     </CardContent>
                                     <CardFooter>
-                                        <Button type="button" onClick={handlePasswordChange} className="rounded-xl">Change Password</Button>
+                                        <Button type="button" onClick={handlePasswordChange} className="rounded-xl" disabled={isChangingPassword}>
+                                            {isChangingPassword ? 'Changing...' : 'Change Password'}
+                                        </Button>
                                     </CardFooter>
                                 </Card>
                             </TabsContent>
                         </Tabs>
                         {currentUser.role === 'Super Admin' && (
-                            <Card className="rounded-xl mt-6">
-                                <CardHeader>
-                                    <CardTitle>Phased Enrollment Schedule</CardTitle>
-                                    <CardDescription>Set a specific date and time window for each year level.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    {Object.keys(phasedSchedule).map(year => {
-                                        const key = year as YearLevelKey;
-                                        const yearLabel = key.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                        return (
-                                            <div key={key} className="p-3 border rounded-lg">
-                                                <p className="font-medium text-sm mb-3">{yearLabel}</p>
-                                                <div className="flex flex-col sm:flex-row gap-4 items-center">
-                                                    <div className="space-y-2 flex-1 w-full sm:w-auto">
-                                                        <Label>Enrollment Date</Label>
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !phasedSchedule[key].date && "text-muted-foreground")}>
-                                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                    {phasedSchedule[key].date ? format(phasedSchedule[key].date, "PPP") : <span>Pick a date</span>}
-                                                                </Button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                                                                <Calendar mode="single" selected={phasedSchedule[key].date} onSelect={(date) => handlePhasedScheduleChange(key, 'date', date)} initialFocus />
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Start Time</Label>
-                                                        <Select value={phasedSchedule[key].startTime} onValueChange={(value) => handlePhasedScheduleChange(key, 'startTime', value)}>
-                                                            <SelectTrigger className="rounded-xl w-[120px]">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {timeOptions.map(time => <SelectItem key={`start-${key}-${time}`} value={time}>{format(new Date(`1970-01-01T${time}`), 'hh:mm a')}</SelectItem>)}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>End Time</Label>
-                                                         <Select value={phasedSchedule[key].endTime} onValueChange={(value) => handlePhasedScheduleChange(key, 'endTime', value)}>
-                                                            <SelectTrigger className="rounded-xl w-[120px]">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {timeOptions.map(time => <SelectItem key={`end-${key}-${time}`} value={time}>{format(new Date(`1970-01-01T${time}`), 'hh:mm a')}</SelectItem>)}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                </div>
+                            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                                <Card className="rounded-xl">
+                                    <CardHeader>
+                                        <CardTitle>System Settings</CardTitle>
+                                        <CardDescription>Manage global settings for the application.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="academic-year">Academic Year</Label>
+                                                <Select value={currentAcademicYear} onValueChange={setCurrentAcademicYear}>
+                                                    <SelectTrigger id="academic-year" className="rounded-xl">
+                                                        <SelectValue placeholder="Select academic year" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {academicYearOptions.map(year => (
+                                                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
-                                        );
-                                    })}
-                                </CardContent>
-                            </Card>
-                        )}
-                         {currentUser.role === 'Super Admin' && (
-                            <div className="flex justify-end mt-6">
-                                <Button type="submit" className="rounded-xl w-full lg:w-auto">Save All Changes</Button>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="semester">Semester</Label>
+                                                <Select value={currentSemester} onValueChange={setCurrentSemester}>
+                                                    <SelectTrigger id="semester" className="rounded-xl">
+                                                        <SelectValue placeholder="Select semester" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {semesterOptions.map(sem => (
+                                                            <SelectItem key={sem.value} value={sem.value}>{sem.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card className="rounded-xl">
+                                    <CardHeader>
+                                        <CardTitle>General Enrollment Schedule</CardTitle>
+                                        <CardDescription>Set the main start and end dates for enrollment.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <Label>Start Date</Label>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            className={cn(
+                                                                "w-full justify-start text-left font-normal rounded-xl",
+                                                                !startDate && "text-muted-foreground",
+                                                            )}
+                                                        >
+                                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                                            {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                                                        <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>End Date</Label>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            className={cn(
+                                                                "w-full justify-start text-left font-normal rounded-xl",
+                                                                !endDate && "text-muted-foreground",
+                                                            )}
+                                                        >
+                                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                                            {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                                                        <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </div>
                         )}
+                        <div className="flex justify-end mt-6">
+                            <Button type="submit" className="rounded-xl w-full lg:w-auto" disabled={isSaving}>
+                                {isSaving
+                                    ? 'Saving...'
+                                    : currentUser.role === 'Super Admin'
+                                        ? 'Save All Changes'
+                                        : 'Save Changes'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </form>
