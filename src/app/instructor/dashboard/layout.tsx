@@ -1,14 +1,13 @@
-
 'use client';
 import Link from 'next/link';
 import {
-  Bell,
   Home,
   LogOut,
   Settings,
   BookCopy,
   CalendarCheck2,
   ChevronRight,
+  History,
 } from 'lucide-react';
 import Image from 'next/image';
 import React, { Suspense } from 'react';
@@ -38,6 +37,9 @@ import {
 import { ThemeToggle } from '@/components/theme-toggle';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import PageTransition from '@/components/page-transition';
+import NotificationBell from '@/components/notification-bell';
+import { useNotificationCenter } from '@/hooks/use-notification-center';
+import type { NotificationSeed } from '@/types/notifications';
 
 const Breadcrumb = () => {
     const pathname = usePathname();
@@ -93,8 +95,94 @@ const Breadcrumb = () => {
 };
 
 
+const weekdayOrder: Record<string, number> = {
+    Sunday: 0,
+    Monday: 1,
+    Tuesday: 2,
+    Wednesday: 3,
+    Thursday: 4,
+    Friday: 5,
+    Saturday: 6,
+};
+
 function Header() {
     const { instructorData } = useInstructor();
+    const searchParams = useSearchParams();
+    const queryString = searchParams.toString();
+    const notificationStorageKey = instructorData?.personal.id
+        ? `instructor-${instructorData.personal.id}`
+        : 'instructor-guest';
+
+    const notificationSeeds = React.useMemo(() => {
+        if (!instructorData) {
+            return [];
+        }
+
+        const seeds = [] as NotificationSeed[];
+        const classes = instructorData.classes ?? [];
+        const schedule = instructorData.schedule ?? [];
+        const grades = instructorData.grades ?? {};
+
+        classes.slice(0, 3).forEach((classInfo) => {
+            seeds.push({
+                id: `instructor-class-${classInfo.block}-${classInfo.subjectCode}`,
+                title: `${classInfo.subjectCode} - ${classInfo.block}`,
+                description: `${classInfo.studentCount} students enrolled.`,
+                category: 'schedule',
+                createdAt: new Date().toISOString(),
+                action: { label: 'View class', href: `/instructor/dashboard/classes?${queryString}` },
+            });
+        });
+
+        const pendingGrades = Object.values(grades)
+          .flat()
+          .filter((grade) =>
+            grade.grade === null ||
+            grade.grade === 'INC' ||
+            grade.terms?.final?.grade === null ||
+            grade.terms?.final?.grade === 'INC',
+          ).length;
+        if (pendingGrades > 0) {
+            seeds.push({
+                id: 'instructor-grade-reminder',
+                title: 'Grades pending submission',
+                description: `${pendingGrades} record${pendingGrades === 1 ? ' is' : 's are'} awaiting final grades.`,
+                category: 'grade',
+                createdAt: new Date().toISOString(),
+                action: { label: 'Open gradebook', href: `/instructor/dashboard/classes?${queryString}` },
+            });
+        }
+
+        if (schedule.length > 0) {
+            const nextSession = [...schedule].sort((a, b) => {
+                const dayDiff = (weekdayOrder[a.day] ?? 7) - (weekdayOrder[b.day] ?? 7);
+                if (dayDiff !== 0) return dayDiff;
+                return a.startTime.localeCompare(b.startTime);
+            })[0];
+
+            if (nextSession) {
+                seeds.push({
+                    id: `instructor-next-session-${nextSession.id ?? nextSession.code}`,
+                    title: `${nextSession.code} with ${nextSession.block}`,
+                    description: `${nextSession.day} • ${nextSession.startTime}-${nextSession.endTime}`,
+                    category: 'schedule',
+                    createdAt: new Date().toISOString(),
+                    action: { label: 'View schedule', href: `/instructor/dashboard/schedule?${queryString}` },
+                });
+            }
+        }
+
+        return seeds;
+    }, [instructorData, queryString]);
+
+    const {
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllAsRead,
+        dismissNotification,
+    } = useNotificationCenter(notificationStorageKey, notificationSeeds);
+
     if (!instructorData) return null;
 
     return (
@@ -105,10 +193,13 @@ function Header() {
             </div>
             <div className="flex items-center gap-4">
               <ThemeToggle />
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Bell className="h-5 w-5" />
-                <span className="sr-only">Toggle notifications</span>
-              </Button>
+              <NotificationBell
+                notifications={notifications}
+                unreadCount={unreadCount}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
+                onDismissNotification={dismissNotification}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
@@ -127,7 +218,7 @@ function Header() {
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href={`/instructor/dashboard/settings?${useSearchParams().toString()}`}>Settings</Link>
+                    <Link href={`/instructor/dashboard/settings?${queryString}`}>Settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem>Support</DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -146,6 +237,8 @@ function InstructorLayoutContent({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const schoolLogo = PlaceHolderImages.find(p => p.id === 'school-logo-sm');
   const emailQuery = searchParams.toString();
+  const isClassesHistoryPath = pathname === '/instructor/dashboard/classes/history';
+  const isClassesPath = pathname.startsWith('/instructor/dashboard/classes') && !isClassesHistoryPath;
 
   return (
     <SidebarProvider>
@@ -156,8 +249,8 @@ function InstructorLayoutContent({ children }: { children: React.ReactNode }) {
                 <Image
                 src={schoolLogo.imageUrl}
                 alt={schoolLogo.description}
-                width={60}
-                height={60}
+                width={48}
+                height={48}
                 data-ai-hint={schoolLogo.imageHint}
                 className="rounded-full"
                 />
@@ -184,10 +277,18 @@ function InstructorLayoutContent({ children }: { children: React.ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/instructor/dashboard/classes')}>
+              <SidebarMenuButton asChild isActive={isClassesPath}>
                 <Link href={`/instructor/dashboard/classes?${emailQuery}`}>
                   <BookCopy />
                   My Classes
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isClassesHistoryPath}>
+                <Link href={`/instructor/dashboard/classes/history?${emailQuery}`}>
+                  <History />
+                  Classes History
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

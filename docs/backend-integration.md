@@ -164,3 +164,8 @@ const handleDeleteUser = async () => {
 };
 ```
 By following this pattern—making an API call and then updating the local state with `setAdminData`, `setStudentData`, etc.—you can systematically connect the entire application to your backend. The UI components will automatically re-render with the new data.
+
+### Academic Term Management APIs
+
+- `update_system_settings.php` &mdash; Persists changes to the active academic year, semester, and global enrollment window. Use this when adjusting dates without promoting students.
+- `academic_rollover.php` &mdash; Generates a dry-run preview or executes the full rollover. Send `{ dryRun: true }` to retrieve the promotion summary, then repeat the call with `dryRun: false` after the administrator confirms.

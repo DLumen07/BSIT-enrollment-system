@@ -35,6 +35,43 @@ function respond(int $statusCode, array $payload, ?mysqli $connection = null): v
     exit;
 }
 
+function fetch_block_subject_ids(mysqli $connection, int $blockId): array
+{
+    $stmt = $connection->prepare('SELECT DISTINCT subject_id FROM schedules WHERE block_id = ?');
+    if (!$stmt) {
+        throw new Exception('Failed to prepare block subject lookup: ' . $connection->error);
+    }
+
+    $stmt->bind_param('i', $blockId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $subjectIds = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $subjectIds[] = isset($row['subject_id']) ? (int) $row['subject_id'] : 0;
+        }
+        $result->free();
+    }
+
+    $stmt->close();
+
+    $normalized = [];
+    foreach ($subjectIds as $subjectId) {
+        if ($subjectId > 0) {
+            $normalized[] = $subjectId;
+        }
+    }
+
+    if (empty($normalized)) {
+        return [];
+    }
+
+    sort($normalized, SORT_NUMERIC);
+
+    return array_values(array_unique($normalized));
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, [
         'status' => 'error',
@@ -54,6 +91,11 @@ $blockName = is_string($blockNameRaw) ? trim($blockNameRaw) : '';
 $subjectIdsInput = $input['subjectIds'] ?? [];
 $applicationId = isset($input['applicationId']) ? (int) $input['applicationId'] : 0;
 $mode = isset($input['mode']) ? strtolower((string) $input['mode']) : 'application';
+$enrollmentTrackInput = $input['enrollmentTrack'] ?? null;
+$enrollmentTrackValue = is_string($enrollmentTrackInput) ? trim($enrollmentTrackInput) : '';
+$normalizedTrack = strtolower($enrollmentTrackValue);
+$requestedEnrollmentTrack = $normalizedTrack === 'irregular' ? 'Irregular' : 'Regular';
+$enrollmentTrack = $requestedEnrollmentTrack;
 
 if ($studentUserId <= 0 || $blockName === '') {
     respond(400, [
@@ -100,14 +142,52 @@ try {
     $blockId = (int) $block['id'];
     $blockSpecialization = $block['specialization'];
 
+    $blockSubjectIds = fetch_block_subject_ids($conn, $blockId);
+    $selectedSubjectIds = $subjectIds;
+    $hasSubjectsAssigned = !empty($selectedSubjectIds);
+    $matchesBlockLoad = $hasSubjectsAssigned;
+
+    if (!empty($blockSubjectIds)) {
+        $selectedComparison = $selectedSubjectIds;
+        sort($selectedComparison, SORT_NUMERIC);
+        $matchesBlockLoad = $selectedComparison === $blockSubjectIds;
+    }
+
+    $wasForcedIrregular = false;
+    $irregularReason = null;
+
+    if (!$matchesBlockLoad) {
+        $wasForcedIrregular = true;
+        $enrollmentTrack = 'Irregular';
+
+        if (!empty($blockSubjectIds)) {
+            $expectedCount = count($blockSubjectIds);
+            $selectedCount = count($selectedSubjectIds);
+            $irregularReason = sprintf(
+                'Block %s expects %d subject%s but %d %s selected.',
+                $blockName,
+                $expectedCount,
+                $expectedCount === 1 ? '' : 's',
+                $selectedCount,
+                $selectedCount === 1 ? 'was' : 'were'
+            );
+        } else {
+            $irregularReason = 'No subjects were assigned for this student.';
+        }
+    } else {
+        $wasForcedIrregular = false;
+        $irregularReason = null;
+        $enrollmentTrack = $enrollmentTrack === 'Irregular' ? 'Irregular' : $requestedEnrollmentTrack;
+    }
+
     $conn->begin_transaction();
 
     $enrollmentStatus = 'Enrolled';
-    $updateProfile = $conn->prepare('UPDATE student_profiles SET enrollment_status = ?, block_id = ?, specialization = ? WHERE user_id = ?');
+    $updateProfile = $conn->prepare('UPDATE student_profiles SET enrollment_status = ?, block_id = ?, specialization = ?, enrollment_track = ? WHERE user_id = ?');
     if (!$updateProfile) {
         throw new Exception('Failed to prepare student profile update: ' . $conn->error);
     }
-    $updateProfile->bind_param('sisi', $enrollmentStatus, $blockId, $blockSpecialization, $studentUserId);
+    $updateProfile->bind_param('sissi', $enrollmentStatus, $blockId, $blockSpecialization, $enrollmentTrack, $studentUserId);
     $updateProfile->execute();
     if ($updateProfile->affected_rows === 0) {
         $updateProfile->close();
@@ -155,10 +235,22 @@ try {
 
     $conn->commit();
 
-    respond(200, [
+    $responseData = [
         'status' => 'success',
         'message' => $mode === 'direct' ? 'Student enrolled successfully.' : 'Enrollment finalized successfully.',
-    ], $conn);
+        'data' => [
+            'enrollmentTrack' => $enrollmentTrack,
+            'wasForcedIrregular' => $wasForcedIrregular,
+            'blockSubjectCount' => count($blockSubjectIds ?? []),
+            'selectedSubjectCount' => count($subjectIds),
+        ],
+    ];
+
+    if ($irregularReason !== null) {
+        $responseData['data']['irregularReason'] = $irregularReason;
+    }
+
+    respond(200, $responseData, $conn);
 } catch (Throwable $e) {
     if (isset($conn) && $conn instanceof mysqli) {
         $conn->rollback();

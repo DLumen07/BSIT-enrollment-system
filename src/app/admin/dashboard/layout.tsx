@@ -3,7 +3,6 @@
 'use client';
 import Link from 'next/link';
 import {
-  Bell,
   Home,
   LogOut,
   Users2,
@@ -59,6 +58,9 @@ import { useAdmin } from '../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/page-transition';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import NotificationBell from '@/components/notification-bell';
+import { useNotificationCenter } from '@/hooks/use-notification-center';
+import type { NotificationSeed } from '@/types/notifications';
 
 const Breadcrumb = () => {
     const pathname = usePathname();
@@ -123,7 +125,22 @@ const Breadcrumb = () => {
             );
         }
 
-        return breadcrumbs;
+        const uniqueCrumbs: Array<{ name: string; href: string }> = [];
+        const seen = new Set<string>();
+
+        for (const crumb of breadcrumbs) {
+          if (!crumb) {
+            continue;
+          }
+          const key = `${crumb.href}::${crumb.name}`;
+          if (seen.has(key)) {
+            continue;
+          }
+          seen.add(key);
+          uniqueCrumbs.push(crumb);
+        }
+
+        return uniqueCrumbs;
     };
     
     const breadcrumbs = buildBreadcrumbs();
@@ -193,10 +210,96 @@ export default function AdminDashboardLayout({
   const { adminData, setAdminData } = useAdmin();
   const { currentUser } = adminData;
 
+  const pendingApplications = adminData.pendingApplications ?? [];
+  const enrollmentSchedule = adminData.phasedEnrollmentSchedule ?? {};
+  const blocks = adminData.blocks ?? [];
+
+  const notificationSeeds = React.useMemo<NotificationSeed[]>(() => {
+    const seeds: NotificationSeed[] = [];
+
+    const sortedPending = [...pendingApplications]
+      .sort((a, b) => {
+        const aDate = Date.parse(a.submittedAt ?? '');
+        const bDate = Date.parse(b.submittedAt ?? '');
+        return (isNaN(bDate) ? 0 : bDate) - (isNaN(aDate) ? 0 : aDate);
+      })
+      .slice(0, 3);
+
+    sortedPending.forEach((application) => {
+      seeds.push({
+        id: `pending-application-${application.id}`,
+        title: 'Application ready for review',
+        description: `${application.name} submitted a ${application.status.toLowerCase()} application (${application.course}).`,
+        category: 'application',
+        createdAt: application.submittedAt ?? new Date().toISOString(),
+        action: { label: 'Review queue', href: '/admin/dashboard/manage-applications' },
+      });
+    });
+
+    if (pendingApplications.length > sortedPending.length) {
+      seeds.push({
+        id: 'pending-application-summary',
+        title: 'Enrollment queue growing',
+        description: `${pendingApplications.length} total applications are awaiting action.`,
+        category: 'application',
+        createdAt: new Date().toISOString(),
+        action: { label: 'Open applications', href: '/admin/dashboard/manage-applications' },
+      });
+    }
+
+    Object.entries(enrollmentSchedule).forEach(([yearLevel, schedule]) => {
+      const eventDate = schedule?.date instanceof Date ? schedule.date : schedule?.date ? new Date(schedule.date) : null;
+      if (!eventDate) {
+        return;
+      }
+      const now = Date.now();
+      if (eventDate.getTime() + 72 * 60 * 60 * 1000 < now) {
+        return;
+      }
+      const formattedYear = yearLevel.replace(/-/g, ' ');
+      seeds.push({
+        id: `enrollment-window-${yearLevel}`,
+        title: `${formattedYear} enrollment window`,
+        description: `Runs ${eventDate.toLocaleDateString()} • ${schedule?.startTime ?? '08:00'}-${schedule?.endTime ?? '17:00'}.`,
+        category: 'enrollment',
+        createdAt: eventDate.toISOString(),
+        action: { label: 'View schedule', href: '/admin/dashboard' },
+      });
+    });
+
+    blocks
+      .filter((block) => block.capacity - block.enrolled <= 5)
+      .slice(0, 3)
+      .forEach((block) => {
+        const remaining = Math.max(0, block.capacity - block.enrolled);
+        seeds.push({
+          id: `block-capacity-${block.id}`,
+          title: `${block.name} is almost full`,
+          description: `${remaining} slot${remaining === 1 ? '' : 's'} remaining for ${block.course}.`,
+          category: 'records',
+          createdAt: new Date().toISOString(),
+          action: { label: 'Manage blocks', href: '/admin/dashboard/manage-blocks' },
+        });
+      });
+
+    return seeds;
+  }, [pendingApplications, enrollmentSchedule, blocks]);
+
+  const notificationStorageKey = currentUser ? `admin-${currentUser.id}` : 'admin-guest';
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    dismissNotification,
+  } = useNotificationCenter(notificationStorageKey, notificationSeeds);
+
+  const isModerator = currentUser?.role === 'Moderator';
+
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser');
     setAdminData(prev => ({ ...prev, currentUser: null }));
-    router.push('/admin-login');
+    router.push('http://localhost:3000/');
   };
 
   React.useEffect(() => {
@@ -222,8 +325,8 @@ export default function AdminDashboardLayout({
                   <Image
                   src={schoolLogo.imageUrl}
                   alt={schoolLogo.description}
-                  width={60}
-                  height={60}
+                  width={48}
+                  height={48}
                   data-ai-hint={schoolLogo.imageHint}
                   className="rounded-full"
                   />
@@ -265,35 +368,59 @@ export default function AdminDashboardLayout({
                                       </Link>
                                   </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
-                              <SidebarMenuSubItem>
-                                   <SidebarMenuSubButton asChild isActive={pathname.startsWith('/admin/dashboard/manage-blocks') || pathname.startsWith('/admin/dashboard/schedule')}>
+                              {!isModerator && (
+                                <>
+                                  <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton asChild isActive={pathname.startsWith('/admin/dashboard/manage-blocks') || pathname.startsWith('/admin/dashboard/schedule')}>
                                       <Link href="/admin/dashboard/manage-blocks">
-                                          <LayoutGrid />
-                                          <span>Manage Blocks</span>
+                                        <LayoutGrid />
+                                        <span>Manage Blocks</span>
                                       </Link>
-                                  </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                              <SidebarMenuSubItem>
-                                   <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/manage-subjects'}>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                  <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/manage-subjects'}>
                                       <Link href="/admin/dashboard/manage-subjects">
-                                          <BookCopy />
-                                          <span>Manage Subjects</span>
+                                        <BookCopy />
+                                        <span>Manage Subjects</span>
                                       </Link>
-                                  </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                </>
+                              )}
+                              {isModerator && (
+                                <>
+                                  <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/view-blocks'}>
+                                      <Link href="/admin/dashboard/view-blocks">
+                                        <LayoutGrid />
+                                        <span>View Blocks &amp; Schedules</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                  <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/view-subjects'}>
+                                      <Link href="/admin/dashboard/view-subjects">
+                                        <BookCopy />
+                                        <span>View Subjects</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                </>
+                              )}
                           </SidebarMenuSub>
                       </CollapsibleContent>
                   </Collapsible>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                   <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/students'}>
+                           <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/students'}>
                       <Link href="/admin/dashboard/students">
                           <Users2 />
                           Students
                       </Link>
                   </SidebarMenuButton>
               </SidebarMenuItem>
-              {currentUser.role !== 'Moderator' && (
+              {!isModerator && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/dashboard/instructors')}>
                     <Link href="/admin/dashboard/instructors">
@@ -303,14 +430,16 @@ export default function AdminDashboardLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/users'}>
-                  <Link href="/admin/dashboard/users">
-                    <Users />
-                    Users
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {!isModerator && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/users'}>
+                    <Link href="/admin/dashboard/users">
+                      <Users />
+                      Users
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {currentUser.role === 'Super Admin' && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/administrators'}>
@@ -321,14 +450,25 @@ export default function AdminDashboardLayout({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/reports'}>
-                  <Link href="/admin/dashboard/reports">
-                    <BarChart3 />
-                    Reports
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {isModerator ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/view-reports'}>
+                    <Link href="/admin/dashboard/view-reports">
+                      <BarChart3 />
+                      Reports (Read-Only)
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/reports'}>
+                    <Link href="/admin/dashboard/reports">
+                      <BarChart3 />
+                      Reports
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
                <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/settings'}>
                   <Link href="/admin/dashboard/settings">
@@ -373,21 +513,30 @@ export default function AdminDashboardLayout({
               )}
             <div className="flex items-center gap-4">
               <ThemeToggle />
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Bell className="h-5 w-5" />
-                <span className="sr-only">Toggle notifications</span>
-              </Button>
+              <NotificationBell
+                notifications={notifications}
+                unreadCount={unreadCount}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
+                onDismissNotification={dismissNotification}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
-                    <Image
-                      src={currentUser.avatar}
-                      width={32}
-                      height={32}
-                      alt={currentUser.name}
-                      className="rounded-full"
-                      data-ai-hint="person avatar"
-                    />
+                    {typeof currentUser.avatar === 'string' && currentUser.avatar.trim() !== '' ? (
+                      <Image
+                        src={currentUser.avatar}
+                        width={32}
+                        height={32}
+                        alt={currentUser.name}
+                        className="rounded-full"
+                        data-ai-hint="person avatar"
+                      />
+                    ) : (
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
+                        {currentUser.name?.charAt(0).toUpperCase() ?? 'A'}
+                      </span>
+                    )}
                     <span className="sr-only">Toggle user menu</span>
                   </Button>
                 </DropdownMenuTrigger>

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { resolveMediaUrl } from '@/lib/utils';
 
 export type StudentRegisteredSubject = {
   code: string;
@@ -26,9 +27,11 @@ export type StudentScheduleEntry = {
 
 export type GradeTermKey = 'prelim' | 'midterm' | 'final';
 
+type StudentGradeValue = number | 'INC' | null;
+
 export type StudentGradeTerm = {
   term: GradeTermKey;
-  grade: number | null;
+  grade: StudentGradeValue;
   weight: number | null;
   encodedAt: string | null;
 };
@@ -40,10 +43,63 @@ export type StudentGradeRecord = {
   subjectCode: string;
   subjectDescription: string;
   units: number;
-  grade: number | null;
+  grade: StudentGradeValue;
   remark: string | null;
   gradedAt: string | null;
   terms: Partial<Record<GradeTermKey, StudentGradeTerm>>;
+};
+
+export type StudentEnrollmentHistoryEntry = {
+  academicYear: string;
+  semester: string;
+  status: string;
+  recordedAt: string;
+  gpa: number | null;
+  notes: string | null;
+};
+
+export type StudentDocumentRecord = {
+  id: number;
+  name: string;
+  status: 'Submitted' | 'Pending' | 'Rejected';
+  fileName: string;
+  filePath: string;
+  fileType: string | null;
+  fileSize: number | null;
+  uploadedAt: string | null;
+  updatedAt: string | null;
+};
+
+export type StudentRecords = {
+  enrollmentHistory: StudentEnrollmentHistoryEntry[];
+  documents: StudentDocumentRecord[];
+};
+
+export type StudentCurrentTerm = {
+  academicYear: string | null;
+  semester: string | null;
+  enrollmentStartDate: string | null;
+  enrollmentEndDate: string | null;
+};
+
+export type StudentClassmate = {
+  studentId: string;
+  name: string;
+  email: string | null;
+  avatarUrl: string | null;
+};
+
+export type StudentAnnouncement = {
+  id: number;
+  title: string;
+  message: string;
+  audience: 'All' | 'Students' | 'Instructors';
+  createdAt: string;
+  createdBy: {
+    id: number | null;
+    name: string;
+    email: string | null;
+  };
 };
 
 export type StudentDataType = {
@@ -51,6 +107,7 @@ export type StudentDataType = {
     firstName: string;
     lastName: string;
     middleName: string;
+    avatarUrl: string | null;
     birthdate: string;
     sex: string;
     civilStatus: string;
@@ -72,11 +129,15 @@ export type StudentDataType = {
     mothersName: string;
     mothersOccupation: string;
     guardiansName: string;
+    guardiansOccupation: string;
+    guardiansAddress: string;
   };
   additional: {
     emergencyContactName: string;
     emergencyContactAddress: string;
     emergencyContactNumber: string;
+    livingWithFamily: string;
+    boarding: string;
   };
   education: {
     elementarySchool: string;
@@ -84,6 +145,7 @@ export type StudentDataType = {
     secondarySchool: string;
     secondaryYearGraduated: string;
     collegiateSchool: string;
+    collegiateYearGraduated: string;
   };
   academic: {
     studentId: string;
@@ -91,6 +153,8 @@ export type StudentDataType = {
     yearLevel: string;
     block: string;
     status: string;
+    statusDisplay: string;
+    enrollmentTrack: string;
     enrollmentStatus: string;
     dateEnrolled: string;
     specialization: string;
@@ -101,6 +165,10 @@ export type StudentDataType = {
   };
   schedule: StudentScheduleEntry[];
   grades: StudentGradeRecord[];
+  announcements: StudentAnnouncement[];
+  records: StudentRecords;
+  classmates: StudentClassmate[];
+  currentTerm: StudentCurrentTerm;
 };
 
 interface StudentContextType {
@@ -114,6 +182,199 @@ const StudentContext = createContext<StudentContextType | undefined>(undefined);
 
 const buildUrlHelper = (baseUrl: string) => {
   return (endpoint: string) => `${baseUrl}/${endpoint.replace(/^\//, '')}`;
+};
+
+const TERM_KEYS: GradeTermKey[] = ['prelim', 'midterm', 'final'];
+
+const normalizeStudentGradeValue = (value: unknown, remark?: string | null): StudentGradeValue => {
+  if (typeof value === 'number') {
+    if (Number.isNaN(value)) {
+      return null;
+    }
+    return Number(value.toFixed(2));
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') {
+      return null;
+    }
+    if (trimmed.toUpperCase() === 'INC') {
+      return 'INC';
+    }
+    const numeric = parseFloat(trimmed);
+    if (!Number.isNaN(numeric)) {
+      return Number(numeric.toFixed(2));
+    }
+  }
+
+  if (typeof remark === 'string' && remark.trim().toUpperCase() === 'INC') {
+    return 'INC';
+  }
+
+  return null;
+};
+
+const normalizeStudentGradeTerms = (
+  terms: unknown,
+  remark?: string | null,
+): StudentGradeRecord['terms'] => {
+  if (!terms || typeof terms !== 'object') {
+    return {};
+  }
+
+  const normalizedRemark = typeof remark === 'string' ? remark.trim().toUpperCase() : null;
+  const rawTerms = terms as Record<string, unknown>;
+  const normalized: StudentGradeRecord['terms'] = {};
+
+  TERM_KEYS.forEach((key) => {
+    const entry = rawTerms[key];
+    if (!entry || typeof entry !== 'object') {
+      return;
+    }
+    const record = entry as Record<string, unknown>;
+    const gradeValue = normalizeStudentGradeValue(record.grade, normalizedRemark);
+    normalized[key] = {
+      term: key,
+      grade: gradeValue,
+      weight: typeof record.weight === 'number' ? record.weight : null,
+      encodedAt:
+        typeof record.encodedAt === 'string' && record.encodedAt.trim() !== ''
+          ? record.encodedAt.trim()
+          : null,
+    } satisfies StudentGradeTerm;
+  });
+
+  return normalized;
+};
+
+const normalizeStudentGrades = (grades: StudentGradeRecord[] | undefined): StudentGradeRecord[] => {
+  if (!Array.isArray(grades)) {
+    return [];
+  }
+
+  return grades.map((entry) => {
+    const remark = typeof entry.remark === 'string' ? entry.remark : null;
+    return {
+      ...entry,
+      grade: normalizeStudentGradeValue(entry.grade, remark),
+      remark,
+      terms: normalizeStudentGradeTerms(entry.terms, remark),
+    } satisfies StudentGradeRecord;
+  });
+};
+
+const normalizeClassmates = (rawClassmates: unknown, apiBaseUrl: string): StudentClassmate[] => {
+  if (!Array.isArray(rawClassmates)) {
+    return [];
+  }
+
+  return rawClassmates
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+      const record = entry as Record<string, unknown>;
+      const studentId = typeof record.studentId === 'string' ? record.studentId.trim() : '';
+      const name = typeof record.name === 'string' ? record.name.trim() : '';
+      const email = typeof record.email === 'string' ? record.email.trim() : '';
+      const avatarRaw = typeof record.avatarUrl === 'string' ? record.avatarUrl.trim() : '';
+      if (studentId === '' && name === '') {
+        return null;
+      }
+      return {
+        studentId,
+        name,
+        email: email !== '' ? email : null,
+        avatarUrl: resolveMediaUrl(avatarRaw, apiBaseUrl),
+      } satisfies StudentClassmate;
+    })
+    .filter((entry): entry is StudentClassmate => entry !== null);
+};
+
+export const normalizeStudentPayload = (rawData: StudentDataType, apiBaseUrl: string): StudentDataType => {
+  const announcements = Array.isArray(rawData.announcements) ? rawData.announcements : [];
+  const grades = normalizeStudentGrades(rawData.grades);
+
+  const records: StudentRecords = rawData.records && typeof rawData.records === 'object'
+    ? {
+        enrollmentHistory: Array.isArray(rawData.records.enrollmentHistory)
+          ? rawData.records.enrollmentHistory
+          : [],
+        documents: Array.isArray(rawData.records.documents)
+          ? rawData.records.documents
+          : [],
+      }
+    : { enrollmentHistory: [], documents: [] };
+
+  const academicFallback: StudentDataType['academic'] = {
+    studentId: '',
+    course: '',
+    yearLevel: '',
+    block: '',
+    status: '',
+    statusDisplay: '',
+    enrollmentTrack: 'Regular',
+    enrollmentStatus: '',
+    dateEnrolled: '',
+    specialization: '',
+  };
+
+  const academicRaw = rawData.academic ?? academicFallback;
+  const academic = {
+    ...academicFallback,
+    ...academicRaw,
+    statusDisplay:
+      typeof academicRaw.statusDisplay === 'string' && academicRaw.statusDisplay.trim() !== ''
+        ? academicRaw.statusDisplay
+        : academicRaw.status,
+    enrollmentTrack:
+      typeof academicRaw.enrollmentTrack === 'string' && academicRaw.enrollmentTrack.trim() !== ''
+        ? academicRaw.enrollmentTrack
+        : 'Regular',
+  } satisfies StudentDataType['academic'];
+
+  const classmates = normalizeClassmates(
+    (rawData as unknown as { classmates?: unknown }).classmates,
+    apiBaseUrl,
+  );
+
+  const rawCurrentTerm = (rawData as unknown as { currentTerm?: StudentCurrentTerm | null }).currentTerm ?? null;
+  const currentTerm: StudentCurrentTerm = {
+    academicYear:
+      rawCurrentTerm && typeof rawCurrentTerm.academicYear === 'string'
+        ? rawCurrentTerm.academicYear.trim() || null
+        : null,
+    semester:
+      rawCurrentTerm && typeof rawCurrentTerm.semester === 'string'
+        ? rawCurrentTerm.semester.trim() || null
+        : null,
+    enrollmentStartDate:
+      rawCurrentTerm && typeof rawCurrentTerm.enrollmentStartDate === 'string'
+        ? rawCurrentTerm.enrollmentStartDate.trim() || null
+        : null,
+    enrollmentEndDate:
+      rawCurrentTerm && typeof rawCurrentTerm.enrollmentEndDate === 'string'
+        ? rawCurrentTerm.enrollmentEndDate.trim() || null
+        : null,
+  };
+
+  const basePersonal = rawData.personal ?? ({} as StudentDataType['personal']);
+  const personal = {
+    ...basePersonal,
+    avatarUrl: resolveMediaUrl(basePersonal.avatarUrl ?? null, apiBaseUrl),
+  } satisfies StudentDataType['personal'];
+
+  return {
+    ...rawData,
+    personal,
+    academic,
+    announcements,
+    records,
+    classmates,
+    currentTerm,
+    grades,
+  };
 };
 
 export const StudentProvider = ({ children }: { children: React.ReactNode }) => {
@@ -207,7 +468,9 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
           return;
         }
 
-        setStudentData(typedPayload.data);
+        const normalizedData = normalizeStudentPayload(typedPayload.data, apiBaseUrl);
+
+        setStudentData(normalizedData);
         setError(null);
       } catch (fetchError) {
         if (!isMounted || controller.signal.aborted) {
@@ -225,7 +488,7 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
     fetchStudentProfile();
 
     return handleCleanup;
-  }, [studentEmail, buildApiUrl]);
+  }, [studentEmail, buildApiUrl, apiBaseUrl]);
 
   if (loading) {
     return (

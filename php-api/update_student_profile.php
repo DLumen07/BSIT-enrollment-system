@@ -96,6 +96,47 @@ function format_output_string(?string $value): string {
     return $value !== null ? trim($value) : '';
 }
 
+function normalize_last_name(string $lastName, string $middleName): string {
+    $trimmedLastName = trim($lastName);
+    if ($trimmedLastName === '') {
+        return '';
+    }
+
+    $trimmedMiddleName = trim($middleName);
+    if ($trimmedMiddleName === '') {
+        $normalized = preg_replace('/\s+/', ' ', $trimmedLastName);
+        return is_string($normalized) ? trim($normalized) : $trimmedLastName;
+    }
+
+    $normalizedLast = preg_replace('/\s+/', ' ', $trimmedLastName);
+    if (!is_string($normalizedLast) || $normalizedLast === '') {
+        $normalizedLast = $trimmedLastName;
+    }
+
+    $normalizedMiddle = preg_replace('/\s+/', ' ', $trimmedMiddleName);
+    if (!is_string($normalizedMiddle) || $normalizedMiddle === '') {
+        return trim($normalizedLast);
+    }
+
+    $pattern = '/^' . preg_quote($normalizedMiddle, '/') . '\b\s*/i';
+    $candidate = trim($normalizedLast);
+    $original = $candidate;
+
+    while ($candidate !== '' && preg_match($pattern, $candidate) === 1) {
+        $stripped = preg_replace($pattern, '', $candidate, 1);
+        if (!is_string($stripped)) {
+            break;
+        }
+        $stripped = ltrim($stripped);
+        if ($stripped === '') {
+            return $original;
+        }
+        $candidate = $stripped;
+    }
+
+    return trim($candidate);
+}
+
 function map_year_level(int $yearLevel): string {
     switch ($yearLevel) {
         case 1:
@@ -109,6 +150,34 @@ function map_year_level(int $yearLevel): string {
         default:
             return $yearLevel . 'th Year';
     }
+}
+
+function normalize_profile_status_label(?string $value): string {
+    $normalized = format_output_string($value ?? '');
+    if ($normalized === '') {
+        return '';
+    }
+
+    $formatted = ucwords(strtolower($normalized));
+    return $formatted !== '' ? $formatted : $normalized;
+}
+
+function normalize_enrollment_track_label(?string $value): string {
+    $normalized = format_output_string($value ?? '');
+    if ($normalized === '') {
+        return 'Regular';
+    }
+
+    return strtolower($normalized) === 'irregular' ? 'Irregular' : 'Regular';
+}
+
+function compose_profile_status_display_label(string $profileStatus, string $enrollmentTrack): string {
+    $status = $profileStatus !== '' ? $profileStatus : 'Old';
+    if ($status === 'Old' && $enrollmentTrack === 'Irregular') {
+        return 'Old (Irregular)';
+    }
+
+    return $status;
 }
 
 function fetch_student_profile_data(mysqli $conn, int $userId): array {
@@ -139,17 +208,27 @@ function fetch_student_profile_data(mysqli $conn, int $userId): array {
     $blockId = isset($studentRow['block_id']) ? (int) $studentRow['block_id'] : null;
     $studentUserId = (int) $studentRow['user_id'];
 
-    $fullName = format_output_string($studentRow['name'] ?? '');
-    $nameParts = preg_split('/\s+/', $fullName, -1, PREG_SPLIT_NO_EMPTY);
+    $middleName = format_output_string($studentRow['middle_name'] ?? '');
+    $avatarUrl = format_output_string($studentRow['avatar_url'] ?? '');
+    $fullNameRaw = format_output_string($studentRow['name'] ?? '');
     $firstName = '';
     $lastName = '';
 
-    if (is_array($nameParts) && count($nameParts) > 0) {
-        $firstName = array_shift($nameParts) ?? '';
-        $lastName = count($nameParts) > 0 ? implode(' ', $nameParts) : '';
-    }
+    if ($fullNameRaw !== '') {
+        $normalizedFullName = preg_replace('/\s+/', ' ', $fullNameRaw);
+        if (!is_string($normalizedFullName) || $normalizedFullName === '') {
+            $normalizedFullName = $fullNameRaw;
+        }
 
-    $middleName = format_output_string($studentRow['middle_name'] ?? '');
+        $nameParts = preg_split('/\s+/', trim($normalizedFullName), -1, PREG_SPLIT_NO_EMPTY);
+        if (is_array($nameParts) && count($nameParts) > 0) {
+            $firstName = array_shift($nameParts) ?? '';
+            $remainingName = count($nameParts) > 0 ? implode(' ', $nameParts) : '';
+            if ($remainingName !== '') {
+                $lastName = normalize_last_name($remainingName, $middleName);
+            }
+        }
+    }
     $birthdate = format_output_string($studentRow['birthdate'] ?? '');
     $sex = format_output_string($studentRow['sex'] ?? '');
     $civilStatus = format_output_string($studentRow['civil_status'] ?? '');
@@ -181,7 +260,13 @@ function fetch_student_profile_data(mysqli $conn, int $userId): array {
     $yearLevelNumeric = isset($studentRow['year_level']) ? (int) $studentRow['year_level'] : 0;
     $yearLevelLabel = $yearLevelNumeric > 0 ? map_year_level($yearLevelNumeric) : '';
     $blockName = format_output_string($studentRow['block_name'] ?? '');
-    $profileStatus = format_output_string($studentRow['status'] ?? '');
+    $profileStatusRaw = format_output_string($studentRow['status'] ?? '');
+    $profileStatus = normalize_profile_status_label($profileStatusRaw);
+    if ($profileStatus === '') {
+        $profileStatus = 'Old';
+    }
+    $enrollmentTrack = normalize_enrollment_track_label($studentRow['enrollment_track'] ?? '');
+    $profileStatusDisplay = compose_profile_status_display_label($profileStatus, $enrollmentTrack);
     $enrollmentStatus = format_output_string($studentRow['enrollment_status'] ?? '');
     $specialization = format_output_string($studentRow['specialization'] ?? '');
     $phoneNumber = format_output_string($studentRow['phone_number'] ?? '');
@@ -347,11 +432,96 @@ function fetch_student_profile_data(mysqli $conn, int $userId): array {
         $gradesStmt->close();
     }
 
+    $announcements = [];
+    $announcementsSql = "SELECT a.id, a.title, a.message, a.audience, a.created_at, a.created_by,
+                                IFNULL(ap.name, 'System') AS created_by_name,
+                                u.email AS created_by_email
+                         FROM announcements a
+                         LEFT JOIN admin_profiles ap ON ap.user_id = a.created_by
+                         LEFT JOIN users u ON u.id = a.created_by
+                         WHERE a.audience IN ('All', 'Students')
+                         ORDER BY a.created_at DESC
+                         LIMIT 50";
+    if ($result = $conn->query($announcementsSql)) {
+        while ($row = $result->fetch_assoc()) {
+            $createdByName = format_output_string($row['created_by_name'] ?? '');
+            $createdByEmail = format_output_string($row['created_by_email'] ?? '');
+            $announcements[] = [
+                'id' => isset($row['id']) ? (int) $row['id'] : 0,
+                'title' => format_output_string($row['title'] ?? ''),
+                'message' => format_output_string($row['message'] ?? ''),
+                'audience' => format_output_string($row['audience'] ?? ''),
+                'createdAt' => format_output_string($row['created_at'] ?? ''),
+                'createdBy' => [
+                    'id' => isset($row['created_by']) ? (int) $row['created_by'] : null,
+                    'name' => $createdByName !== '' ? $createdByName : 'System',
+                    'email' => $createdByEmail !== '' ? $createdByEmail : null,
+                ],
+            ];
+        }
+        $result->free();
+    }
+
+    $enrollmentHistory = [];
+    $historySql = 'SELECT academic_year, semester, status, notes, created_at
+                   FROM student_enrollment_history
+                   WHERE student_user_id = ?
+                   ORDER BY created_at DESC';
+    $historyStmt = $conn->prepare($historySql);
+    if ($historyStmt) {
+        $historyStmt->bind_param('i', $studentUserId);
+        $historyStmt->execute();
+        $historyResult = $historyStmt->get_result();
+        while ($historyResult && ($row = $historyResult->fetch_assoc())) {
+            $notesValue = format_output_string($row['notes'] ?? '');
+            $enrollmentHistory[] = [
+                'academicYear' => format_output_string($row['academic_year'] ?? ''),
+                'semester' => format_output_string($row['semester'] ?? ''),
+                'status' => format_output_string($row['status'] ?? ''),
+                'recordedAt' => format_output_string($row['created_at'] ?? ''),
+                'gpa' => null,
+                'notes' => $notesValue !== '' ? $notesValue : null,
+            ];
+        }
+        $historyStmt->close();
+    }
+
+    $documents = [];
+    $documentsSql = 'SELECT id, name, status, file_name, file_path, file_size, file_mime, uploaded_at, updated_at
+                     FROM student_documents
+                     WHERE student_user_id = ?
+                     ORDER BY updated_at DESC';
+    $documentsStmt = $conn->prepare($documentsSql);
+    if ($documentsStmt) {
+        $documentsStmt->bind_param('i', $studentUserId);
+        $documentsStmt->execute();
+        $documentsResult = $documentsStmt->get_result();
+        while ($documentsResult && ($row = $documentsResult->fetch_assoc())) {
+            $statusValue = format_output_string($row['status'] ?? '');
+            $mimeValue = format_output_string($row['file_mime'] ?? '');
+            $uploadedAtValue = format_output_string($row['uploaded_at'] ?? '');
+            $updatedAtValue = format_output_string($row['updated_at'] ?? '');
+            $documents[] = [
+                'id' => isset($row['id']) ? (int) $row['id'] : 0,
+                'name' => format_output_string($row['name'] ?? ''),
+                'status' => $statusValue !== '' ? $statusValue : 'Submitted',
+                'fileName' => format_output_string($row['file_name'] ?? ''),
+                'filePath' => format_output_string($row['file_path'] ?? ''),
+                'fileType' => $mimeValue !== '' ? $mimeValue : null,
+                'fileSize' => isset($row['file_size']) ? (int) $row['file_size'] : null,
+                'uploadedAt' => $uploadedAtValue !== '' ? $uploadedAtValue : null,
+                'updatedAt' => $updatedAtValue !== '' ? $updatedAtValue : null,
+            ];
+        }
+        $documentsStmt->close();
+    }
+
     return [
         'personal' => [
             'firstName' => $firstName,
             'lastName' => $lastName,
             'middleName' => $middleName,
+            'avatarUrl' => $avatarUrl !== '' ? $avatarUrl : null,
             'birthdate' => $birthdate,
             'sex' => $sex,
             'civilStatus' => $civilStatus,
@@ -392,6 +562,8 @@ function fetch_student_profile_data(mysqli $conn, int $userId): array {
             'yearLevel' => $yearLevelLabel,
             'block' => $blockName,
             'status' => $profileStatus,
+            'statusDisplay' => $profileStatusDisplay,
+            'enrollmentTrack' => $enrollmentTrack,
             'enrollmentStatus' => $enrollmentStatus,
             'dateEnrolled' => '',
             'specialization' => $specialization,
@@ -402,6 +574,11 @@ function fetch_student_profile_data(mysqli $conn, int $userId): array {
         ],
         'schedule' => $schedule,
         'grades' => $grades,
+        'announcements' => $announcements,
+        'records' => [
+            'enrollmentHistory' => $enrollmentHistory,
+            'documents' => $documents,
+        ],
     ];
 }
 
@@ -546,6 +723,8 @@ try {
         }
         $updateEmailStmt->close();
     }
+
+    $lastName = normalize_last_name($lastName, $middleName);
 
     $fullNameParts = array_filter([$firstName, $middleName, $lastName], static function ($part) {
         return $part !== '';

@@ -101,8 +101,8 @@ export default function Home() {
             <Image
               src={schoolLogo.imageUrl}
               alt={schoolLogo.description}
-              width={250}
-              height={250}
+              width={180}
+              height={180}
               data-ai-hint={schoolLogo.imageHint}
               className="rounded-full"
             />
@@ -129,7 +129,16 @@ export default function Home() {
       </main>
       <footer className="py-6 w-full shrink-0 items-center px-4 md:px-6 border-t bg-background/50 backdrop-blur-sm">
         <p className="text-xs text-muted-foreground text-center">
-          &copy; BUMBBLEBITTECH | All rights reserved.
+          &copy;{' '}
+          <a
+            href="https://github.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold underline-offset-4 hover:underline"
+          >
+            DarenDL7
+          </a>{' '}
+          | All rights reserved.
         </p>
       </footer>
     </div>

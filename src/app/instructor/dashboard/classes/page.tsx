@@ -15,7 +15,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronRight, Users, Edit } from 'lucide-react';
+import { ChevronRight, Users, Edit, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Student } from '@/app/admin/context/admin-context';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +27,48 @@ const TERM_LABELS: Record<GradeTermKey, string> = {
     final: 'Final',
 };
 
-const formatTermValue = (value: number | null | undefined): string => {
+const GRADE_SEQUENCE = [
+    '1.00',
+    '1.25',
+    '1.50',
+    '1.75',
+    '2.00',
+    '2.25',
+    '2.50',
+    '2.75',
+    '3.00',
+    '3.25',
+    '3.50',
+    '3.75',
+    '4.00',
+    '4.25',
+    '4.50',
+    '4.75',
+    '5.00',
+    'INC',
+] as const;
+type GradeSequenceValue = (typeof GRADE_SEQUENCE)[number];
+const clampToSequence = (value?: string): GradeSequenceValue => {
+    if (!value) {
+        return GRADE_SEQUENCE[0];
+    }
+    const trimmed = value.trim();
+    if (trimmed.toUpperCase() === 'INC') {
+        return 'INC';
+    }
+    const numeric = parseFloat(trimmed);
+    if (Number.isNaN(numeric)) {
+        return GRADE_SEQUENCE[0];
+    }
+    const offset = Math.round((numeric - 1) / 0.25);
+    const index = Math.min(Math.max(offset, 0), GRADE_SEQUENCE.length - 2);
+    return GRADE_SEQUENCE[index];
+};
+
+const formatTermValue = (value: number | 'INC' | null | undefined): string => {
+    if (value === 'INC') {
+        return 'INC';
+    }
     if (typeof value !== 'number' || Number.isNaN(value)) {
         return '—';
     }
@@ -42,6 +83,9 @@ type InstructorClass = {
     studentCount: number;
 };
 
+const normalizeSubjectCode = (code?: string | null) =>
+    typeof code === 'string' ? code.trim().toUpperCase() : '';
+
 export default function MyClassesPage() {
     const { instructorData, updateStudentGrade } = useInstructor();
     const { adminData } = useAdmin();
@@ -53,10 +97,49 @@ export default function MyClassesPage() {
     const [gradeEdit, setGradeEdit] = useState<{ studentId: string; subjectCode: string; term: GradeTermKey; grade: string } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
+    const currentAcademicYear = adminData.academicYear ?? 'Unspecified AY';
+    const currentSemester = adminData.semester ?? 'Unspecified Semester';
+
+    const gradesByStudent = instructorData?.grades ?? {};
+
+    const getGradeRecordForSubject = useCallback((studentId: string, subjectCode?: string | null) => {
+        if (!subjectCode) {
+            return null;
+        }
+        const normalizedTarget = normalizeSubjectCode(subjectCode);
+        if (!normalizedTarget) {
+            return null;
+        }
+        const studentGrades = gradesByStudent[studentId] ?? [];
+        return studentGrades.find((grade) => {
+            if (normalizeSubjectCode(grade.subjectCode) !== normalizedTarget) {
+                return false;
+            }
+            const gradeYear = grade.academicYear ?? currentAcademicYear;
+            const gradeSemester = grade.semester ?? currentSemester;
+            return gradeYear === currentAcademicYear && gradeSemester === currentSemester;
+        }) ?? null;
+    }, [gradesByStudent, currentAcademicYear, currentSemester]);
+
+    const isStudentInSubject = useCallback((student: Student, subjectCode: string) => {
+        const normalizedTarget = normalizeSubjectCode(subjectCode);
+        if (!normalizedTarget) {
+            return false;
+        }
+        const enlistedMatch = (student.enlistedSubjects ?? []).some(
+            (subject) => normalizeSubjectCode(subject.code) === normalizedTarget,
+        );
+        if (enlistedMatch) {
+            return true;
+        }
+        return getGradeRecordForSubject(student.studentId, subjectCode) !== null;
+    }, [getGradeRecordForSubject]);
+
     const studentsInClass = useMemo(() => {
         if (!selectedClass) return [];
-        return adminData.students.filter(s => s.block === selectedClass.block);
-    }, [selectedClass, adminData.students]);
+        const roster = adminData.students.filter(s => s.block === selectedClass.block);
+        return roster.filter((student) => isStudentInSubject(student, selectedClass.subjectCode));
+    }, [selectedClass, adminData.students, isStudentInSubject]);
 
     const openStudentsDialog = (c: InstructorClass) => {
         setSelectedClass(c);
@@ -66,14 +149,21 @@ export default function MyClassesPage() {
     const handleSaveGrade = useCallback(async () => {
         if (!gradeEdit || isSaving) return;
 
-        const gradeValue = parseFloat(gradeEdit.grade);
-        if (isNaN(gradeValue) || gradeValue < 1.0 || gradeValue > 5.0) {
-            toast({
-                variant: 'destructive',
-                title: 'Invalid Grade',
-                description: 'Please enter a valid grade between 1.0 and 5.0.',
-            });
-            return;
+        const rawValue = gradeEdit.grade.trim();
+        const isIncomplete = rawValue.toUpperCase() === 'INC';
+        let gradeValue: number | 'INC' = 'INC';
+
+        if (!isIncomplete) {
+            const numericValue = parseFloat(rawValue);
+            if (isNaN(numericValue) || numericValue < 1.0 || numericValue > 5.0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Invalid Grade',
+                    description: 'Please enter a valid grade between 1.0 and 5.0 or type INC.',
+                });
+                return;
+            }
+            gradeValue = numericValue;
         }
 
         try {
@@ -95,6 +185,18 @@ export default function MyClassesPage() {
             setIsSaving(false);
         }
     }, [gradeEdit, isSaving, toast, updateStudentGrade]);
+
+    const handleStepGrade = useCallback((direction: 1 | -1) => {
+        setGradeEdit((current) => {
+            if (!current) {
+                return current;
+            }
+            const normalized = clampToSequence(current.grade);
+            const currentIndex = GRADE_SEQUENCE.indexOf(normalized);
+            const nextIndex = Math.min(Math.max(currentIndex + direction, 0), GRADE_SEQUENCE.length - 1);
+            return { ...current, grade: GRADE_SEQUENCE[nextIndex] };
+        });
+    }, []);
 
     const handleCancelEdit = useCallback(() => {
         if (isSaving) {
@@ -180,7 +282,7 @@ export default function MyClassesPage() {
                             </TableHeader>
                             <TableBody>
                                 {studentsInClass.map(student => {
-                                    const gradeRecord = grades[student.studentId]?.find(g => g.subjectCode === selectedClass?.subjectCode);
+                                    const gradeRecord = getGradeRecordForSubject(student.studentId, selectedClass?.subjectCode);
                                     const isEditing = gradeEdit?.studentId === student.studentId && gradeEdit?.subjectCode === selectedClass?.subjectCode;
                                     
                                     return (
@@ -197,28 +299,65 @@ export default function MyClassesPage() {
                                             <TableCell>{student.studentId}</TableCell>
                                             {TERM_ORDER.map((termKey) => {
                                                 const termEntry = gradeRecord?.terms?.[termKey];
-                                                const termValue = typeof termEntry?.grade === 'number' ? termEntry.grade : null;
+                                                const termValue = termEntry?.grade ?? null;
                                                 const isTermEditing = isEditing && gradeEdit?.term === termKey;
                                                 return (
                                                     <TableCell key={`${student.id}-${termKey}`} className="text-right">
                                                         {isTermEditing ? (
                                                             <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end sm:items-center">
-                                                                <Input
-                                                                    type="number"
-                                                                    step="0.25"
-                                                                    min="1.0"
-                                                                    max="5.0"
-                                                                    value={gradeEdit?.grade ?? ''}
-                                                                    onChange={(e) => setGradeEdit({ ...gradeEdit, grade: e.target.value })}
-                                                                    className="h-8 w-24 rounded-md"
-                                                                    autoFocus
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            void handleSaveGrade();
+                                                                <div className="flex items-center gap-1">
+                                                                    <Input
+                                                                        type="text"
+                                                                        inputMode="decimal"
+                                                                        placeholder="1.0-5.0 or INC"
+                                                                        value={gradeEdit?.grade ?? ''}
+                                                                        onChange={(event) =>
+                                                                            setGradeEdit((current) =>
+                                                                                current ? { ...current, grade: event.target.value } : current,
+                                                                            )
                                                                         }
-                                                                    }}
-                                                                />
+                                                                        className="h-8 w-28 rounded-md"
+                                                                        autoFocus
+                                                                        onKeyDown={(event) => {
+                                                                            if (event.key === 'Enter') {
+                                                                                event.preventDefault();
+                                                                                void handleSaveGrade();
+                                                                            }
+                                                                            if (event.key === 'ArrowUp') {
+                                                                                event.preventDefault();
+                                                                                handleStepGrade(1);
+                                                                            }
+                                                                            if (event.key === 'ArrowDown') {
+                                                                                event.preventDefault();
+                                                                                handleStepGrade(-1);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-4 w-6"
+                                                                            onClick={() => handleStepGrade(1)}
+                                                                            disabled={isSaving}
+                                                                            aria-label="Increase grade"
+                                                                        >
+                                                                            <ChevronUp className="h-3 w-3" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-4 w-6"
+                                                                            onClick={() => handleStepGrade(-1)}
+                                                                            disabled={isSaving}
+                                                                            aria-label="Decrease grade"
+                                                                        >
+                                                                            <ChevronDown className="h-3 w-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
                                                                 <div className="flex gap-2">
                                                                     <Button
                                                                         size="sm"
@@ -261,7 +400,7 @@ export default function MyClassesPage() {
                                             })}
                                             <TableCell className="text-right">
                                                 <div className="flex flex-col items-end">
-                                                    <span className="font-semibold">{typeof gradeRecord?.grade === 'number' ? formatTermValue(gradeRecord.grade) : '—'}</span>
+                                                    <span className="font-semibold">{formatTermValue(gradeRecord?.grade ?? null)}</span>
                                                     {gradeRecord?.remark ? (
                                                         <span className="text-xs text-muted-foreground">{gradeRecord.remark}</span>
                                                     ) : null}

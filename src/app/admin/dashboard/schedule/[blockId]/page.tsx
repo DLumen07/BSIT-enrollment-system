@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { useAdmin, Instructor } from '../../../context/admin-context';
+import { useAdmin, Instructor, deriveTeachingAssignments } from '../../../context/admin-context';
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
@@ -172,12 +172,20 @@ export default function SchedulePage() {
                 color: entry.color ?? assignColor(entry.id, index),
             }));
 
+            const updatedSchedules = {
+                ...prev.schedules,
+                [blockId]: sortSchedulesForBlock(normalized),
+            };
+
             return {
                 ...prev,
-                schedules: {
-                    ...prev.schedules,
-                    [blockId]: sortSchedulesForBlock(normalized),
-                },
+                schedules: updatedSchedules,
+                teachingAssignments: deriveTeachingAssignments(
+                    updatedSchedules,
+                    prev.academicYear,
+                    prev.semester,
+                    prev.instructors,
+                ),
             };
         });
     }, [assignColor, blockId, setAdminData, sortSchedulesForBlock]);
@@ -246,8 +254,14 @@ export default function SchedulePage() {
 
     const availableSubjectsForBlock = useMemo(() => {
         if (!blockYear) return [];
-        return allSubjectsFromContext[blockYear] || [];
-    }, [allSubjectsFromContext, blockYear]);
+        const subjectsForYear = allSubjectsFromContext[blockYear] || [];
+        const validSemesters: Array<'1st-sem' | '2nd-sem' | 'summer'> = ['1st-sem', '2nd-sem', 'summer'];
+        const activeSemester = validSemesters.includes(adminData.semester as '1st-sem' | '2nd-sem' | 'summer')
+            ? (adminData.semester as '1st-sem' | '2nd-sem' | 'summer')
+            : '1st-sem';
+        const filtered = subjectsForYear.filter(subject => subject.semester === activeSemester);
+        return filtered.length > 0 ? filtered : subjectsForYear;
+    }, [allSubjectsFromContext, blockYear, adminData.semester]);
 
     const findInstructorsForSubject = useCallback(
         (subjectCode?: string | null): Instructor[] => {
@@ -774,13 +788,16 @@ export default function SchedulePage() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {availableSubjectsForBlock.map(sub => {
-                                                 const completedSubjectsForStudents = studentsInBlock.map(student => adminData.getCompletedSubjects(student.studentId).map(s => s.code));
-                                                 const allStudentsHavePrereq = studentsInBlock.every(student => {
-                                                     const studentCompleted = adminData.getCompletedSubjects(student.studentId).map(s => s.code);
-                                                     return !sub.prerequisite || studentCompleted.includes(sub.prerequisite);
-                                                 });
+                                                const prerequisiteCodes = Array.isArray(sub.prerequisites) && sub.prerequisites.length > 0
+                                                    ? sub.prerequisites
+                                                    : (sub.prerequisite ? [sub.prerequisite] : []);
 
-                                                if (!sub.prerequisite || allStudentsHavePrereq) {
+                                                const allStudentsHavePrereq = prerequisiteCodes.length === 0 || studentsInBlock.every((student) => {
+                                                    const studentCompleted = new Set(adminData.getCompletedSubjects(student.studentId).map((s) => s.code));
+                                                    return prerequisiteCodes.every((code) => studentCompleted.has(code));
+                                                });
+
+                                                if (prerequisiteCodes.length === 0 || allStudentsHavePrereq) {
                                                     return <SelectItem key={sub.id} value={sub.code}>{sub.description}</SelectItem>;
                                                 }
                                                 
@@ -793,7 +810,7 @@ export default function SchedulePage() {
                                                                 </div>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
-                                                                <p>Some students in this block have not passed the prerequisite ({sub.prerequisite}).</p>
+                                                                <p>Some students in this block have not passed the prerequisite{prerequisiteCodes.length > 1 ? 's' : ''} ({prerequisiteCodes.join(', ')}).</p>
                                                             </TooltipContent>
                                                         </Tooltip>
                                                     </TooltipProvider>

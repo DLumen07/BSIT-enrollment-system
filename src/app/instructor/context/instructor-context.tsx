@@ -3,9 +3,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import type { Subject as ScheduleSubject } from '@/app/admin/dashboard/schedule/[blockId]/page';
-import type { Student, Subject } from '@/app/admin/context/admin-context';
+import type { AdminAnnouncement, Student, Subject } from '@/app/admin/context/admin-context';
 import { useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { resolveMediaUrl } from '@/lib/utils';
 
 type InstructorPersonal = {
     id: number;
@@ -22,9 +23,11 @@ type InstructorClass = {
 };
 
 export type GradeTermKey = 'prelim' | 'midterm' | 'final';
+type GradeValue = number | 'INC' | null;
+
 type GradeTerm = {
   term: GradeTermKey;
-  grade: number | null;
+  grade: GradeValue;
   weight: number | null;
   encodedAt: string | null;
 };
@@ -34,7 +37,7 @@ type Grade = {
   subjectCode: string;
   subjectDescription?: string | null;
   units?: number | null;
-  grade: number | null;
+  grade: GradeValue;
   academicYear?: string | null;
   semester?: string | null;
   remark?: string | null;
@@ -49,25 +52,69 @@ type InstructorDataType = {
     schedule: (ScheduleSubject & { block: string })[];
     classes: InstructorClass[];
     grades: StudentGrades;
+  announcements: AdminAnnouncement[];
 };
 
 const TERM_KEYS: GradeTermKey[] = ['prelim', 'midterm', 'final'];
 
-const normalizeGradeTerms = (terms: unknown): Grade['terms'] => {
+const normalizeSubjectCode = (code?: string | null): string =>
+  typeof code === 'string' ? code.trim().toUpperCase() : '';
+
+const isStudentEnrolledInSubject = (
+  student: Student,
+  subjectCode: string,
+  gradesByStudent: StudentGrades,
+  academicYear: string,
+  semester: string,
+) => {
+  const normalizedTarget = normalizeSubjectCode(subjectCode);
+  if (!normalizedTarget) {
+    return false;
+  }
+
+  const enlistedMatch = (student.enlistedSubjects ?? []).some(
+    (subject) => normalizeSubjectCode(subject.code) === normalizedTarget,
+  );
+  if (enlistedMatch) {
+    return true;
+  }
+
+  const studentGrades = gradesByStudent[student.studentId] ?? [];
+  return studentGrades.some((grade) => {
+    if (normalizeSubjectCode(grade.subjectCode) !== normalizedTarget) {
+      return false;
+    }
+    const gradeYear = grade.academicYear ?? academicYear;
+    const gradeSemester = grade.semester ?? semester;
+    return gradeYear === academicYear && gradeSemester === semester;
+  });
+};
+
+const normalizeGradeTerms = (terms: unknown, remark?: string | null): Grade['terms'] => {
   if (!terms || typeof terms !== 'object') {
     return {};
   }
 
   const rawTerms = terms as Record<string, unknown>;
   const normalized: Grade['terms'] = {};
+  const normalizedRemark = typeof remark === 'string' ? remark.trim().toUpperCase() : null;
 
   TERM_KEYS.forEach((key) => {
     const value = rawTerms[key];
     if (value && typeof value === 'object') {
       const entry = value as Record<string, unknown>;
+      const gradeValueRaw = entry.grade ?? null;
+      let gradeValue: GradeValue = null;
+      if (typeof gradeValueRaw === 'number') {
+        gradeValue = gradeValueRaw;
+      } else if (typeof gradeValueRaw === 'string' && gradeValueRaw.trim().toUpperCase() === 'INC') {
+        gradeValue = 'INC';
+      } else if (!entry.hasOwnProperty('grade') && normalizedRemark === 'INC') {
+        gradeValue = 'INC';
+      }
       normalized[key] = {
         term: key,
-        grade: typeof entry.grade === 'number' ? entry.grade : null,
+        grade: gradeValue,
         weight: typeof entry.weight === 'number' ? entry.weight : null,
         encodedAt:
           typeof entry.encodedAt === 'string' && entry.encodedAt.trim() !== ''
@@ -81,17 +128,19 @@ const normalizeGradeTerms = (terms: unknown): Grade['terms'] => {
 };
 
 const buildGradeFromPayload = (payload: unknown): Grade => {
-  if (!payload || typeof payload !== 'object') {
-    return {
-      subjectCode: '',
-      grade: null,
-      terms: {},
-    };
-  }
-
-  const record = payload as Record<string, unknown>;
-
+  const record = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
   const subjectCode = typeof record.subjectCode === 'string' ? record.subjectCode : '';
+  const remarkRaw = typeof record.remark === 'string' ? record.remark.trim() : null;
+  const normalizedRemark = remarkRaw ? remarkRaw.toUpperCase() : null;
+
+  let finalGrade: GradeValue = null;
+  if (typeof record.grade === 'number') {
+    finalGrade = record.grade;
+  } else if (typeof record.grade === 'string' && record.grade.trim().toUpperCase() === 'INC') {
+    finalGrade = 'INC';
+  } else if (normalizedRemark === 'INC') {
+    finalGrade = 'INC';
+  }
 
   return {
     id: typeof record.id === 'number' ? record.id : null,
@@ -99,22 +148,22 @@ const buildGradeFromPayload = (payload: unknown): Grade => {
     subjectDescription:
       typeof record.subjectDescription === 'string' ? record.subjectDescription : null,
     units: typeof record.units === 'number' ? record.units : null,
-    grade: typeof record.grade === 'number' ? record.grade : null,
+    grade: finalGrade,
     academicYear: typeof record.academicYear === 'string' ? record.academicYear : null,
     semester: typeof record.semester === 'string' ? record.semester : null,
-    remark: typeof record.remark === 'string' && record.remark.trim() !== '' ? record.remark : null,
+    remark: remarkRaw,
     gradedAt:
       typeof record.gradedAt === 'string' && record.gradedAt.trim() !== ''
-        ? record.gradedAt
+        ? record.gradedAt.trim()
         : null,
-    terms: normalizeGradeTerms(record.terms ?? null),
+    terms: normalizeGradeTerms(record.terms ?? null, remarkRaw),
   };
 };
 
 interface InstructorContextType {
   instructorData: InstructorDataType | null;
   setInstructorData: React.Dispatch<React.SetStateAction<InstructorDataType | null>>;
-  updateStudentGrade: (studentId: string, subjectCode: string, term: GradeTermKey, grade: number) => Promise<void>;
+  updateStudentGrade: (studentId: string, subjectCode: string, term: GradeTermKey, grade: GradeValue) => Promise<void>;
 }
 
 const InstructorContext = createContext<InstructorContextType | undefined>(undefined);
@@ -141,6 +190,20 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
       if (currentInstructor) {
         const instructorSchedule: (ScheduleSubject & { block: string })[] = [];
         const instructorClasses: InstructorClass[] = [];
+        const currentAcademicYear = adminData.academicYear ?? 'Unspecified AY';
+        const currentSemester = adminData.semester ?? 'Unspecified Semester';
+        const gradesByStudent = adminData.grades ?? {};
+
+        const studentsByBlock = new Map<string, Student[]>();
+        adminData.students.forEach((student) => {
+          const blockName = student.block?.trim();
+          if (!blockName) {
+            return;
+          }
+          const roster = studentsByBlock.get(blockName) ?? [];
+          roster.push(student);
+          studentsByBlock.set(blockName, roster);
+        });
 
         for (const blockName in adminData.schedules) {
             const blockSchedule = adminData.schedules[blockName];
@@ -153,32 +216,43 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
             if (subjectsInBlock.length > 0) {
                  const uniqueSubjects = [...new Map(subjectsInBlock.map(item => [item.code, item])).values()];
                  uniqueSubjects.forEach(subject => {
+                    const roster = studentsByBlock.get(blockName) ?? [];
+                    const eligibleStudents = roster.filter((student) =>
+                      isStudentEnrolledInSubject(student, subject.code, gradesByStudent, currentAcademicYear, currentSemester),
+                    );
                     instructorClasses.push({
                         block: blockName,
                         subjectCode: subject.code,
                         subjectDescription: subject.description,
-                        studentCount: adminData.students.filter(s => s.block === blockName).length,
+                        studentCount: eligibleStudents.length,
                     });
                  });
             }
         }
+
+        const normalizedAvatar = resolveMediaUrl(currentInstructor.avatar ?? null, apiBaseUrl) ?? (currentInstructor.avatar ?? '');
+
+        const relevantAnnouncements = (adminData.announcements ?? []).filter((announcement) =>
+          announcement.audience === 'All' || announcement.audience === 'Instructors'
+        );
 
         setInstructorData({
             personal: {
                 id: currentInstructor.id,
                 name: currentInstructor.name,
                 email: currentInstructor.email,
-                avatar: currentInstructor.avatar,
+            avatar: normalizedAvatar,
             },
             schedule: instructorSchedule,
             classes: instructorClasses,
             grades: adminData.grades,
+            announcements: relevantAnnouncements,
         });
       }
     }
   }, [adminData, instructorEmail]);
 
-  const updateStudentGrade = useCallback(async (studentId: string, subjectCode: string, term: GradeTermKey, grade: number) => {
+  const updateStudentGrade = useCallback(async (studentId: string, subjectCode: string, term: GradeTermKey, grade: GradeValue) => {
     if (!instructorData) {
       throw new Error('Instructor data is not loaded yet.');
     }
@@ -191,7 +265,7 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
       throw new Error('Invalid grading term specified.');
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       studentIdNumber: studentId,
       subjectCode,
       term,
@@ -200,6 +274,10 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
       semester: adminData.semester,
       instructorEmail: instructorData.personal.email,
     };
+
+    if (grade === 'INC') {
+      payload.remark = 'INC';
+    }
 
     const response = await fetch(buildApiUrl('update_student_grade.php'), {
       method: 'POST',
@@ -235,9 +313,13 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
       encodedAt: existingTerm?.encodedAt ?? null,
     };
 
+    const isIncompleteSubmission = grade === 'INC' || normalizedGradePayload.remark?.trim().toUpperCase() === 'INC';
+
     const normalizedGrade: Grade = {
       ...normalizedGradePayload,
       subjectCode: resolvedSubjectCode,
+      grade: isIncompleteSubmission ? 'INC' : normalizedGradePayload.grade,
+      remark: isIncompleteSubmission ? 'INC' : normalizedGradePayload.remark,
       terms: hydratedTerms,
     };
 

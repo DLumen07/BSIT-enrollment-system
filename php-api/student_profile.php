@@ -89,6 +89,34 @@ function safe_string(?string $value): string {
     return $value !== null ? trim($value) : '';
 }
 
+function normalize_profile_status(?string $value): string {
+    $normalized = safe_string($value);
+    if ($normalized === '') {
+        return '';
+    }
+
+    $formatted = ucwords(strtolower($normalized));
+    return $formatted !== '' ? $formatted : $normalized;
+}
+
+function normalize_enrollment_track(?string $value): string {
+    $normalized = safe_string($value);
+    if ($normalized === '') {
+        return 'Regular';
+    }
+
+    return strtolower($normalized) === 'irregular' ? 'Irregular' : 'Regular';
+}
+
+function compose_profile_status_display(string $profileStatus, string $enrollmentTrack): string {
+    $status = $profileStatus !== '' ? $profileStatus : 'Old';
+    if ($status === 'Old' && $enrollmentTrack === 'Irregular') {
+        return 'Old (Irregular)';
+    }
+
+    return $status;
+}
+
 $scheduleColorPalette = [
     'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400',
     'bg-green-200/50 dark:bg-green-800/50 border-green-400',
@@ -102,6 +130,48 @@ $scheduleColorPalette = [
 
 try {
     $conn->set_charset('utf8mb4');
+
+    $ensureAnnouncementsSql = <<<SQL
+CREATE TABLE IF NOT EXISTS announcements (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    audience ENUM('All','Students','Instructors') NOT NULL DEFAULT 'Students',
+    created_by INT(11) DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_announcements_audience (audience),
+    KEY idx_announcements_created_by (created_by),
+    CONSTRAINT fk_announcements_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+SQL;
+
+    if (!$conn->query($ensureAnnouncementsSql)) {
+        throw new Exception('Failed to ensure announcements table exists: ' . $conn->error);
+    }
+
+    $ensureStudentDocumentsSql = <<<SQL
+CREATE TABLE IF NOT EXISTS student_documents (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    student_user_id INT(11) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    status ENUM('Submitted','Pending','Rejected') NOT NULL DEFAULT 'Submitted',
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size BIGINT DEFAULT NULL,
+    file_mime VARCHAR(100) DEFAULT NULL,
+    uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_student_documents_student (student_user_id),
+    CONSTRAINT fk_student_documents_student FOREIGN KEY (student_user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+SQL;
+
+    if (!$conn->query($ensureStudentDocumentsSql)) {
+        throw new Exception('Failed to ensure student_documents table exists: ' . $conn->error);
+    }
 
     $studentSql = 'SELECT sp.*, u.email, u.id AS user_id, b.name AS block_name
                     FROM student_profiles sp
@@ -150,6 +220,7 @@ try {
     }
 
     $middleName = safe_string($studentRow['middle_name'] ?? '');
+    $avatarUrl = safe_string($studentRow['avatar_url'] ?? '');
     $birthdate = safe_string($studentRow['birthdate'] ?? '');
     $sex = safe_string($studentRow['sex'] ?? '');
     $civilStatus = safe_string($studentRow['civil_status'] ?? '');
@@ -165,6 +236,10 @@ try {
     $mothersName = safe_string($studentRow['mothers_name'] ?? '');
     $mothersOccupation = safe_string($studentRow['mothers_occupation'] ?? '');
     $guardiansName = safe_string($studentRow['guardians_name'] ?? '');
+    $guardiansOccupation = safe_string($studentRow['guardians_occupation'] ?? '');
+    $guardiansAddress = safe_string($studentRow['guardians_address'] ?? '');
+    $livingWithFamily = safe_string($studentRow['living_with_family'] ?? '');
+    $boarding = safe_string($studentRow['boarding'] ?? '');
 
     $emergencyContactName = safe_string($studentRow['emergency_contact_name'] ?? '');
     $emergencyContactAddress = safe_string($studentRow['emergency_contact_address'] ?? '');
@@ -175,13 +250,20 @@ try {
     $secondarySchool = safe_string($studentRow['secondary_school'] ?? '');
     $secondaryYearGraduated = safe_string($studentRow['secondary_year_graduated'] ?? '');
     $collegiateSchool = safe_string($studentRow['collegiate_school'] ?? '');
+    $collegiateYearGraduated = safe_string($studentRow['collegiate_year_graduated'] ?? '');
 
     $studentIdNumber = safe_string($studentRow['student_id_number']);
     $course = safe_string($studentRow['course']);
     $yearLevelNumeric = isset($studentRow['year_level']) ? (int) $studentRow['year_level'] : 0;
     $yearLevelLabel = $yearLevelNumeric > 0 ? map_year_level($yearLevelNumeric) : '';
     $blockName = safe_string($studentRow['block_name'] ?? '');
-    $profileStatus = safe_string($studentRow['status'] ?? '');
+    $profileStatusRaw = safe_string($studentRow['status'] ?? '');
+    $profileStatus = normalize_profile_status($profileStatusRaw);
+    if ($profileStatus === '') {
+        $profileStatus = 'Old';
+    }
+    $enrollmentTrack = normalize_enrollment_track($studentRow['enrollment_track'] ?? '');
+    $profileStatusDisplay = compose_profile_status_display($profileStatus, $enrollmentTrack);
     $enrollmentStatus = safe_string($studentRow['enrollment_status'] ?? '');
     $specialization = safe_string($studentRow['specialization'] ?? '');
     $phoneNumber = safe_string($studentRow['phone_number'] ?? '');
@@ -294,8 +376,18 @@ try {
         $gradesById = [];
         while ($gradesResult && ($row = $gradesResult->fetch_assoc())) {
             $gradeId = isset($row['id']) ? (int) $row['id'] : 0;
+            $remarkValue = safe_string($row['remark'] ?? '');
+            $normalizedRemark = strtoupper($remarkValue);
+            $isIncompleteRemark = $normalizedRemark === 'INC' || $normalizedRemark === 'INCOMPLETE';
+            if ($isIncompleteRemark) {
+                $remarkValue = 'INC';
+            }
+            $finalGradeValue = isset($row['grade']) ? (float) $row['grade'] : null;
+            if ($isIncompleteRemark) {
+                $finalGradeValue = 'INC';
+            }
+
             if (!isset($gradesById[$gradeId])) {
-                $remarkValue = safe_string($row['remark'] ?? '');
                 $gradesById[$gradeId] = [
                     'id' => $gradeId,
                     'academicYear' => safe_string($row['academic_year'] ?? ''),
@@ -303,7 +395,7 @@ try {
                     'subjectCode' => safe_string($row['code'] ?? ''),
                     'subjectDescription' => safe_string($row['description'] ?? ''),
                     'units' => isset($row['units']) ? (int) $row['units'] : 0,
-                    'grade' => isset($row['grade']) ? (float) $row['grade'] : null,
+                    'grade' => $finalGradeValue,
                     'remark' => $remarkValue !== '' ? $remarkValue : null,
                     'gradedAt' => isset($row['graded_at']) ? safe_string($row['graded_at']) : null,
                     'terms' => [],
@@ -312,9 +404,13 @@ try {
 
             $termKey = $row['term_key'] ?? null;
             if ($termKey !== null && $termKey !== '') {
+                $termGradeValue = isset($row['term_grade']) ? (float) $row['term_grade'] : null;
+                if ($isIncompleteRemark && $termGradeValue === null) {
+                    $termGradeValue = 'INC';
+                }
                 $gradesById[$gradeId]['terms'][$termKey] = [
                     'term' => safe_string($termKey),
-                    'grade' => isset($row['term_grade']) ? (float) $row['term_grade'] : null,
+                    'grade' => $termGradeValue,
                     'weight' => isset($row['term_weight']) ? (float) $row['term_weight'] : null,
                     'encodedAt' => isset($row['term_encoded_at']) ? safe_string($row['term_encoded_at']) : null,
                 ];
@@ -324,11 +420,152 @@ try {
         $gradesStmt->close();
     }
 
+    $announcements = [];
+    $announcementsSql = "SELECT a.id, a.title, a.message, a.audience, a.created_at, a.created_by,
+                                IFNULL(ap.name, 'System') AS created_by_name,
+                                u.email AS created_by_email
+                         FROM announcements a
+                         LEFT JOIN admin_profiles ap ON ap.user_id = a.created_by
+                         LEFT JOIN users u ON u.id = a.created_by
+                         WHERE a.audience IN ('All', 'Students')
+                         ORDER BY a.created_at DESC
+                         LIMIT 50";
+    if ($result = $conn->query($announcementsSql)) {
+        while ($row = $result->fetch_assoc()) {
+            $createdByName = safe_string($row['created_by_name'] ?? '');
+            $createdByEmail = safe_string($row['created_by_email'] ?? '');
+            $announcements[] = [
+                'id' => isset($row['id']) ? (int) $row['id'] : 0,
+                'title' => safe_string($row['title'] ?? ''),
+                'message' => safe_string($row['message'] ?? ''),
+                'audience' => safe_string($row['audience'] ?? ''),
+                'createdAt' => safe_string($row['created_at'] ?? ''),
+                'createdBy' => [
+                    'id' => isset($row['created_by']) ? (int) $row['created_by'] : null,
+                    'name' => $createdByName !== '' ? $createdByName : 'System',
+                    'email' => $createdByEmail !== '' ? $createdByEmail : null,
+                ],
+            ];
+        }
+        $result->free();
+    }
+
+    $enrollmentHistory = [];
+    $historySql = 'SELECT academic_year, semester, status, notes, created_at
+                   FROM student_enrollment_history
+                   WHERE student_user_id = ?
+                   ORDER BY created_at DESC';
+    $historyStmt = $conn->prepare($historySql);
+    if ($historyStmt) {
+        $historyStmt->bind_param('i', $studentUserId);
+        $historyStmt->execute();
+        $historyResult = $historyStmt->get_result();
+        while ($historyResult && ($row = $historyResult->fetch_assoc())) {
+            $notesValue = safe_string($row['notes'] ?? '');
+            $enrollmentHistory[] = [
+                'academicYear' => safe_string($row['academic_year'] ?? ''),
+                'semester' => safe_string($row['semester'] ?? ''),
+                'status' => safe_string($row['status'] ?? ''),
+                'recordedAt' => safe_string($row['created_at'] ?? ''),
+                'gpa' => null,
+                'notes' => $notesValue !== '' ? $notesValue : null,
+            ];
+        }
+        $historyStmt->close();
+    }
+
+    $documents = [];
+    $documentsSql = 'SELECT id, name, status, file_name, file_path, file_size, file_mime, uploaded_at, updated_at
+                     FROM student_documents
+                     WHERE student_user_id = ?
+                     ORDER BY updated_at DESC';
+    $documentsStmt = $conn->prepare($documentsSql);
+    if ($documentsStmt) {
+        $documentsStmt->bind_param('i', $studentUserId);
+        $documentsStmt->execute();
+        $documentsResult = $documentsStmt->get_result();
+        while ($documentsResult && ($row = $documentsResult->fetch_assoc())) {
+            $statusValue = safe_string($row['status'] ?? '');
+            $mimeValue = safe_string($row['file_mime'] ?? '');
+            $uploadedAtValue = safe_string($row['uploaded_at'] ?? '');
+            $updatedAtValue = safe_string($row['updated_at'] ?? '');
+            $documents[] = [
+                'id' => isset($row['id']) ? (int) $row['id'] : 0,
+                'name' => safe_string($row['name'] ?? ''),
+                'status' => $statusValue !== '' ? $statusValue : 'Submitted',
+                'fileName' => safe_string($row['file_name'] ?? ''),
+                'filePath' => safe_string($row['file_path'] ?? ''),
+                'fileType' => $mimeValue !== '' ? $mimeValue : null,
+                'fileSize' => isset($row['file_size']) ? (int) $row['file_size'] : null,
+                'uploadedAt' => $uploadedAtValue !== '' ? $uploadedAtValue : null,
+                'updatedAt' => $updatedAtValue !== '' ? $updatedAtValue : null,
+            ];
+        }
+        $documentsStmt->close();
+    }
+
+    $currentTerm = [
+        'academicYear' => null,
+        'semester' => null,
+        'enrollmentStartDate' => null,
+        'enrollmentEndDate' => null,
+    ];
+
+    $settingsSql = 'SELECT academic_year, semester, enrollment_start_date, enrollment_end_date FROM system_settings WHERE id = 1 LIMIT 1';
+    if ($settingsResult = $conn->query($settingsSql)) {
+        if ($settingsRow = $settingsResult->fetch_assoc()) {
+            $academicYearSetting = safe_string($settingsRow['academic_year'] ?? '');
+            $semesterSetting = safe_string($settingsRow['semester'] ?? '');
+            $startSetting = safe_string($settingsRow['enrollment_start_date'] ?? '');
+            $endSetting = safe_string($settingsRow['enrollment_end_date'] ?? '');
+
+            $currentTerm = [
+                'academicYear' => $academicYearSetting !== '' ? $academicYearSetting : null,
+                'semester' => $semesterSetting !== '' ? $semesterSetting : null,
+                'enrollmentStartDate' => $startSetting !== '' ? $startSetting : null,
+                'enrollmentEndDate' => $endSetting !== '' ? $endSetting : null,
+            ];
+        }
+        $settingsResult->free();
+    }
+
+    $classmates = [];
+    if ($blockId !== null && $blockId > 0) {
+        $classmatesSql = 'SELECT sp.student_id_number, sp.name, COALESCE(u.email, "") AS email, sp.avatar_url'
+            . ' FROM student_profiles sp'
+            . ' INNER JOIN users u ON u.id = sp.user_id'
+            . ' WHERE sp.block_id = ? AND sp.user_id <> ?'
+            . ' ORDER BY sp.name ASC';
+        $classmatesStmt = $conn->prepare($classmatesSql);
+        if ($classmatesStmt) {
+            $classmatesStmt->bind_param('ii', $blockId, $studentUserId);
+            $classmatesStmt->execute();
+            $classmatesResult = $classmatesStmt->get_result();
+            while ($classmatesResult && ($row = $classmatesResult->fetch_assoc())) {
+                $studentIdValue = safe_string($row['student_id_number'] ?? '');
+                $nameValue = safe_string($row['name'] ?? '');
+                $emailValue = safe_string($row['email'] ?? '');
+                if ($studentIdValue === '' && $nameValue === '') {
+                    continue;
+                }
+                $avatarValue = safe_string($row['avatar_url'] ?? '');
+                $classmates[] = [
+                    'studentId' => $studentIdValue,
+                    'name' => $nameValue,
+                    'email' => $emailValue !== '' ? $emailValue : null,
+                    'avatarUrl' => $avatarValue !== '' ? $avatarValue : null,
+                ];
+            }
+            $classmatesStmt->close();
+        }
+    }
+
     $responseData = [
         'personal' => [
             'firstName' => $firstName,
             'lastName' => $lastName,
             'middleName' => $middleName,
+            'avatarUrl' => $avatarUrl !== '' ? $avatarUrl : null,
             'birthdate' => $birthdate,
             'sex' => $sex,
             'civilStatus' => $civilStatus,
@@ -350,11 +587,15 @@ try {
             'mothersName' => $mothersName,
             'mothersOccupation' => $mothersOccupation,
             'guardiansName' => $guardiansName,
+            'guardiansOccupation' => $guardiansOccupation,
+            'guardiansAddress' => $guardiansAddress,
         ],
         'additional' => [
             'emergencyContactName' => $emergencyContactName,
             'emergencyContactAddress' => $emergencyContactAddress,
             'emergencyContactNumber' => $emergencyContactNumber,
+            'livingWithFamily' => $livingWithFamily,
+            'boarding' => $boarding,
         ],
         'education' => [
             'elementarySchool' => $elementarySchool,
@@ -362,6 +603,7 @@ try {
             'secondarySchool' => $secondarySchool,
             'secondaryYearGraduated' => $secondaryYearGraduated,
             'collegiateSchool' => $collegiateSchool,
+            'collegiateYearGraduated' => $collegiateYearGraduated,
         ],
         'academic' => [
             'studentId' => $studentIdNumber,
@@ -369,6 +611,8 @@ try {
             'yearLevel' => $yearLevelLabel,
             'block' => $blockName,
             'status' => $profileStatus,
+            'statusDisplay' => $profileStatusDisplay,
+            'enrollmentTrack' => $enrollmentTrack,
             'enrollmentStatus' => $enrollmentStatus,
             'dateEnrolled' => '',
             'specialization' => $specialization,
@@ -379,6 +623,13 @@ try {
         ],
         'schedule' => $schedule,
         'grades' => $grades,
+        'announcements' => $announcements,
+        'records' => [
+            'enrollmentHistory' => $enrollmentHistory,
+            'documents' => $documents,
+        ],
+        'classmates' => $classmates,
+        'currentTerm' => $currentTerm,
     ];
 
     echo json_encode([

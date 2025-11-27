@@ -10,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useStudent, type StudentDataType } from '@/app/student/context/student-context';
+import { useStudent, type StudentDataType, normalizeStudentPayload } from '@/app/student/context/student-context';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { resolveMediaUrl } from '@/lib/utils';
 
 
 const InfoField = ({ label, value }: { label: string; value?: string | null }) => {
@@ -149,6 +150,8 @@ export default function StudentProfilePage() {
     );
     const [saving, setSaving] = React.useState(false);
     const [formError, setFormError] = React.useState<string | null>(null);
+    const [avatarUploading, setAvatarUploading] = React.useState(false);
+    const avatarInputRef = React.useRef<HTMLInputElement | null>(null);
 
     React.useEffect(() => {
         if (studentData) {
@@ -174,6 +177,103 @@ export default function StudentProfilePage() {
             ...prev,
             [field]: value,
         }));
+    };
+
+    const handleAvatarButtonClick = () => {
+        avatarInputRef.current?.click();
+    };
+
+    const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!studentData) {
+            return;
+        }
+
+        const file = event.target.files?.[0] ?? null;
+        event.target.value = '';
+        if (!file) {
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            toast({
+                title: 'Invalid file',
+                description: 'Please choose a valid image file.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        const maxSizeBytes = 5 * 1024 * 1024;
+        if (file.size > maxSizeBytes) {
+            toast({
+                title: 'File too large',
+                description: 'Please pick an image smaller than 5 MB.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setAvatarUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('role', 'student');
+            if (studentData.contact.email) {
+                formData.append('email', studentData.contact.email);
+            }
+            if (studentData.academic.studentId) {
+                formData.append('student_id', studentData.academic.studentId);
+            }
+            formData.append('avatar', file);
+
+            const response = await fetch(`${apiBaseUrl}/upload_avatar.php`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include',
+            });
+
+            let payload: any = null;
+            try {
+                payload = await response.json();
+            } catch {
+                payload = null;
+            }
+
+            if (!response.ok || !payload || payload.status !== 'success') {
+                const message = payload?.message ?? `Failed to upload avatar (status ${response.status}).`;
+                throw new Error(message);
+            }
+
+            const newAvatarUrl = resolveMediaUrl(payload.data?.avatarUrl ?? payload.avatarUrl ?? null, apiBaseUrl);
+            if (!newAvatarUrl) {
+                throw new Error('Server did not return a valid avatar URL.');
+            }
+
+            setStudentData(prev => {
+                if (!prev) {
+                    return prev;
+                }
+                return {
+                    ...prev,
+                    personal: {
+                        ...prev.personal,
+                        avatarUrl: newAvatarUrl,
+                    },
+                };
+            });
+
+            toast({
+                title: 'Profile photo updated',
+                description: 'Your new avatar is ready.',
+            });
+        } catch (error) {
+            toast({
+                title: 'Upload failed',
+                description: error instanceof Error ? error.message : 'Unable to upload avatar right now.',
+                variant: 'destructive',
+            });
+        } finally {
+            setAvatarUploading(false);
+        }
     };
 
     const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -265,10 +365,11 @@ export default function StudentProfilePage() {
                 throw new Error(message);
             }
 
-            setStudentData(result.data);
-            setEditableData(createEditableDataFromStudent(result.data));
+            const normalizedProfile = normalizeStudentPayload(result.data, apiBaseUrl);
+            setStudentData(normalizedProfile);
+            setEditableData(createEditableDataFromStudent(normalizedProfile));
 
-            const updatedEmail = result.data.contact.email ?? '';
+            const updatedEmail = normalizedProfile.contact.email ?? '';
             if (typeof window !== 'undefined' && updatedEmail !== '') {
                 window.sessionStorage.setItem('bsit_student_email', updatedEmail);
             }
@@ -327,13 +428,32 @@ export default function StudentProfilePage() {
                             <CardContent className="pt-6 flex flex-col items-center text-center">
                                 <div className="relative mb-4">
                                     <Avatar className="h-24 w-24">
-                                        <AvatarImage src="https://picsum.photos/seed/student-avatar/128/128" alt="Student Name" data-ai-hint="person avatar"/>
+                                        <AvatarImage
+                                            src={studentData.personal.avatarUrl ?? undefined}
+                                            alt={`${studentData.personal.firstName} avatar`}
+                                            data-ai-hint="person avatar"
+                                        />
                                         <AvatarFallback>{avatarInitials}</AvatarFallback>
                                     </Avatar>
-                                    <Button variant="ghost" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-background hover:bg-muted">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-background hover:bg-muted"
+                                        onClick={handleAvatarButtonClick}
+                                        disabled={avatarUploading}
+                                        aria-busy={avatarUploading}
+                                    >
                                         <Camera className="h-4 w-4" />
-                                        <span className="sr-only">Change photo</span>
+                                        <span className="sr-only">{avatarUploading ? 'Uploading photo' : 'Change photo'}</span>
                                     </Button>
+                                    <input
+                                        ref={avatarInputRef}
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        className="hidden"
+                                        onChange={handleAvatarFileChange}
+                                    />
                                 </div>
                                 <h2 className="text-xl font-semibold">{`${studentData.personal.firstName} ${studentData.personal.lastName}`}</h2>
                                 <p className="text-sm text-muted-foreground">{studentData.academic.studentId}</p>
@@ -349,7 +469,8 @@ export default function StudentProfilePage() {
                                 <InfoField label="Course" value={studentData.academic.course} />
                                 <InfoField label="Year Level" value={studentData.academic.yearLevel} />
                                 <InfoField label="Block" value={studentData.academic.block} />
-                                <InfoField label="Status" value={studentData.academic.status} />
+                                <InfoField label="Status" value={studentData.academic.statusDisplay || studentData.academic.status} />
+                                <InfoField label="Track" value={studentData.academic.enrollmentTrack} />
                             </CardContent>
                         </Card>
                     </div>

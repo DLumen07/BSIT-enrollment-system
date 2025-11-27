@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once 'db_config.php';
+require_once __DIR__ . '/subject_prerequisite_utils.php';
 
 header('Content-Type: application/json');
 
@@ -114,6 +115,29 @@ function normalize_year_key(int $yearLevel): string
     }
 }
 
+function normalize_semester_value($value): ?string
+{
+    if ($value === null) {
+        return null;
+    }
+
+    if (is_string($value)) {
+        $normalized = strtolower(trim($value));
+
+        if ($normalized === '1st-sem' || $normalized === '1st sem' || $normalized === 'first' || $normalized === 'first semester') {
+            return '1st-sem';
+        }
+        if ($normalized === '2nd-sem' || $normalized === '2nd sem' || $normalized === 'second' || $normalized === 'second semester') {
+            return '2nd-sem';
+        }
+        if ($normalized === 'summer' || $normalized === 'midyear' || $normalized === 'mid-year') {
+            return 'summer';
+        }
+    }
+
+    return null;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, [
         'status' => 'error',
@@ -135,6 +159,11 @@ $yearLevelValue = $input['yearLevel'] ?? null;
 $yearKey = isset($input['yearKey']) ? trim((string) $input['yearKey']) : null;
 $prerequisiteCodeRaw = isset($input['prerequisite']) ? trim((string) $input['prerequisite']) : '';
 $prerequisiteCode = $prerequisiteCodeRaw !== '' ? strtoupper($prerequisiteCodeRaw) : '';
+$prerequisiteListRaw = $input['prerequisites'] ?? null;
+$prerequisiteCodes = normalize_prerequisite_codes($prerequisiteListRaw, $prerequisiteCode !== '' ? $prerequisiteCode : null);
+$semesterRaw = $input['semester'] ?? null;
+$semesterValue = normalize_semester_value($semesterRaw);
+$semester = $semesterValue ?? '1st-sem';
 
 $yearLevel = parse_year_level($yearLevelValue, $yearKey);
 
@@ -163,6 +192,20 @@ if ($yearLevel === null || $yearLevel < 1) {
     respond(400, [
         'status' => 'error',
         'message' => 'A valid year level is required.',
+    ], isset($conn) ? $conn : null);
+}
+
+if ($semesterValue === null && $semesterRaw !== null) {
+    respond(400, [
+        'status' => 'error',
+        'message' => 'Semester selection is invalid.',
+    ], isset($conn) ? $conn : null);
+}
+
+if (!empty($prerequisiteCodes) && in_array($code, $prerequisiteCodes, true)) {
+    respond(400, [
+        'status' => 'error',
+        'message' => 'A subject cannot list itself as a prerequisite.',
     ], isset($conn) ? $conn : null);
 }
 
@@ -212,29 +255,19 @@ try {
     }
     $duplicateStmt->close();
 
-    $prerequisiteId = null;
-    if ($prerequisiteCode !== '') {
-        $prereqStmt = $conn->prepare('SELECT id FROM subjects WHERE code = ? LIMIT 1');
-        if (!$prereqStmt) {
-            throw new Exception('Failed to prepare prerequisite lookup: ' . $conn->error);
-        }
-        $prereqStmt->bind_param('s', $prerequisiteCode);
-        $prereqStmt->execute();
-        $prereqStmt->bind_result($prereqId);
-        if ($prereqStmt->fetch()) {
-            $prerequisiteId = (int) $prereqId;
-        }
-        $prereqStmt->close();
-
-        if ($prerequisiteId === null) {
+    $prerequisiteIds = [];
+    if (!empty($prerequisiteCodes)) {
+        try {
+            $prerequisiteIds = resolve_prerequisite_ids($conn, $prerequisiteCodes);
+        } catch (InvalidArgumentException $validationError) {
             $conn->rollback();
             respond(400, [
                 'status' => 'error',
-                'message' => 'The specified prerequisite subject was not found.',
+                'message' => $validationError->getMessage(),
             ], $conn);
         }
 
-        if ($prerequisiteId === $subjectId) {
+        if (in_array($subjectId, $prerequisiteIds, true)) {
             $conn->rollback();
             respond(400, [
                 'status' => 'error',
@@ -243,22 +276,26 @@ try {
         }
     }
 
-    if ($prerequisiteId === null) {
-        $updateStmt = $conn->prepare('UPDATE subjects SET code = ?, description = ?, units = ?, prerequisite_id = NULL, year_level = ? WHERE id = ?');
+    $primaryPrerequisiteId = $prerequisiteIds[0] ?? null;
+
+    if ($primaryPrerequisiteId === null) {
+        $updateStmt = $conn->prepare('UPDATE subjects SET code = ?, description = ?, units = ?, semester = ?, prerequisite_id = NULL, year_level = ? WHERE id = ?');
         if (!$updateStmt) {
             throw new Exception('Failed to prepare subject update: ' . $conn->error);
         }
-        $updateStmt->bind_param('ssiii', $code, $description, $units, $yearLevel, $subjectId);
+        $updateStmt->bind_param('ssisii', $code, $description, $units, $semester, $yearLevel, $subjectId);
     } else {
-        $updateStmt = $conn->prepare('UPDATE subjects SET code = ?, description = ?, units = ?, prerequisite_id = ?, year_level = ? WHERE id = ?');
+        $updateStmt = $conn->prepare('UPDATE subjects SET code = ?, description = ?, units = ?, semester = ?, prerequisite_id = ?, year_level = ? WHERE id = ?');
         if (!$updateStmt) {
             throw new Exception('Failed to prepare subject update: ' . $conn->error);
         }
-        $updateStmt->bind_param('ssiiii', $code, $description, $units, $prerequisiteId, $yearLevel, $subjectId);
+        $updateStmt->bind_param('ssisiii', $code, $description, $units, $semester, $primaryPrerequisiteId, $yearLevel, $subjectId);
     }
 
     $updateStmt->execute();
     $updateStmt->close();
+
+    sync_subject_prerequisites($conn, $subjectId, $prerequisiteIds);
 
     $conn->commit();
     $transactionStarted = false;
@@ -272,9 +309,11 @@ try {
                 'code' => $code,
                 'description' => $description,
                 'units' => $units,
-                'prerequisite' => $prerequisiteCode !== '' ? $prerequisiteCode : null,
+                'prerequisite' => $prerequisiteCodes[0] ?? null,
+                'prerequisites' => $prerequisiteCodes,
                 'yearLevel' => $yearLevel,
                 'yearKey' => normalize_year_key($yearLevel),
+                'semester' => $semester,
             ],
         ],
     ], $conn);

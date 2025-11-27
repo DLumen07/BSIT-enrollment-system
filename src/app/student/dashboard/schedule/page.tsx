@@ -2,7 +2,8 @@
 'use client';
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Clock, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStudent } from '@/app/student/context/student-context';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -40,6 +41,7 @@ const formatTime = (timeStr: string) => {
 
 export default function StudentSchedulePage() {
     const { studentData } = useStudent();
+    const scheduleContainerRef = React.useRef<HTMLDivElement>(null);
     if (!studentData) {
         return (
             <div className="flex h-full min-h-[300px] w-full items-center justify-center">
@@ -50,16 +52,39 @@ export default function StudentSchedulePage() {
 
     const studentSchedule = studentData.schedule ?? [];
     const block = studentData.academic?.block ?? 'N/A';
+    const academicYear = '2024-2025';
+    const semesterLabel = '1st Semester';
+
+    const handlePrint = () => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        window.print();
+    };
 
     return (
+        <>
         <main className="flex-1 p-4 sm:p-6 space-y-6">
-            <div className="space-y-0.5">
-                <h1 className="text-2xl font-bold tracking-tight">My Class Schedule</h1>
-                <p className="text-muted-foreground">
-                    A.Y. 2024-2025, 1st Semester | Block: {block}
-                </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-0.5">
+                    <h1 className="text-2xl font-bold tracking-tight">My Class Schedule</h1>
+                    <p className="text-muted-foreground">
+                        A.Y. {academicYear}, {semesterLabel} | Block: {block}
+                    </p>
+                </div>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrint}
+                    disabled={studentSchedule.length === 0}
+                    className="no-print gap-2"
+                >
+                    <Printer className="h-4 w-4" />
+                    Print schedule
+                </Button>
             </div>
-            <Card className="rounded-xl">
+            <Card className="rounded-xl" id="student-schedule-print" ref={scheduleContainerRef}>
                 <CardContent className="p-4 overflow-x-auto">
                      <div className="grid grid-cols-[4rem_repeat(6,1fr)] min-w-[800px]">
                         {/* Top-left empty cell */}
@@ -85,21 +110,22 @@ export default function StudentSchedulePage() {
                             
                             {/* Scheduled Subjects */}
                             {studentSchedule.map(subject => {
-                                const top = timeToPosition(subject.startTime);
-                                const height = timeToPosition(subject.endTime) - top;
                                 const dayIndex = days.indexOf(subject.day);
-                                
                                 if (dayIndex === -1) return null;
+
+                                const startPosition = timeToPosition(subject.startTime);
+                                const endPosition = timeToPosition(subject.endTime);
+                                const blockHeight = Math.max(endPosition - startPosition, 1.5);
 
                                 return (
                                     <div
                                         key={subject.id}
                                         className={cn("absolute rounded-lg p-2 border text-xs overflow-hidden m-px", subject.color)}
                                         style={{
-                                            top: `${top}rem`,
-                                            height: `${height}rem`,
+                                            top: `${startPosition}rem`,
+                                            height: `${blockHeight}rem`,
                                             left: `calc(${(100 / 6) * dayIndex}% + 2px)`,
-                                            width: `calc(${(100 / 6)}% - 4px)`,
+                                            width: `calc(${(100 / 6)}% - 4px)`
                                         }}
                                     >
                                         <p className="font-bold truncate">{subject.code}</p>
@@ -119,5 +145,30 @@ export default function StudentSchedulePage() {
                 </CardContent>
             </Card>
         </main>
+        <style jsx global>{`
+            @media print {
+                body {
+                    background: #fff;
+                }
+                body * {
+                    visibility: hidden;
+                }
+                #student-schedule-print,
+                #student-schedule-print * {
+                    visibility: visible;
+                }
+                #student-schedule-print {
+                    position: absolute;
+                    inset: 0;
+                    width: 100%;
+                    box-shadow: none !important;
+                    border: none !important;
+                }
+                #student-schedule-print .no-print {
+                    display: none !important;
+                }
+            }
+        `}</style>
+        </>
     );
 }

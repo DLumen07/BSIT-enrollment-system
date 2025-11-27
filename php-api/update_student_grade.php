@@ -77,7 +77,22 @@ if (!is_array($payload)) {
 
 $studentIdNumber = trim((string)($payload['studentIdNumber'] ?? ''));
 $subjectCode = strtoupper(trim((string)($payload['subjectCode'] ?? '')));
-$gradeValue = (float)($payload['grade'] ?? 0);
+$gradeInput = $payload['grade'] ?? null;
+$isIncompleteSubmission = false;
+$gradeValue = null;
+
+if (is_string($gradeInput)) {
+    $normalizedGradeInput = strtoupper(trim($gradeInput));
+    if (in_array($normalizedGradeInput, ['INC', 'INCOMPLETE'], true)) {
+        $isIncompleteSubmission = true;
+    }
+}
+
+if (!$isIncompleteSubmission && $gradeInput !== null) {
+    if (is_numeric($gradeInput)) {
+        $gradeValue = (float)$gradeInput;
+    }
+}
 $academicYear = trim((string)($payload['academicYear'] ?? ''));
 $semester = trim((string)($payload['semester'] ?? ''));
 $termInput = strtolower(trim((string)($payload['term'] ?? '')));
@@ -92,11 +107,13 @@ if ($studentIdNumber === '' || $subjectCode === '') {
     ], isset($conn) ? $conn : null);
 }
 
-if (!is_numeric($payload['grade'] ?? null) || $gradeValue < 1.0 || $gradeValue > 5.0) {
-    respond(422, [
-        'status' => 'error',
-        'message' => 'Grade must be a numeric value between 1.0 and 5.0.',
-    ], isset($conn) ? $conn : null);
+if (!$isIncompleteSubmission) {
+    if (!is_numeric($gradeInput) || $gradeValue === null || $gradeValue < 1.0 || $gradeValue > 5.0) {
+        respond(422, [
+            'status' => 'error',
+            'message' => 'Grade must be a numeric value between 1.0 and 5.0.',
+        ], isset($conn) ? $conn : null);
+    }
 }
 
 if ($termInput === '') {
@@ -126,6 +143,9 @@ if ($semester === '') {
 }
 
 $manualRemark = $remarkInput !== '' ? $remarkInput : null;
+if ($manualRemark === null && $isIncompleteSubmission) {
+    $manualRemark = 'INC';
+}
 
 try {
     if (!isset($conn) || !($conn instanceof mysqli)) {
@@ -220,17 +240,31 @@ try {
 
     $termTimestamp = date('Y-m-d H:i:s');
 
-    $termUpsertStmt = $conn->prepare('INSERT INTO student_grade_terms (student_grade_id, term, grade, weight, encoded_at) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade), weight = VALUES(weight), encoded_at = VALUES(encoded_at)');
-    if (!$termUpsertStmt) {
-        throw new Exception('Failed to prepare term grade statement: ' . $conn->error);
-    }
-    $termUpsertStmt->bind_param('isdds', $studentGradeId, $termKey, $gradeValue, $termWeight, $termTimestamp);
-    if (!$termUpsertStmt->execute()) {
-        $error = $termUpsertStmt->error;
+    if ($isIncompleteSubmission) {
+        $deleteTermStmt = $conn->prepare('DELETE FROM student_grade_terms WHERE student_grade_id = ? AND term = ?');
+        if (!$deleteTermStmt) {
+            throw new Exception('Failed to prepare incomplete term reset statement: ' . $conn->error);
+        }
+        $deleteTermStmt->bind_param('is', $studentGradeId, $termKey);
+        if (!$deleteTermStmt->execute()) {
+            $error = $deleteTermStmt->error;
+            $deleteTermStmt->close();
+            throw new Exception('Failed to reset term grade for incomplete status: ' . $error);
+        }
+        $deleteTermStmt->close();
+    } else {
+        $termUpsertStmt = $conn->prepare('INSERT INTO student_grade_terms (student_grade_id, term, grade, weight, encoded_at) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade), weight = VALUES(weight), encoded_at = VALUES(encoded_at)');
+        if (!$termUpsertStmt) {
+            throw new Exception('Failed to prepare term grade statement: ' . $conn->error);
+        }
+        $termUpsertStmt->bind_param('isdds', $studentGradeId, $termKey, $gradeValue, $termWeight, $termTimestamp);
+        if (!$termUpsertStmt->execute()) {
+            $error = $termUpsertStmt->error;
+            $termUpsertStmt->close();
+            throw new Exception('Failed to record term grade: ' . $error);
+        }
         $termUpsertStmt->close();
-        throw new Exception('Failed to record term grade: ' . $error);
     }
-    $termUpsertStmt->close();
 
     $termsStmt = $conn->prepare('SELECT term, grade, weight, encoded_at FROM student_grade_terms WHERE student_grade_id = ?');
     if (!$termsStmt) {
@@ -287,6 +321,10 @@ try {
         } else {
             $finalRemark = 'In Progress';
         }
+
+        if ($isIncompleteSubmission) {
+            $finalRemark = 'INC';
+        }
     }
 
     $gradedAtValue = $finalGrade !== null ? date('Y-m-d H:i:s') : null;
@@ -335,12 +373,28 @@ try {
         ], $conn);
     }
 
+    $remarkResponse = isset($gradeRow['remark']) ? trim((string) $gradeRow['remark']) : null;
+    $normalizedRemarkResponse = $remarkResponse !== null ? strtoupper($remarkResponse) : null;
+    $isIncompleteRemarkResponse = $normalizedRemarkResponse === 'INC' || $normalizedRemarkResponse === 'INCOMPLETE';
+    if ($isIncompleteRemarkResponse) {
+        $remarkResponse = 'INC';
+    }
+
+    $gradeValueResponse = isset($gradeRow['grade']) ? (float) $gradeRow['grade'] : null;
+    if ($isIncompleteRemarkResponse) {
+        $gradeValueResponse = 'INC';
+    }
+
     $termsPayload = [];
     foreach ($termWeights as $key => $defaultWeight) {
         $termData = $termsByKey[$key] ?? null;
+        $termGradeValue = $termData && $termData['grade'] !== null ? (float) $termData['grade'] : null;
+        if ($isIncompleteRemarkResponse && $termGradeValue === null) {
+            $termGradeValue = 'INC';
+        }
         $termsPayload[$key] = [
             'term' => $key,
-            'grade' => $termData && $termData['grade'] !== null ? (float) $termData['grade'] : null,
+            'grade' => $termGradeValue,
             'weight' => $termData && $termData['weight'] !== null ? (float) $termData['weight'] : (float) $defaultWeight,
             'encodedAt' => $termData['encodedAt'] ?? null,
         ];
@@ -354,10 +408,10 @@ try {
             'subjectCode' => $gradeRow['code'],
             'subjectDescription' => $gradeRow['description'],
             'units' => isset($gradeRow['units']) ? (int) $gradeRow['units'] : 0,
-            'grade' => isset($gradeRow['grade']) ? (float) $gradeRow['grade'] : null,
+            'grade' => $gradeValueResponse,
             'academicYear' => $gradeRow['academic_year'],
             'semester' => $gradeRow['semester'],
-            'remark' => $gradeRow['remark'],
+            'remark' => $remarkResponse,
             'gradedAt' => $gradeRow['graded_at'],
             'terms' => $termsPayload,
         ],

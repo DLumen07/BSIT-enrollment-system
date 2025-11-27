@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Eye, EyeOff } from 'lucide-react';
 import { useInstructor } from '@/app/instructor/context/instructor-context';
+import { useAdmin } from '@/app/admin/context/admin-context';
+import { resolveMediaUrl } from '@/lib/utils';
+
+const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+    .replace(/\/+$/, '')
+    .trim();
 
 const InfoField = ({ label, value }: { label: string; value?: string | null }) => {
     if (!value) return null;
@@ -25,6 +31,9 @@ const InfoField = ({ label, value }: { label: string; value?: string | null }) =
 export default function InstructorSettingsPage() {
     const { toast } = useToast();
     const { instructorData, setInstructorData } = useInstructor();
+    const { setAdminData } = useAdmin();
+    const avatarInputRef = useRef<HTMLInputElement | null>(null);
+    const [avatarUploading, setAvatarUploading] = useState(false);
     
     const [email, setEmail] = useState('');
     
@@ -45,6 +54,106 @@ export default function InstructorSettingsPage() {
     if (!instructorData) return <div>Loading...</div>;
     
     const { personal } = instructorData;
+
+    const handleAvatarUploadClick = () => {
+        avatarInputRef.current?.click();
+    };
+
+    const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!instructorData) {
+            return;
+        }
+
+        const file = event.target.files?.[0] ?? null;
+        event.target.value = '';
+        if (!file) {
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            toast({
+                title: 'Invalid file',
+                description: 'Please select an image file (PNG, JPG, or WEBP).',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast({
+                title: 'File too large',
+                description: 'Please choose an image smaller than 5 MB.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setAvatarUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('role', 'instructor');
+            formData.append('id', String(instructorData.personal.id));
+            formData.append('avatar', file);
+
+            const response = await fetch(`${API_BASE_URL}/upload_avatar.php`, {
+                method: 'POST',
+                credentials: 'include',
+                body: formData,
+            });
+
+            let payload: any = null;
+            try {
+                payload = await response.json();
+            } catch {
+                payload = null;
+            }
+
+            if (!response.ok || !payload || payload.status !== 'success') {
+                const message = payload?.message ?? `Failed to upload avatar (status ${response.status}).`;
+                throw new Error(message);
+            }
+
+            const avatarUrl = resolveMediaUrl(payload.data?.avatarUrl ?? payload.avatarUrl ?? null, API_BASE_URL);
+            if (!avatarUrl) {
+                throw new Error('Server returned an invalid avatar URL.');
+            }
+
+            setInstructorData(prev => {
+                if (!prev) {
+                    return prev;
+                }
+                return {
+                    ...prev,
+                    personal: {
+                        ...prev.personal,
+                        avatar: avatarUrl,
+                    },
+                };
+            });
+
+            setAdminData(prev => {
+                if (!prev) {
+                    return prev;
+                }
+                const updatedInstructors = prev.instructors.map((instructor) =>
+                    instructor.id === instructorData.personal.id
+                        ? { ...instructor, avatar: avatarUrl }
+                        : instructor,
+                );
+                return { ...prev, instructors: updatedInstructors };
+            });
+
+            toast({ title: 'Profile photo updated', description: 'Your avatar has been refreshed.' });
+        } catch (error) {
+            toast({
+                title: 'Upload failed',
+                description: error instanceof Error ? error.message : 'Unable to upload avatar right now.',
+                variant: 'destructive',
+            });
+        } finally {
+            setAvatarUploading(false);
+        }
+    };
 
     const handleSaveChanges = () => {
         if (!setInstructorData) return;
@@ -113,10 +222,25 @@ export default function InstructorSettingsPage() {
                                     <AvatarImage src={personal.avatar} alt={personal.name} data-ai-hint="person avatar"/>
                                     <AvatarFallback>{personal.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <Button variant="ghost" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-background hover:bg-muted">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-background hover:bg-muted"
+                                    onClick={handleAvatarUploadClick}
+                                    disabled={avatarUploading}
+                                    aria-busy={avatarUploading}
+                                >
                                     <Camera className="h-4 w-4" />
-                                    <span className="sr-only">Change photo</span>
+                                    <span className="sr-only">{avatarUploading ? 'Uploading photo' : 'Change photo'}</span>
                                 </Button>
+                                <input
+                                    ref={avatarInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    className="hidden"
+                                    onChange={handleAvatarFileChange}
+                                />
                             </div>
                             <h2 className="text-xl font-semibold">{personal.name}</h2>
                             <p className="text-sm text-muted-foreground">{personal.email}</p>

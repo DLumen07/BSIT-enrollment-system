@@ -80,7 +80,7 @@ const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedS
                     <ChevronDown className="h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-full rounded-xl">
+            <DropdownMenuContent className="w-full rounded-xl max-h-72 overflow-y-auto">
                 <DropdownMenuLabel>Available Subjects</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {availableSubjects.map(subject => (

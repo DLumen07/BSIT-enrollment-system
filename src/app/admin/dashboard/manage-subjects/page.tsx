@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Card,
     CardContent,
@@ -19,7 +19,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -32,8 +32,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     DropdownMenu,
+    DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -47,7 +50,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAdmin, Subject } from '../../context/admin-context';
+import { useAdmin, Subject, SemesterValue } from '../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 
 type ApiSuccessResponse<T = unknown> = {
@@ -60,7 +63,8 @@ type SubjectFormState = {
     code: string;
     description: string;
     units: string;
-    prerequisite: string;
+    prerequisites: string[];
+    semester: SemesterValue;
 };
 
 const yearLevels = [
@@ -81,13 +85,195 @@ const defaultFormState: SubjectFormState = {
     code: '',
     description: '',
     units: '',
-    prerequisite: 'none',
+    prerequisites: [],
+    semester: '1st-sem',
+};
+
+const fallbackSemesterOptions: Array<{ value: SemesterValue; label: string }> = [
+    { value: '1st-sem', label: '1st Semester' },
+    { value: '2nd-sem', label: '2nd Semester' },
+    { value: 'summer', label: 'Summer' },
+];
+
+const coerceSemesterValue = (value?: string | null): SemesterValue => {
+    return value === '1st-sem' || value === '2nd-sem' || value === 'summer' ? value : '1st-sem';
+};
+
+const semesterOrder: Record<SemesterValue, number> = {
+    '1st-sem': 1,
+    '2nd-sem': 2,
+    summer: 3,
+};
+
+const normalizeSelectedPrerequisites = (values: string[]): string[] => {
+    if (!Array.isArray(values) || values.length === 0) {
+        return [];
+    }
+
+    return Array.from(
+        new Set(
+            values
+                .map((code) => (typeof code === 'string' ? code.trim().toUpperCase() : ''))
+                .filter((code) => code !== ''),
+        ),
+    );
+};
+
+type PrerequisiteMultiSelectProps = {
+    fieldId: string;
+    options: Subject[];
+    selectedCodes: string[];
+    onToggle: (code: string, shouldSelect: boolean) => void;
+    onClear: () => void;
+    emptyMessage?: string;
+};
+
+const PrerequisiteMultiSelect = ({
+    fieldId,
+    options,
+    selectedCodes,
+    onToggle,
+    onClear,
+    emptyMessage = 'No eligible prerequisite subjects are available.',
+}: PrerequisiteMultiSelectProps) => {
+    const hasSelection = selectedCodes.length > 0;
+    const triggerLabel = hasSelection ? `${selectedCodes.length} selected` : 'Select prerequisites';
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between">
+                <Label htmlFor={fieldId}>Prerequisites</Label>
+                {hasSelection && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs text-muted-foreground"
+                        onClick={onClear}
+                    >
+                        Clear
+                    </Button>
+                )}
+            </div>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        id={fieldId}
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between rounded-xl"
+                        disabled={options.length === 0}
+                    >
+                        <span className="truncate text-left">{options.length === 0 ? emptyMessage : triggerLabel}</span>
+                        <ChevronDown className="ml-2 h-4 w-4 flex-shrink-0" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[min(360px,90vw)] max-h-48 overflow-y-auto rounded-xl">
+                    {options.length === 0 ? (
+                        <DropdownMenuItem disabled className="text-sm text-muted-foreground">
+                            {emptyMessage}
+                        </DropdownMenuItem>
+                    ) : (
+                        <>
+                            <DropdownMenuLabel>Select prerequisites</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {options.map((subjectOption) => {
+                                const isChecked = selectedCodes.includes(subjectOption.code);
+                                return (
+                                    <DropdownMenuCheckboxItem
+                                        key={subjectOption.id}
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => onToggle(subjectOption.code, checked === true)}
+                                        onSelect={(event) => event.preventDefault()}
+                                    >
+                                        <div className="flex flex-col">
+                                            <span className="font-medium leading-tight">{subjectOption.code}</span>
+                                            <span className="text-xs text-muted-foreground">{subjectOption.description}</span>
+                                        </div>
+                                    </DropdownMenuCheckboxItem>
+                                );
+                            })}
+                        </>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    );
 };
 
 export default function ManageSubjectsPage() {
     const { adminData, refreshAdminData } = useAdmin();
-    const { subjects } = adminData;
+    const { subjects, semester: systemSemester, semesterOptions: adminSemesterOptions } = adminData;
     const subjectsByYear = subjects;
+
+    const normalizedSemesterOptions = useMemo(() => {
+        const source = Array.isArray(adminSemesterOptions) && adminSemesterOptions.length > 0
+            ? adminSemesterOptions.map((option) => ({
+                value: coerceSemesterValue(option.value),
+                label: option.label,
+            }))
+            : fallbackSemesterOptions;
+
+        const deduped = new Map<SemesterValue, { value: SemesterValue; label: string }>();
+        source.forEach((option) => {
+            if (!deduped.has(option.value)) {
+                deduped.set(option.value, option);
+            }
+        });
+
+        return Array.from(deduped.values());
+    }, [adminSemesterOptions]);
+
+    const semesterLabelMap = useMemo(() => {
+        const base: Record<SemesterValue, string> = {
+            '1st-sem': '1st Semester',
+            '2nd-sem': '2nd Semester',
+            summer: 'Summer',
+        };
+
+        normalizedSemesterOptions.forEach((option) => {
+            base[option.value] = option.label;
+        });
+
+        return base;
+    }, [normalizedSemesterOptions]);
+
+    const [activeSemester, setActiveSemester] = useState<SemesterValue>(() => {
+        if (normalizedSemesterOptions.length === 0) {
+            return '1st-sem';
+        }
+        const preferred = coerceSemesterValue(systemSemester);
+        const hasPreferred = normalizedSemesterOptions.some((option) => option.value === preferred);
+        return hasPreferred ? preferred : normalizedSemesterOptions[0].value;
+    });
+    const [hasUserSelectedSemester, setHasUserSelectedSemester] = useState(false);
+
+    useEffect(() => {
+        setHasUserSelectedSemester(false);
+    }, [systemSemester]);
+
+    useEffect(() => {
+        if (normalizedSemesterOptions.length === 0) {
+            return;
+        }
+
+        const preferred = coerceSemesterValue(systemSemester);
+        const hasPreferred = normalizedSemesterOptions.some((option) => option.value === preferred);
+        const activeIsValid = normalizedSemesterOptions.some((option) => option.value === activeSemester);
+
+        if (!activeIsValid) {
+            const fallback = hasPreferred ? preferred : normalizedSemesterOptions[0].value;
+            if (activeSemester !== fallback) {
+                setActiveSemester(fallback);
+            }
+            setHasUserSelectedSemester(false);
+            return;
+        }
+
+        if (!hasUserSelectedSemester && hasPreferred && activeSemester !== preferred) {
+            setActiveSemester(preferred);
+        }
+    }, [systemSemester, normalizedSemesterOptions, activeSemester, hasUserSelectedSemester]);
 
     const { toast } = useToast();
 
@@ -97,12 +283,34 @@ export default function ManageSubjectsPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     const [currentSubject, setCurrentSubject] = useState<Subject | null>(null);
+    const [currentSubjectYearKey, setCurrentSubjectYearKey] = useState<string>(yearLevels[0].value);
     const [deleteInput, setDeleteInput] = useState('');
-    const [addForm, setAddForm] = useState<SubjectFormState>(defaultFormState);
-    const [editForm, setEditForm] = useState<SubjectFormState>(defaultFormState);
+    const [addForm, setAddForm] = useState<SubjectFormState>(() => ({
+        ...defaultFormState,
+        semester: coerceSemesterValue(systemSemester),
+    }));
+    const [editForm, setEditForm] = useState<SubjectFormState>(() => ({
+        ...defaultFormState,
+        semester: coerceSemesterValue(systemSemester),
+    }));
     const [busyAction, setBusyAction] = useState<string | null>(null);
 
     const isBusy = useCallback((action: string) => busyAction === action, [busyAction]);
+
+    const handleSemesterFilterChange = useCallback((value: string) => {
+        setHasUserSelectedSemester(true);
+        setActiveSemester(coerceSemesterValue(value));
+    }, []);
+
+    useEffect(() => {
+        if (isAddDialogOpen) {
+            return;
+        }
+        setAddForm((prev) => ({
+            ...prev,
+            semester: coerceSemesterValue(systemSemester),
+        }));
+    }, [systemSemester, isAddDialogOpen]);
 
     const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
         .replace(/\/$/, '')
@@ -143,48 +351,153 @@ export default function ManageSubjectsPage() {
         [buildApiUrl],
     );
 
-    const prerequisiteOptions = useMemo(() => {
-        const activeYearIndex = yearLevels.findIndex((yl) => yl.value === activeTab);
+    const buildPrerequisiteOptions = useCallback((targetYearKey: string, targetSemester: SemesterValue, excludeSubjectId: number | null) => {
+        const resolvedYearIndex = yearLevels.findIndex((yl) => yl.value === targetYearKey);
+        const activeYearIndex = resolvedYearIndex === -1 ? yearLevels.length - 1 : resolvedYearIndex;
 
-        if (activeYearIndex <= 0) {
-            return [] as Subject[];
+        const options: Subject[] = [];
+
+        for (let index = 0; index <= activeYearIndex; index++) {
+            const yearKey = yearLevels[index]?.value;
+            if (!yearKey) {
+                continue;
+            }
+
+            const subjectsForYear = subjectsByYear[yearKey] ?? [];
+
+            subjectsForYear.forEach((subject) => {
+                if (excludeSubjectId !== null && subject.id === excludeSubjectId) {
+                    return;
+                }
+
+                if (index === activeYearIndex) {
+                    const subjectOrder = semesterOrder[subject.semester] ?? 1;
+                    const targetOrder = semesterOrder[targetSemester] ?? 1;
+
+                    if (subjectOrder >= targetOrder) {
+                        return;
+                    }
+                }
+
+                options.push(subject);
+            });
         }
 
-        const previousYearKey = yearLevels[activeYearIndex - 1]?.value;
-        if (!previousYearKey) {
-            return [] as Subject[];
-        }
+        return options;
+    }, [subjectsByYear]);
 
-        const candidates = [...(subjectsByYear[previousYearKey] ?? [])];
+    const addPrerequisiteOptions = useMemo(
+        () => buildPrerequisiteOptions(activeTab, addForm.semester, null),
+        [buildPrerequisiteOptions, activeTab, addForm.semester],
+    );
 
-        if (currentSubject) {
-            return candidates.filter((subject) => subject.id !== currentSubject.id);
-        }
+    const editSubjectId = currentSubject?.id ?? null;
+    const editPrerequisiteYearKey = currentSubjectYearKey || activeTab;
 
-        return candidates;
-    }, [activeTab, currentSubject, subjectsByYear]);
+    const editPrerequisiteOptions = useMemo(
+        () => buildPrerequisiteOptions(editPrerequisiteYearKey, editForm.semester, editSubjectId),
+        [buildPrerequisiteOptions, editPrerequisiteYearKey, editForm.semester, editSubjectId],
+    );
+
+    useEffect(() => {
+        setAddForm((prev) => {
+            const allowedCodes = new Set(addPrerequisiteOptions.map((subject) => subject.code));
+            const filtered = prev.prerequisites.filter((code) => allowedCodes.has(code));
+            if (filtered.length === prev.prerequisites.length) {
+                return prev;
+            }
+            return { ...prev, prerequisites: filtered };
+        });
+    }, [addPrerequisiteOptions]);
+
+    useEffect(() => {
+        setEditForm((prev) => {
+            const allowedCodes = new Set(editPrerequisiteOptions.map((subject) => subject.code));
+            const filtered = prev.prerequisites.filter((code) => allowedCodes.has(code));
+            if (filtered.length === prev.prerequisites.length) {
+                return prev;
+            }
+            return { ...prev, prerequisites: filtered };
+        });
+    }, [editPrerequisiteOptions]);
 
     const openAddDialog = useCallback(() => {
         setCurrentSubject(null);
-        setAddForm(defaultFormState);
+        setAddForm({
+            ...defaultFormState,
+            semester: activeSemester,
+        });
         setIsAddDialogOpen(true);
-    }, []);
+    }, [activeSemester]);
+
+    const findYearKeyForSubject = useCallback((subjectId: number | null) => {
+        if (subjectId === null) {
+            return null;
+        }
+        for (const { value } of yearLevels) {
+            const subjectsForYear = subjectsByYear[value] ?? [];
+            if (subjectsForYear.some((entry) => entry.id === subjectId)) {
+                return value;
+            }
+        }
+        return null;
+    }, [subjectsByYear]);
 
     const openEditDialog = useCallback((subject: Subject) => {
         setCurrentSubject(subject);
+        const normalizedPrereqs = Array.isArray(subject.prerequisites) && subject.prerequisites.length > 0
+            ? subject.prerequisites
+            : (subject.prerequisite ? [subject.prerequisite] : []);
         setEditForm({
             code: subject.code ?? '',
             description: subject.description ?? '',
             units: String(subject.units ?? ''),
-            prerequisite: subject.prerequisite ?? 'none',
+            prerequisites: normalizedPrereqs,
+            semester: subject.semester ?? '1st-sem',
         });
+        const owningYearKey = findYearKeyForSubject(subject.id) ?? activeTab;
+        setCurrentSubjectYearKey(owningYearKey);
         setIsEditDialogOpen(true);
-    }, []);
+    }, [findYearKeyForSubject, activeTab]);
 
     const openDeleteDialog = useCallback((subject: Subject) => {
         setCurrentSubject(subject);
         setDeleteInput('');
         setIsDeleteDialogOpen(true);
+    }, []);
+
+    const handleAddPrerequisiteToggle = useCallback((code: string, shouldSelect: boolean) => {
+        setAddForm((prev) => {
+            const exists = prev.prerequisites.includes(code);
+            if (shouldSelect) {
+                if (exists) {
+                    return prev;
+                }
+                return { ...prev, prerequisites: [...prev.prerequisites, code] };
+            }
+
+            if (!exists) {
+                return prev;
+            }
+            return { ...prev, prerequisites: prev.prerequisites.filter((entry) => entry !== code) };
+        });
+    }, []);
+
+    const handleEditPrerequisiteToggle = useCallback((code: string, shouldSelect: boolean) => {
+        setEditForm((prev) => {
+            const exists = prev.prerequisites.includes(code);
+            if (shouldSelect) {
+                if (exists) {
+                    return prev;
+                }
+                return { ...prev, prerequisites: [...prev.prerequisites, code] };
+            }
+
+            if (!exists) {
+                return prev;
+            }
+            return { ...prev, prerequisites: prev.prerequisites.filter((entry) => entry !== code) };
+        });
     }, []);
 
     const handleAddSubject = useCallback(async () => {
@@ -222,6 +535,9 @@ export default function ManageSubjectsPage() {
         }
 
         const uppercaseCode = normalizedCode.toUpperCase();
+        const selectedSemester = coerceSemesterValue(addForm.semester);
+
+        const normalizedPrerequisites = normalizeSelectedPrerequisites(addForm.prerequisites);
 
         const payload = {
             code: uppercaseCode,
@@ -229,7 +545,9 @@ export default function ManageSubjectsPage() {
             units: numericUnits,
             yearLevel: yearLevelNumber,
             yearKey: activeTab,
-            prerequisite: addForm.prerequisite !== 'none' ? addForm.prerequisite : null,
+            prerequisite: normalizedPrerequisites[0] ?? null,
+            prerequisites: normalizedPrerequisites,
+            semester: selectedSemester,
         };
 
         const actionKey = 'create-subject';
@@ -244,10 +562,13 @@ export default function ManageSubjectsPage() {
             await refreshAdminData();
             toast({
                 title: 'Subject created',
-                description: `${uppercaseCode} has been added to ${yearLevels.find((yl) => yl.value === activeTab)?.label}.`,
+                description: `${uppercaseCode} has been added to ${yearLevels.find((yl) => yl.value === activeTab)?.label} (${semesterLabelMap[selectedSemester]}).`,
             });
             setIsAddDialogOpen(false);
-            setAddForm(defaultFormState);
+            setAddForm({
+                ...defaultFormState,
+                semester: activeSemester,
+            });
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to create subject.';
             toast({
@@ -299,6 +620,9 @@ export default function ManageSubjectsPage() {
         }
 
         const uppercaseCode = normalizedCode.toUpperCase();
+        const selectedSemester = coerceSemesterValue(editForm.semester);
+
+        const normalizedPrerequisites = normalizeSelectedPrerequisites(editForm.prerequisites);
 
         const payload = {
             subjectId: currentSubject.id,
@@ -307,7 +631,9 @@ export default function ManageSubjectsPage() {
             units: numericUnits,
             yearLevel: yearLevelNumber,
             yearKey: activeTab,
-            prerequisite: editForm.prerequisite !== 'none' ? editForm.prerequisite : null,
+            prerequisite: normalizedPrerequisites[0] ?? null,
+            prerequisites: normalizedPrerequisites,
+            semester: selectedSemester,
         };
 
         const actionKey = `update-subject-${currentSubject.id}`;
@@ -322,11 +648,14 @@ export default function ManageSubjectsPage() {
             await refreshAdminData();
             toast({
                 title: 'Subject updated',
-                description: `${uppercaseCode} has been updated successfully.`,
+                description: `${uppercaseCode} has been updated for ${semesterLabelMap[selectedSemester]}.`,
             });
             setIsEditDialogOpen(false);
             setCurrentSubject(null);
-            setEditForm(defaultFormState);
+            setEditForm({
+                ...defaultFormState,
+                semester: activeSemester,
+            });
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to update subject.';
             toast({
@@ -380,15 +709,32 @@ export default function ManageSubjectsPage() {
     return (
         <>
             <main className="flex-1 space-y-6 p-4 sm:p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="space-y-0.5">
                         <h1 className="text-2xl font-bold tracking-tight">Manage Subjects</h1>
                         <p className="text-muted-foreground">Add, edit, or remove subjects for each year level.</p>
                     </div>
-                    <Button onClick={openAddDialog} className="rounded-full" disabled={isBusy('create-subject')}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Subject
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="semester-filter" className="hidden text-sm font-medium text-muted-foreground sm:block">Semester</Label>
+                            <Select value={activeSemester} onValueChange={handleSemesterFilterChange}>
+                                <SelectTrigger id="semester-filter" className="w-[170px] rounded-full">
+                                    <SelectValue placeholder="Select semester" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                    {normalizedSemesterOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button onClick={openAddDialog} className="rounded-full" disabled={isBusy('create-subject')}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Subject
+                        </Button>
+                    </div>
                 </div>
 
                 <Card className="rounded-xl">
@@ -403,7 +749,7 @@ export default function ManageSubjectsPage() {
                             </TabsList>
 
                             {yearLevels.map((yl) => {
-                                const subjectsForYear = subjectsByYear[yl.value] ?? [];
+                                const subjectsForYear = (subjectsByYear[yl.value] ?? []).filter((subject) => subject.semester === activeSemester);
                                 return (
                                     <TabsContent key={yl.value} value={yl.value}>
                                         <div className="mt-4 rounded-lg border">
@@ -413,7 +759,8 @@ export default function ManageSubjectsPage() {
                                                         <TableHead>Subject Code</TableHead>
                                                         <TableHead>Description</TableHead>
                                                         <TableHead>Units</TableHead>
-                                                        <TableHead>Prerequisite</TableHead>
+                                                        <TableHead>Semester</TableHead>
+                                                        <TableHead>Prerequisites</TableHead>
                                                         <TableHead className="text-right">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
@@ -424,7 +771,8 @@ export default function ManageSubjectsPage() {
                                                                 <TableCell className="font-medium">{subject.code}</TableCell>
                                                                 <TableCell>{subject.description}</TableCell>
                                                                 <TableCell>{subject.units}</TableCell>
-                                                                <TableCell>{subject.prerequisite ?? 'None'}</TableCell>
+                                                                <TableCell>{semesterLabelMap[subject.semester]}</TableCell>
+                                                                <TableCell>{subject.prerequisites?.length ? subject.prerequisites.join(', ') : 'None'}</TableCell>
                                                                 <TableCell className="text-right">
                                                                     <DropdownMenu>
                                                                         <DropdownMenuTrigger asChild>
@@ -453,7 +801,7 @@ export default function ManageSubjectsPage() {
                                                         ))
                                                     ) : (
                                                         <TableRow>
-                                                            <TableCell colSpan={5} className="h-24 text-center">
+                                                            <TableCell colSpan={6} className="h-24 text-center">
                                                                 No subjects created for this year level.
                                                             </TableCell>
                                                         </TableRow>
@@ -474,7 +822,10 @@ export default function ManageSubjectsPage() {
                 onOpenChange={(open) => {
                     setIsAddDialogOpen(open);
                     if (!open) {
-                        setAddForm(defaultFormState);
+                        setAddForm({
+                            ...defaultFormState,
+                            semester: activeSemester,
+                        });
                     }
                 }}
             >
@@ -531,24 +882,33 @@ export default function ManageSubjectsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="prerequisite">Prerequisite</Label>
+                                <Label htmlFor="semester">Semester</Label>
                                 <Select
-                                    value={addForm.prerequisite}
-                                    onValueChange={(value) => setAddForm((prev) => ({ ...prev, prerequisite: value }))}
+                                    value={addForm.semester}
+                                    onValueChange={(value) => setAddForm((prev) => ({
+                                        ...prev,
+                                        semester: coerceSemesterValue(value),
+                                    }))}
                                 >
-                                    <SelectTrigger id="prerequisite" className="rounded-xl">
-                                        <SelectValue placeholder="Select a prerequisite" />
+                                    <SelectTrigger id="semester" className="rounded-xl">
+                                        <SelectValue placeholder="Select semester" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
-                                        <SelectItem value="none">None</SelectItem>
-                                        {prerequisiteOptions.map((subjectOption) => (
-                                            <SelectItem key={subjectOption.id} value={subjectOption.code}>
-                                                {subjectOption.code} - {subjectOption.description}
+                                        {normalizedSemesterOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <PrerequisiteMultiSelect
+                                fieldId="add-prerequisites"
+                                options={addPrerequisiteOptions}
+                                selectedCodes={addForm.prerequisites}
+                                onToggle={handleAddPrerequisiteToggle}
+                                onClear={() => setAddForm((prev) => ({ ...prev, prerequisites: [] }))}
+                            />
                         </div>
                     </form>
                     <DialogFooter>
@@ -578,7 +938,11 @@ export default function ManageSubjectsPage() {
                     setIsEditDialogOpen(open);
                     if (!open) {
                         setCurrentSubject(null);
-                        setEditForm(defaultFormState);
+                        setCurrentSubjectYearKey(activeTab);
+                        setEditForm({
+                            ...defaultFormState,
+                            semester: activeSemester,
+                        });
                     }
                 }}
             >
@@ -630,24 +994,33 @@ export default function ManageSubjectsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-prerequisite">Prerequisite</Label>
+                                <Label htmlFor="edit-semester">Semester</Label>
                                 <Select
-                                    value={editForm.prerequisite}
-                                    onValueChange={(value) => setEditForm((prev) => ({ ...prev, prerequisite: value }))}
+                                    value={editForm.semester}
+                                    onValueChange={(value) => setEditForm((prev) => ({
+                                        ...prev,
+                                        semester: coerceSemesterValue(value),
+                                    }))}
                                 >
-                                    <SelectTrigger id="edit-prerequisite" className="rounded-xl">
-                                        <SelectValue placeholder="Select a prerequisite" />
+                                    <SelectTrigger id="edit-semester" className="rounded-xl">
+                                        <SelectValue placeholder="Select semester" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
-                                        <SelectItem value="none">None</SelectItem>
-                                        {prerequisiteOptions.map((subjectOption) => (
-                                            <SelectItem key={subjectOption.id} value={subjectOption.code}>
-                                                {subjectOption.code} - {subjectOption.description}
+                                        {normalizedSemesterOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <PrerequisiteMultiSelect
+                                fieldId="edit-prerequisites"
+                                options={editPrerequisiteOptions}
+                                selectedCodes={editForm.prerequisites}
+                                onToggle={handleEditPrerequisiteToggle}
+                                onClear={() => setEditForm((prev) => ({ ...prev, prerequisites: [] }))}
+                            />
                         </div>
                     </form>
                     <DialogFooter>

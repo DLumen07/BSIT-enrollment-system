@@ -1,6 +1,6 @@
 
 'use client';
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AdminUser, initialAdminUsers, roles as adminRoles } from '../data/admin-users';
 import { Subject as ScheduleSubject } from '../dashboard/schedule/[blockId]/page';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -736,6 +736,82 @@ const mergeTeachingAssignments = (
     });
 };
 
+const TEACHING_ASSIGNMENTS_STORAGE_KEY = 'bsit_teaching_assignments_history_v1';
+
+const normalizeStoredTeachingAssignment = (entry: Partial<TeachingAssignment> | null | undefined): TeachingAssignment | null => {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const sanitize = (value: unknown, fallback = ''): string => {
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            return trimmed === '' ? fallback : trimmed;
+        }
+        return fallback;
+    };
+
+    const subjectCode = sanitize(entry.subjectCode);
+    if (subjectCode === '') {
+        return null;
+    }
+
+    const academicYear = sanitize(entry.academicYear, 'Unspecified AY');
+    const semester = sanitize(entry.semester, 'Unspecified Semester');
+    const block = sanitize(entry.block, 'Unassigned');
+    const subjectDescription = sanitize(entry.subjectDescription, subjectCode);
+    const instructorName = sanitize(entry.instructorName, 'TBA');
+    const instructorEmail = sanitize(entry.instructorEmail) || null;
+    const instructorId = typeof entry.instructorId === 'number' && Number.isFinite(entry.instructorId)
+        ? entry.instructorId
+        : null;
+
+    const normalizedId = typeof entry.id === 'string' && entry.id.trim() !== ''
+        ? entry.id.trim()
+        : `${academicYear}|${semester}|${block}|${subjectCode}|${instructorEmail ?? instructorName}`;
+
+    return {
+        id: normalizedId,
+        academicYear,
+        semester,
+        block,
+        subjectCode,
+        subjectDescription,
+        instructorId,
+        instructorName,
+        instructorEmail,
+    } satisfies TeachingAssignment;
+};
+
+const readTeachingAssignmentsFromStorage = (): TeachingAssignment[] => {
+    if (typeof window === 'undefined') {
+        return [];
+    }
+
+    try {
+        const raw = window.localStorage.getItem(TEACHING_ASSIGNMENTS_STORAGE_KEY);
+        if (!raw) {
+            return [];
+        }
+
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+
+        return parsed
+            .map((entry) => normalizeStoredTeachingAssignment(entry))
+            .filter((assignment): assignment is TeachingAssignment => Boolean(assignment));
+    } catch (error) {
+        console.warn('[AdminProvider] Failed to read teaching assignments history from storage.', error);
+        return [];
+    }
+};
+
+const computeAssignmentsSignature = (assignments: TeachingAssignment[] = []): string => (
+    assignments.map((assignment) => assignment.id).join('|')
+);
+
 const normalizeApplications = (entries?: BackendApplicationRecord[]): Application[] => {
     if (!Array.isArray(entries)) {
         return [];
@@ -1117,10 +1193,68 @@ interface AdminContextType {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
-        const [adminData, setAdminData] = useState<AdminDataType>(createAdminDataFromPayload(null));
+    const teachingAssignmentsHistoryRef = useRef<TeachingAssignment[]>([]);
+    const historySignatureRef = useRef<string>('');
+    const historyLoadedRef = useRef<boolean>(false);
+
+    const [adminData, rawSetAdminData] = useState<AdminDataType>(createAdminDataFromPayload(null));
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [hasRestoredUser, setHasRestoredUser] = useState(false);
+
+    const storeAssignmentsHistory = useCallback((assignments: TeachingAssignment[]) => {
+        teachingAssignmentsHistoryRef.current = assignments;
+        const signature = computeAssignmentsSignature(assignments);
+        if (signature === historySignatureRef.current) {
+            return;
+        }
+        historySignatureRef.current = signature;
+        if (!historyLoadedRef.current || typeof window === 'undefined') {
+            return;
+        }
+        try {
+            window.localStorage.setItem(TEACHING_ASSIGNMENTS_STORAGE_KEY, JSON.stringify(assignments));
+        } catch (storageError) {
+            console.warn('[AdminProvider] Unable to persist teaching assignments history.', storageError);
+        }
+    }, []);
+
+    const consolidateTeachingAssignments = useCallback((
+        nextAssignments?: TeachingAssignment[],
+        prevAssignments?: TeachingAssignment[],
+    ): TeachingAssignment[] => {
+        const combined = mergeTeachingAssignments(prevAssignments, nextAssignments);
+        const withHistory = mergeTeachingAssignments(teachingAssignmentsHistoryRef.current, combined);
+        storeAssignmentsHistory(withHistory);
+        return withHistory;
+    }, [storeAssignmentsHistory]);
+
+    const setAdminDataWithHistory = useCallback((updater: React.SetStateAction<AdminDataType>) => {
+        rawSetAdminData((prev) => {
+            const nextState = typeof updater === 'function'
+                ? (updater as (current: AdminDataType) => AdminDataType)(prev)
+                : updater;
+            const consolidatedAssignments = consolidateTeachingAssignments(nextState.teachingAssignments, prev.teachingAssignments);
+            if (nextState.teachingAssignments !== consolidatedAssignments) {
+                return { ...nextState, teachingAssignments: consolidatedAssignments };
+            }
+            return nextState;
+        });
+    }, [consolidateTeachingAssignments, rawSetAdminData]);
+
+    useEffect(() => {
+        const storedHistory = readTeachingAssignmentsFromStorage();
+        if (storedHistory.length > 0) {
+            teachingAssignmentsHistoryRef.current = storedHistory;
+            historySignatureRef.current = computeAssignmentsSignature(storedHistory);
+            rawSetAdminData((prev) => ({
+                ...prev,
+                teachingAssignments: mergeTeachingAssignments(prev.teachingAssignments, storedHistory),
+            }));
+        }
+        historyLoadedRef.current = true;
+        storeAssignmentsHistory(teachingAssignmentsHistoryRef.current);
+    }, [storeAssignmentsHistory, rawSetAdminData]);
 
   useEffect(() => {
         let isMounted = true;
@@ -1131,9 +1265,8 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
                 if (!isMounted) {
                     return;
                 }
-                setAdminData((prev) => ({
+                setAdminDataWithHistory((prev) => ({
                     ...data,
-                    teachingAssignments: mergeTeachingAssignments(prev?.teachingAssignments, data.teachingAssignments),
                     currentUser: prev.currentUser ?? data.currentUser ?? null,
                 }));
                 setError(null);
@@ -1145,7 +1278,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
                 const message = err instanceof Error ? err.message : 'Unexpected error while fetching admin data.';
                 console.error('[AdminProvider] fetchAdminData failed:', message);
                 setError(message);
-                setAdminData(createAdminDataFromPayload(null));
+                setAdminDataWithHistory(createAdminDataFromPayload(null));
             })
             .finally(() => {
                 if (isMounted) {
@@ -1157,23 +1290,26 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
             isMounted = false;
             controller.abort();
         };
-  }, []);
+  }, [setAdminDataWithHistory]);
 
     const refreshAdminData = useCallback(async () => {
         try {
             const data = await fetchAdminDataFromBackend();
-            setAdminData((prev) => ({
-                ...data,
-                teachingAssignments: mergeTeachingAssignments(prev?.teachingAssignments, data.teachingAssignments),
-                currentUser: prev.currentUser ?? data.currentUser ?? null,
-            }));
-            return data;
+            let resolved: AdminDataType = data;
+            setAdminDataWithHistory((prev) => {
+                resolved = {
+                    ...data,
+                    currentUser: prev.currentUser ?? data.currentUser ?? null,
+                };
+                return resolved;
+            });
+            return resolved;
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Unexpected error while fetching admin data.';
             console.error('[AdminProvider] refreshAdminData failed:', message);
             throw err;
         }
-    }, []);
+    }, [setAdminDataWithHistory]);
 
 
     useEffect(() => {
@@ -1191,7 +1327,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
                         ...user,
                         avatar: normalizeAvatarValue((user as AdminUser).avatar),
                     } as AdminUser;
-                    setAdminData(prev => {
+                    setAdminDataWithHistory(prev => {
                         if (prev.currentUser && prev.currentUser.email === normalizedUser.email) {
                             return prev;
                         }
@@ -1204,7 +1340,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
         } finally {
             setHasRestoredUser(true);
         }
-    }, [loading, hasRestoredUser]);
+    }, [loading, hasRestoredUser, setAdminDataWithHistory]);
 
   if (loading) {
     return (
@@ -1218,7 +1354,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
     return (
-        <AdminContext.Provider value={{ adminData, setAdminData, loading, error, refreshAdminData }}>
+        <AdminContext.Provider value={{ adminData, setAdminData: setAdminDataWithHistory, loading, error, refreshAdminData }}>
             {children}
         </AdminContext.Provider>
     );

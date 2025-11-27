@@ -46,6 +46,22 @@ INSERT INTO `admin_profiles` (`user_id`, `name`, `avatar_url`, `admin_role`) VAL
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `system_settings`
+--
+
+CREATE TABLE `system_settings` (
+  `id` int(11) NOT NULL,
+  `academic_year` varchar(20) NOT NULL,
+  `semester` varchar(20) NOT NULL,
+  `enrollment_start_date` date DEFAULT NULL,
+  `enrollment_end_date` date DEFAULT NULL,
+  `phased_schedule_json` json DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `blocks`
 --
 
@@ -151,11 +167,39 @@ CREATE TABLE `schedules` (
 INSERT INTO `schedules` (`id`, `block_id`, `subject_id`, `instructor_id`, `day_of_week`, `start_time`, `end_time`, `room`) VALUES
 (6, 1, 10, 7, 'Monday', '08:00:00', '11:30:00', 'Room 101');
 
+
+
 -- --------------------------------------------------------
 
 --
--- Table structure for table `student_grades`
+-- Table structure for table `teaching_assignment_history`
 --
+
+CREATE TABLE `teaching_assignment_history` (
+  `id` int(11) NOT NULL,
+  `schedule_id` int(11) DEFAULT NULL,
+  `block_id` int(11) DEFAULT NULL,
+  `block_name` varchar(255) NOT NULL,
+  `course` enum('BSIT','ACT') DEFAULT NULL,
+  `specialization` enum('AP','DD') DEFAULT NULL,
+  `year_level` int(11) DEFAULT NULL,
+  `subject_id` int(11) DEFAULT NULL,
+  `subject_code` varchar(50) NOT NULL,
+  `subject_description` varchar(255) DEFAULT NULL,
+  `units` int(11) DEFAULT NULL,
+  `day_of_week` enum('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday') DEFAULT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `room` varchar(255) DEFAULT NULL,
+  `instructor_user_id` int(11) DEFAULT NULL,
+  `instructor_name` varchar(255) DEFAULT NULL,
+  `instructor_email` varchar(255) DEFAULT NULL,
+  `academic_year` varchar(20) NOT NULL,
+  `semester` varchar(20) NOT NULL,
+  `captured_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
 
 CREATE TABLE `student_grades` (
   `id` int(11) NOT NULL,
@@ -166,15 +210,11 @@ CREATE TABLE `student_grades` (
   `semester` varchar(255) NOT NULL,
   `instructor_user_id` int(11) DEFAULT NULL,
   `remark` enum('Passed','Failed','Incomplete','Dropped','In Progress') DEFAULT 'In Progress',
-  `graded_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 -- --------------------------------------------------------
 
 --
--- Table structure for table `student_grade_terms`
 --
-
+-- Table structure for table `student_grade_terms`
 CREATE TABLE `student_grade_terms` (
   `id` int(11) NOT NULL,
   `student_grade_id` int(11) NOT NULL,
@@ -182,6 +222,75 @@ CREATE TABLE `student_grade_terms` (
   `grade` decimal(4,2) DEFAULT NULL,
   `weight` decimal(4,2) DEFAULT NULL,
   `encoded_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_enrollment_history`
+--
+
+CREATE TABLE `student_enrollment_history` (
+  `id` int(11) NOT NULL,
+  `student_user_id` int(11) NOT NULL,
+  `academic_year` varchar(20) NOT NULL,
+  `semester` varchar(20) NOT NULL,
+  `status` enum('Pending','Enrolled','Not Enrolled','Graduated','Hold') NOT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `academic_rollover_logs`
+--
+
+CREATE TABLE `academic_rollover_logs` (
+  `id` int(11) NOT NULL,
+  `triggered_by_user_id` int(11) DEFAULT NULL,
+  `closing_academic_year` varchar(20) NOT NULL,
+  `closing_semester` varchar(20) NOT NULL,
+  `next_academic_year` varchar(20) NOT NULL,
+  `next_semester` varchar(20) NOT NULL,
+  `promoted_count` int(11) NOT NULL DEFAULT 0,
+  `held_count` int(11) NOT NULL DEFAULT 0,
+  `graduated_count` int(11) NOT NULL DEFAULT 0,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `academic_rollover_actions`
+--
+
+CREATE TABLE `academic_rollover_actions` (
+  `id` int(11) NOT NULL,
+  `rollover_log_id` int(11) NOT NULL,
+  `student_user_id` int(11) NOT NULL,
+  `previous_year_level` int(11) NOT NULL,
+  `new_year_level` int(11) NOT NULL,
+  `action` enum('promoted','held','graduated') NOT NULL,
+  `reason` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `announcements`
+--
+
+CREATE TABLE `announcements` (
+  `id` int(11) NOT NULL,
+  `title` varchar(150) NOT NULL,
+  `message` text NOT NULL,
+  `audience` enum('All','Students','Instructors') NOT NULL DEFAULT 'Students',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -198,6 +307,7 @@ CREATE TABLE `student_profiles` (
   `course` enum('BSIT','ACT') NOT NULL,
   `year_level` int(11) NOT NULL,
   `enrollment_status` enum('Enrolled','Not Enrolled','Graduated') NOT NULL DEFAULT 'Not Enrolled',
+  `promotion_hold_reason` text DEFAULT NULL,
   `block_id` int(11) DEFAULT NULL,
   `specialization` enum('AP','DD') DEFAULT NULL,
   `sex` enum('Male','Female') DEFAULT NULL,
@@ -211,6 +321,7 @@ CREATE TABLE `student_profiles` (
   `dialect` varchar(255) DEFAULT NULL,
   `civil_status` enum('Single','Married','Widowed','Separated') DEFAULT NULL,
   `status` enum('New','Old','Transferee') DEFAULT NULL,
+  `enrollment_track` enum('Regular','Irregular') NOT NULL DEFAULT 'Regular',
   `fathers_name` varchar(255) DEFAULT NULL,
   `fathers_occupation` varchar(255) DEFAULT NULL,
   `mothers_name` varchar(255) DEFAULT NULL,
@@ -239,10 +350,10 @@ CREATE TABLE `student_profiles` (
 -- Dumping data for table `student_profiles`
 --
 
-INSERT INTO `student_profiles` (`user_id`, `student_id_number`, `name`, `avatar_url`, `course`, `year_level`, `enrollment_status`, `block_id`, `specialization`, `sex`, `phone_number`, `middle_name`, `birthdate`, `current_address`, `permanent_address`, `nationality`, `religion`, `dialect`, `civil_status`, `status`, `fathers_name`, `fathers_occupation`, `mothers_name`, `mothers_occupation`, `guardians_name`, `guardians_occupation`, `guardians_address`, `living_with_family`, `boarding`, `differently_abled`, `disability`, `minority_group`, `minority`, `elementary_school`, `elem_year_graduated`, `secondary_school`, `secondary_year_graduated`, `collegiate_school`, `collegiate_year_graduated`, `emergency_contact_name`, `emergency_contact_address`, `emergency_contact_number`) VALUES
-(3, '24-00-0002', 'Bob Williams', NULL, 'BSIT', 3, 'Enrolled', 2, 'DD', 'Male', '09123456780', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Old', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(13, '25-00-0001', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(14, '25-00-0002', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `student_profiles` (`user_id`, `student_id_number`, `name`, `avatar_url`, `course`, `year_level`, `enrollment_status`, `block_id`, `specialization`, `sex`, `phone_number`, `middle_name`, `birthdate`, `current_address`, `permanent_address`, `nationality`, `religion`, `dialect`, `civil_status`, `status`, `enrollment_track`, `fathers_name`, `fathers_occupation`, `mothers_name`, `mothers_occupation`, `guardians_name`, `guardians_occupation`, `guardians_address`, `living_with_family`, `boarding`, `differently_abled`, `disability`, `minority_group`, `minority`, `elementary_school`, `elem_year_graduated`, `secondary_school`, `secondary_year_graduated`, `collegiate_school`, `collegiate_year_graduated`, `emergency_contact_name`, `emergency_contact_address`, `emergency_contact_number`) VALUES
+(3, '24-00-0002', 'Bob Williams', NULL, 'BSIT', 3, 'Enrolled', 2, 'DD', 'Male', '09123456780', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Old', 'Irregular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(13, '25-00-0001', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', 'Regular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(14, '25-00-0002', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', 'Regular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -259,6 +370,25 @@ CREATE TABLE `student_subjects` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `student_documents`
+--
+
+CREATE TABLE `student_documents` (
+  `id` int(11) NOT NULL,
+  `student_user_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `status` enum('Submitted','Pending','Rejected') NOT NULL DEFAULT 'Submitted',
+  `file_name` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` bigint DEFAULT NULL,
+  `file_mime` varchar(100) DEFAULT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `subjects`
 --
 
@@ -267,6 +397,7 @@ CREATE TABLE `subjects` (
   `code` varchar(255) NOT NULL,
   `description` varchar(255) NOT NULL,
   `units` int(11) NOT NULL,
+  `semester` enum('1st-sem','2nd-sem','summer') NOT NULL DEFAULT '1st-sem',
   `prerequisite_id` int(11) DEFAULT NULL,
   `year_level` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -275,11 +406,30 @@ CREATE TABLE `subjects` (
 -- Dumping data for table `subjects`
 --
 
-INSERT INTO `subjects` (`id`, `code`, `description`, `units`, `prerequisite_id`, `year_level`) VALUES
-(9, 'IT 201', 'Data Structures & Algorithms', 3, NULL, 2),
-(10, 'IT 301', 'Web Development', 3, 9, 3),
-(11, 'MATH 101', 'Calculus I', 3, NULL, 1),
-(13, 'CAP 100', 'Capstone', 3, NULL, 4);
+INSERT INTO `subjects` (`id`, `code`, `description`, `units`, `semester`, `prerequisite_id`, `year_level`) VALUES
+(9, 'IT 201', 'Data Structures & Algorithms', 3, '1st-sem', NULL, 2),
+(10, 'IT 301', 'Web Development', 3, '1st-sem', 9, 3),
+(11, 'MATH 101', 'Calculus I', 3, '1st-sem', NULL, 1),
+(13, 'CAP 100', 'Capstone', 3, '2nd-sem', NULL, 4);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `subject_prerequisites`
+--
+
+CREATE TABLE `subject_prerequisites` (
+  `subject_id` int(11) NOT NULL,
+  `prerequisite_subject_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `subject_prerequisites`
+--
+
+INSERT INTO `subject_prerequisites` (`subject_id`, `prerequisite_subject_id`) VALUES
+(10, 9),
+(9, 8);
 
 -- --------------------------------------------------------
 
@@ -318,6 +468,12 @@ INSERT INTO `users` (`id`, `email`, `password_hash`, `role`, `created_at`) VALUE
 --
 ALTER TABLE `admin_profiles`
   ADD PRIMARY KEY (`user_id`);
+
+--
+-- Indexes for table `system_settings`
+--
+ALTER TABLE `system_settings`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `blocks`
@@ -380,8 +536,51 @@ ALTER TABLE `student_grade_terms`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_grade_term` (`student_grade_id`,`term`),
   ADD KEY `idx_grade_terms_grade_id` (`student_grade_id`);
+
+--
+-- Indexes for table `student_enrollment_history`
+--
+ALTER TABLE `student_enrollment_history`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_student_history_student` (`student_user_id`);
+
+--
+-- Indexes for table `academic_rollover_logs`
+--
+ALTER TABLE `academic_rollover_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_rollover_triggered_by` (`triggered_by_user_id`);
+
+--
+-- Indexes for table `academic_rollover_actions`
+--
+ALTER TABLE `academic_rollover_actions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_rollover_actions_log` (`rollover_log_id`),
+  ADD KEY `idx_rollover_actions_student` (`student_user_id`);
+
+--
+-- Indexes for table `announcements`
+--
+ALTER TABLE `announcements`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_announcements_audience` (`audience`),
+  ADD KEY `idx_announcements_created_by` (`created_by`);
+
+--
+-- Indexes for table `student_subjects`
+--
 ALTER TABLE `student_subjects`
   ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_student_subject_user` (`student_user_id`),
+  ADD KEY `idx_student_subject_subject` (`subject_id`);
+
+--
+-- Indexes for table `student_documents`
+--
+ALTER TABLE `student_documents`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_student_documents_student` (`student_user_id`);
 
 --
 -- AUTO_INCREMENT for table `student_grade_terms`
@@ -402,6 +601,28 @@ ALTER TABLE `subjects`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `code` (`code`),
   ADD KEY `prerequisite_id` (`prerequisite_id`);
+
+--
+-- Indexes for table `teaching_assignment_history`
+--
+ALTER TABLE `teaching_assignment_history`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_teaching_assignment_term` (`academic_year`,`semester`),
+  ADD KEY `idx_teaching_assignment_instructor` (`instructor_user_id`),
+  ADD KEY `idx_teaching_assignment_block` (`block_id`);
+
+--
+-- Indexes for table `subject_prerequisites`
+--
+ALTER TABLE `subject_prerequisites`
+  ADD PRIMARY KEY (`subject_id`,`prerequisite_subject_id`),
+  ADD KEY `idx_subject_prereq_requirement` (`prerequisite_subject_id`);
+
+--
+-- Constraints for table `announcements`
+--
+ALTER TABLE `announcements`
+  ADD CONSTRAINT `fk_announcements_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Indexes for table `users`
@@ -445,16 +666,58 @@ ALTER TABLE `student_subjects`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
+-- AUTO_INCREMENT for table `student_documents`
+--
+ALTER TABLE `student_documents`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `announcements`
+--
+ALTER TABLE `announcements`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+
+--
 -- AUTO_INCREMENT for table `subjects`
 --
 ALTER TABLE `subjects`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
+-- AUTO_INCREMENT for table `teaching_assignment_history`
+--
+ALTER TABLE `teaching_assignment_history`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT for table `system_settings`
+--
+ALTER TABLE `system_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `student_enrollment_history`
+--
+ALTER TABLE `student_enrollment_history`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `academic_rollover_logs`
+--
+ALTER TABLE `academic_rollover_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `academic_rollover_actions`
+--
+ALTER TABLE `academic_rollover_actions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Constraints for dumped tables
@@ -513,6 +776,32 @@ ALTER TABLE `student_profiles`
 ALTER TABLE `student_subjects`
   ADD CONSTRAINT `student_subjects_ibfk_1` FOREIGN KEY (`student_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `student_subjects_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `student_enrollment_history`
+--
+ALTER TABLE `student_enrollment_history`
+  ADD CONSTRAINT `student_enrollment_history_ibfk_1` FOREIGN KEY (`student_user_id`) REFERENCES `student_profiles` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `academic_rollover_logs`
+--
+ALTER TABLE `academic_rollover_logs`
+  ADD CONSTRAINT `academic_rollover_logs_ibfk_1` FOREIGN KEY (`triggered_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `academic_rollover_actions`
+--
+ALTER TABLE `academic_rollover_actions`
+  ADD CONSTRAINT `academic_rollover_actions_ibfk_1` FOREIGN KEY (`rollover_log_id`) REFERENCES `academic_rollover_logs` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `academic_rollover_actions_ibfk_2` FOREIGN KEY (`student_user_id`) REFERENCES `student_profiles` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `subject_prerequisites`
+--
+ALTER TABLE `subject_prerequisites`
+  ADD CONSTRAINT `fk_subject_prereq_requirement` FOREIGN KEY (`prerequisite_subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_subject_prereq_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `subjects`

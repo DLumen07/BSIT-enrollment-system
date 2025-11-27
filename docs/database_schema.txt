@@ -29,6 +29,7 @@ Stores detailed information specific to students. This table has a one-to-one re
 | `course`              | Enum        | 'BSIT' or 'ACT'.                                            |                                                           |
 | `year_level`          | Integer     | The student's current year (1, 2, 3, 4).                    |                                                           |
 | `enrollment_status`   | Enum        | 'Enrolled', 'Not Enrolled', 'Graduated'.                    |                                                           |
+| `promotion_hold_reason` | Text      | Optional note explaining why a student was held back.       | Set when a rollover identifies incomplete requirements.   |
 | `block_id`            | UUID/String | Foreign Key to `blocks.id`. Nullable.                       | Null if not currently enrolled in a block.                |
 | `specialization`      | Enum        | 'AP' (Application Programming), 'DD' (Digital Design). Nullable. | Null for 1st/2nd year and ACT students.                   |
 | `sex`                 | Enum        | 'Male', 'Female'.                                           |                                                           |
@@ -70,8 +71,18 @@ A master list of all subjects offered by the institution.
 | `code`          | String      | The unique subject code (e.g., "IT 101").  | Indexed for fast lookups.                |
 | `description`   | String      | Full description of the subject.           |                                          |
 | `units`         | Integer     | Number of academic units for the subject.  |                                          |
-| `prerequisite_id` | UUID/String | Foreign Key to `subjects.id`. Nullable.    | Self-referencing relationship.           |
+| `prerequisite_id` | UUID/String | Foreign Key to `subjects.id`. Nullable.    | Backward-compatible pointer to the primary prerequisite (if any). |
 | `year_level`    | Integer     | The year level this subject is intended for. | e.g., 1, 2, 3, 4                         |
+
+#### `subject_prerequisites` Junction Table
+Multi-prerequisite support is stored in a dedicated pivot table so a subject can require multiple other subjects.
+
+| Column                   | Type        | Description                                 | Notes                                      |
+|--------------------------|-------------|---------------------------------------------|--------------------------------------------|
+| `subject_id`             | UUID/String | Foreign Key to `subjects.id`.               | The dependent subject.                     |
+| `prerequisite_subject_id`| UUID/String | Foreign Key to `subjects.id`.               | The required subject that must be completed beforehand. |
+
+All prerequisite relationships should be recorded here. The legacy `prerequisite_id` column on `subjects` mirrors the first prerequisite (if any) for compatibility with older tooling.
 
 ---
 
@@ -136,7 +147,72 @@ Captures individual grading-period scores (prelim, midterm, final) that roll up 
 
 ---
 
-### 10. `enrollment_applications` Table
+### 10. `system_settings` Table
+Stores global academic term configuration.
+
+| Column                  | Type     | Description                                        | Notes |
+|-------------------------|----------|----------------------------------------------------|-------|
+| `id`                    | Integer  | Primary Key.                                       | Single-row configuration table. |
+| `academic_year`         | String   | Active academic year (e.g., "2025-2026").         | |
+| `semester`              | String   | Active semester code (e.g., `1st-sem`).            | |
+| `enrollment_start_date` | Date     | Optional enrollment start date for the term.       | |
+| `enrollment_end_date`   | Date     | Optional enrollment end date for the term.         | |
+| `phased_schedule_json`  | JSON     | Serialized phased schedule per year level.         | Stores date/time slots for staggered enrollment. |
+| `updated_at`            | Timestamp| Automatically updated when the record changes.     | |
+
+---
+
+### 11. `student_enrollment_history` Table
+Keeps an audit log of enrollment states per academic term.
+
+| Column             | Type     | Description                                            | Notes |
+|--------------------|----------|--------------------------------------------------------|-------|
+| `id`               | Integer  | Primary Key.                                           | |
+| `student_user_id`  | Integer  | Foreign Key to `student_profiles.user_id`.             | |
+| `academic_year`    | String   | Academic year the record applies to.                  | |
+| `semester`         | String   | Semester code for the record.                         | |
+| `status`           | Enum     | 'Pending', 'Enrolled', 'Not Enrolled', 'Graduated', 'Hold'. | |
+| `notes`            | Text     | Additional context (e.g., hold reasons).              | |
+| `created_at`       | Timestamp| Auto-generated timestamp.                             | |
+
+---
+
+### 12. `academic_rollover_logs` Table
+Summarizes each academic rollover execution.
+
+| Column                 | Type     | Description                                            | Notes |
+|------------------------|----------|--------------------------------------------------------|-------|
+| `id`                   | Integer  | Primary Key.                                           | |
+| `triggered_by_user_id` | Integer  | Foreign Key to `users.id` for the admin who ran it.    | Nullable; set to NULL if user deleted. |
+| `closing_academic_year`| String   | Academic year that was closed.                         | |
+| `closing_semester`     | String   | Semester that was closed.                              | |
+| `next_academic_year`   | String   | Academic year activated.                               | |
+| `next_semester`        | String   | Semester activated.                                    | |
+| `promoted_count`       | Integer  | Number of students promoted.                           | |
+| `held_count`           | Integer  | Number of students held for manual review.             | |
+| `graduated_count`      | Integer  | Number of students marked as graduated.                | |
+| `notes`                | Text     | Optional admin notes or summary text.                  | |
+| `created_at`           | Timestamp| Auto-generated timestamp.                              | |
+
+---
+
+### 13. `academic_rollover_actions` Table
+Per-student breakdown for each rollover.
+
+| Column              | Type     | Description                                              | Notes |
+|---------------------|----------|----------------------------------------------------------|-------|
+| `id`                | Integer  | Primary Key.                                             | |
+| `rollover_log_id`   | Integer  | Foreign Key to `academic_rollover_logs.id`.              | |
+| `student_user_id`   | Integer  | Foreign Key to `student_profiles.user_id`.               | |
+| `previous_year_level`| Integer | Student year level before rollover.                     | |
+| `new_year_level`    | Integer  | Student year level after rollover.                      | |
+| `action`            | Enum     | 'promoted', 'held', or 'graduated'.                      | |
+| `reason`            | Text     | Optional note describing the decision.                  | |
+| `created_at`        | Timestamp| Auto-generated timestamp.                               | |
+
+---
+
+### 14. `enrollment_applications` Table
 A temporary table to hold pending enrollment applications for admin review.
 
 | Column           | Type        | Description                                          | Notes                                                     |

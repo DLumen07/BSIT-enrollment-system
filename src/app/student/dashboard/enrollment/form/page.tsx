@@ -16,7 +16,6 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
-import Link from 'next/link';
 import { useStudent } from '@/app/student/context/student-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import { useRouter } from 'next/navigation';
@@ -29,6 +28,15 @@ const steps = [
     { id: 'Step 2', name: 'Additional & Educational Background' },
     { id: 'Step 3', name: 'Academic Information' },
 ];
+
+type SelectableSubjectOption = {
+    id: string;
+    label: string;
+    units: number;
+    prerequisites: string[];
+    eligible: boolean;
+    ineligibilityReason: string | null;
+};
 
 const safeParseDate = (value?: string | null): Date | undefined => {
     if (!value) {
@@ -282,6 +290,22 @@ function Step3() {
         }
     }, [derivedCourse, selectedCourse, form]);
     
+    const studentIdNumber = studentData?.academic.studentId ?? '';
+
+    const completedSubjects = useMemo(() => {
+        if (!studentIdNumber) {
+            return [] as Array<{ code: string; units: number }>;
+        }
+
+        try {
+            const completed = adminData.getCompletedSubjects(studentIdNumber);
+            return Array.isArray(completed) ? completed : [];
+        } catch (error) {
+            console.warn('[EnrollmentForm] Failed to resolve completed subjects:', error);
+            return [];
+        }
+    }, [adminData, studentIdNumber]);
+
     const yearLevelMap: Record<string, '1st-year' | '2nd-year' | '3rd-year' | '4th-year'> = {
         '1st Year': '1st-year',
         '2nd Year': '2nd-year',
@@ -305,16 +329,68 @@ function Step3() {
             .map(b => ({ value: b.name, label: b.name }));
     }, [selectedYear, selectedSpecialization, adminData.blocks, isUpperYear, derivedCourse]);
 
-    const availableSubjects = useMemo(() => {
+    const availableSubjects = useMemo<SelectableSubjectOption[]>(() => {
         if (!selectedYear) return [];
         const yearKey = yearLevelMap[selectedYear];
         if (!yearKey || !adminData.subjects[yearKey]) return [];
-        return Object.values(adminData.subjects[yearKey]).map(s => ({
-            id: s.code,
-            label: `${s.code} - ${s.description}`,
-            units: s.units,
-        }));
-    }, [selectedYear, adminData.subjects]);
+
+        const validSemesters: Array<'1st-sem' | '2nd-sem' | 'summer'> = ['1st-sem', '2nd-sem', 'summer'];
+        const activeSemester = validSemesters.includes(adminData.semester as '1st-sem' | '2nd-sem' | 'summer')
+            ? (adminData.semester as '1st-sem' | '2nd-sem' | 'summer')
+            : '1st-sem';
+
+        const subjectsForYear = adminData.subjects[yearKey] ?? [];
+        const semesterFiltered = subjectsForYear.filter(subject => subject.semester === activeSemester);
+        const source = semesterFiltered.length > 0 ? semesterFiltered : subjectsForYear;
+
+        const completedCodes = new Set(completedSubjects.map((entry) => entry.code));
+        const registeredCodes = new Set((studentData?.enrollment?.registeredSubjects ?? []).map((entry) => entry.code));
+
+        return source.map((subject) => {
+            const prerequisiteCodes = Array.isArray(subject.prerequisites) && subject.prerequisites.length > 0
+                ? subject.prerequisites
+                : (subject.prerequisite ? [subject.prerequisite] : []);
+            const alreadyCompleted = completedCodes.has(subject.code);
+            const alreadyRegistered = registeredCodes.has(subject.code);
+            const prerequisiteMet = prerequisiteCodes.length === 0 || prerequisiteCodes.every((code) => completedCodes.has(code));
+
+            let eligible = true;
+            let reason: string | null = null;
+
+            if (alreadyCompleted) {
+                eligible = false;
+                reason = 'You already completed this subject.';
+            } else if (alreadyRegistered) {
+                eligible = false;
+                reason = 'You are already registered in this subject.';
+            } else if (!prerequisiteMet) {
+                eligible = false;
+                const missing = prerequisiteCodes.filter((code) => !completedCodes.has(code));
+                const label = missing.length > 1 ? 'prerequisites' : 'prerequisite';
+                reason = `The ${label} ${missing.join(', ')} ${missing.length > 1 ? 'have' : 'has'} not been completed yet.`;
+            }
+
+            return {
+                id: subject.code,
+                label: `${subject.code} - ${subject.description}`,
+                units: subject.units,
+                prerequisites: prerequisiteCodes,
+                eligible,
+                ineligibilityReason: reason,
+            } satisfies SelectableSubjectOption;
+        });
+    }, [selectedYear, adminData.subjects, adminData.semester, completedSubjects, studentData?.enrollment?.registeredSubjects]);
+
+    const hasEligibleSubjects = useMemo(() => availableSubjects.some((subject) => subject.eligible), [availableSubjects]);
+
+    useEffect(() => {
+        const currentSelections = form.getValues('subjects') ?? [];
+        const eligibleIds = new Set(availableSubjects.filter((subject) => subject.eligible).map((subject) => subject.id));
+        const sanitized = currentSelections.filter((code: string) => eligibleIds.has(code));
+        if (sanitized.length !== currentSelections.length) {
+            form.setValue('subjects', sanitized, { shouldDirty: true, shouldValidate: true });
+        }
+    }, [availableSubjects, form]);
     
     return (
         <div className="space-y-6">
@@ -413,7 +489,11 @@ function Step3() {
             {availableSubjects.length > 0 && (
                 <div className="space-y-4 pt-4 border-t">
                      <h3 className="text-lg font-medium">Enlist Subjects</h3>
-                     <p className="text-sm text-muted-foreground">Select the subjects you want to enroll in.</p>
+                     <p className="text-sm text-muted-foreground">
+                        {hasEligibleSubjects
+                            ? 'Select the subjects you want to enroll in. Ineligible subjects are shown for reference.'
+                            : 'You do not have any eligible subjects for enlistment this term.'}
+                    </p>
                      <FormField
                         control={form.control}
                         name="subjects"
@@ -435,7 +515,11 @@ function Step3() {
                                             <FormControl>
                                                 <Checkbox
                                                 checked={field.value?.includes(subject.id)}
+                                                disabled={!subject.eligible}
                                                 onCheckedChange={(checked) => {
+                                                    if (!subject.eligible) {
+                                                        return;
+                                                    }
                                                     if (checked === true) {
                                                         field.onChange([...(field.value ?? []), subject.id]);
                                                         return;
@@ -445,9 +529,19 @@ function Step3() {
                                                 }}
                                                 />
                                             </FormControl>
-                                            <FormLabel className="font-normal m-0!">
-                                                {subject.label}
-                                            </FormLabel>
+                                            <div className="space-y-1">
+                                                <FormLabel className="font-normal m-0">
+                                                    {subject.label}
+                                                </FormLabel>
+                                                {subject.prerequisites.length > 0 && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Prerequisite{subject.prerequisites.length > 1 ? 's' : ''}: {subject.prerequisites.join(', ')}
+                                                    </p>
+                                                )}
+                                                {!subject.eligible && subject.ineligibilityReason && (
+                                                    <p className="text-xs text-destructive">{subject.ineligibilityReason}</p>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="text-sm text-muted-foreground">{subject.units} units</div>
                                         </FormItem>
@@ -472,7 +566,6 @@ export default function EnrollmentFormPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(0);
-    const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const profileComplete = studentData ? isStudentProfileComplete(studentData) : false;
 
@@ -751,11 +844,14 @@ export default function EnrollmentFormPage() {
                 console.warn('Failed to refresh admin data after enrollment submission:', refreshError);
             }
 
-            setIsSubmitted(true);
             toast({
                 title: 'Enrollment submitted',
                 description: 'Your application has been sent to the registrar for review.',
             });
+            const enrollmentOverviewUrl = studentData.contact.email
+                ? `/student/dashboard/enrollment?email=${encodeURIComponent(studentData.contact.email)}`
+                : '/student/dashboard/enrollment';
+            router.replace(enrollmentOverviewUrl);
         } catch (error) {
             const message = error instanceof Error
                 ? error.message
@@ -805,27 +901,6 @@ export default function EnrollmentFormPage() {
         return <div>Loading form...</div>;
     }
 
-    if (isSubmitted) {
-        return (
-            <main className="flex-1 p-4 sm:p-6 flex items-center justify-center">
-                <Card className="max-w-lg w-full rounded-xl">
-                    <CardHeader>
-                        <CardTitle>Enrollment Submitted!</CardTitle>
-                        <CardDescription>Thank you for submitting your enrollment form.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p>Your application is now being processed. Please wait for an email confirmation regarding your enrollment status. You can check the status on your dashboard.</p>
-                    </CardContent>
-                    <CardFooter>
-                        <Button asChild className="w-full rounded-xl">
-                            <Link href="/student/dashboard">Back to Dashboard</Link>
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </main>
-        );
-    }
-    
     return (
         <main className="flex-1 p-4 sm:p-6">
             <FormProvider {...methods}>
@@ -859,7 +934,7 @@ export default function EnrollmentFormPage() {
                                         Next
                                     </Button>
                                 ) : (
-                                    <Button type="submit" className="rounded-xl w-full" disabled={isSubmitting}>
+                                    <Button type="submit" className="rounded-xl ml-auto min-w-[200px]" disabled={isSubmitting}>
                                         {isSubmitting ? 'Submitting...' : 'Submit Enrollment'}
                                     </Button>
                                 )}

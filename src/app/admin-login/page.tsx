@@ -7,11 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import React, { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, resolveMediaUrl } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import { Eye, EyeOff } from 'lucide-react';
+
+const ADMIN_PORTAL_API_BASE = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+  .replace(/\/+$/, '')
+  .trim();
 
 
 function LoginForm() {
@@ -20,17 +24,30 @@ function LoginForm() {
   const { adminData, setAdminData } = useAdmin();
   const { adminUsers, instructors } = adminData;
 
-  const [email, setEmail] = React.useState('alice.j@example.com');
-  const [password, setPassword] = React.useState('admin123');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
+    if (email.trim() === '' || password.trim() === '') {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Credentials',
+        description: 'Please enter both your email and password to continue.',
+      });
+      return;
+    }
+
     const admin = adminUsers.find(user => user.email === email);
     if (admin) {
-        setAdminData(prev => ({ ...prev, currentUser: admin }));
-        sessionStorage.setItem('currentUser', JSON.stringify(admin));
+      const normalizedAdmin = {
+        ...admin,
+        avatar: resolveMediaUrl(admin.avatar ?? null, ADMIN_PORTAL_API_BASE) ?? (admin.avatar ?? ''),
+      };
+      setAdminData(prev => ({ ...prev, currentUser: normalizedAdmin }));
+      sessionStorage.setItem('currentUser', JSON.stringify(normalizedAdmin));
         router.push('/admin/dashboard');
         return;
     }
@@ -127,7 +144,16 @@ export default function StaffLoginPage() {
       </main>
       <footer className="py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground text-center">
-          &copy; BUMBBLEBITTECH | All rights reserved.
+          &copy;{' '}
+          <a
+            href="https://github.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold underline-offset-4 hover:underline"
+          >
+            DarenDL7
+          </a>{' '}
+          | All rights reserved.
         </p>
       </footer>
     </div>

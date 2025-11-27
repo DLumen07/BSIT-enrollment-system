@@ -2,7 +2,6 @@
 'use client';
 import Link from 'next/link';
 import {
-  Bell,
   Home,
   LogOut,
   User,
@@ -43,6 +42,10 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/page-transition';
+import NotificationBell from '@/components/notification-bell';
+import { useNotificationCenter } from '@/hooks/use-notification-center';
+import type { NotificationSeed } from '@/types/notifications';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const Breadcrumb = () => {
     const pathname = usePathname();
@@ -101,8 +104,79 @@ const Breadcrumb = () => {
 function Header() {
     const { studentData } = useStudent();
     const searchParams = useSearchParams();
+    const queryString = searchParams.toString();
+    const notificationStorageKey = studentData?.academic.studentId
+        ? `student-${studentData.academic.studentId}`
+        : 'student-guest';
+
+    const notificationSeeds = React.useMemo(() => {
+        if (!studentData) {
+            return [];
+        }
+
+        const seeds = [] as NotificationSeed[];
+        const announcements = Array.isArray(studentData.announcements) ? studentData.announcements.slice(0, 4) : [];
+        const documents = studentData.records?.documents ?? [];
+        const pendingDocuments = documents.filter((doc) => doc.status !== 'Submitted').slice(0, 3);
+
+        announcements.forEach((announcement) => {
+            seeds.push({
+                id: `student-announcement-${announcement.id}`,
+                title: announcement.title,
+                description: announcement.message,
+                category: 'system',
+                createdAt: announcement.createdAt,
+                action: { label: 'View dashboard', href: `/student/dashboard?${queryString}` },
+            });
+        });
+
+        pendingDocuments.forEach((doc) => {
+            seeds.push({
+                id: `student-document-${doc.id}`,
+                title: `${doc.name} is ${doc.status.toLowerCase()}`,
+                description: doc.status === 'Rejected' ? 'Please update and re-upload the document.' : 'Submit the document to proceed with enrollment.',
+                category: 'records',
+                createdAt: doc.updatedAt ?? doc.uploadedAt ?? new Date().toISOString(),
+                action: { label: 'Review documents', href: `/student/dashboard/records?${queryString}` },
+            });
+        });
+
+        if (studentData.academic.enrollmentStatus) {
+            seeds.push({
+                id: 'student-enrollment-status',
+                title: `Enrollment status: ${studentData.academic.enrollmentStatus}`,
+                description: studentData.academic.statusDisplay,
+                category: 'enrollment',
+                createdAt: studentData.academic.dateEnrolled ?? new Date().toISOString(),
+                action: { label: 'Track enrollment', href: `/student/dashboard/enrollment?${queryString}` },
+            });
+        }
+
+        if (studentData.schedule?.length) {
+            seeds.push({
+                id: 'student-schedule-reminder',
+                title: 'Check today’s schedule',
+                description: `You have ${studentData.schedule.length} scheduled subject${studentData.schedule.length === 1 ? '' : 's'}.`,
+                category: 'schedule',
+                createdAt: new Date().toISOString(),
+                action: { label: 'Open schedule', href: `/student/dashboard/schedule?${queryString}` },
+            });
+        }
+
+        return seeds;
+    }, [queryString, studentData]);
+
+    const {
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllAsRead,
+        dismissNotification,
+    } = useNotificationCenter(notificationStorageKey, notificationSeeds);
 
     if (!studentData) return null;
+
+    const avatarInitials = `${studentData.personal.firstName.charAt(0)}${studentData.personal.lastName.charAt(0)}`.toUpperCase() || 'ST';
 
     return (
          <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
@@ -112,21 +186,24 @@ function Header() {
             </div>
             <div className="flex items-center gap-4">
               <ThemeToggle />
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Bell className="h-5 w-5" />
-                <span className="sr-only">Toggle notifications</span>
-              </Button>
+              <NotificationBell
+                notifications={notifications}
+                unreadCount={unreadCount}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
+                onDismissNotification={dismissNotification}
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Image
-                      src="https://picsum.photos/seed/student-avatar/32/32"
-                      width={32}
-                      height={32}
-                      alt="Student Avatar"
-                      className="rounded-full"
-                      data-ai-hint="person avatar"
-                    />
+                  <Button variant="ghost" size="icon" className="rounded-full p-0">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={studentData.personal.avatarUrl ?? undefined}
+                        alt={`${studentData.personal.firstName} avatar`}
+                        data-ai-hint="person avatar"
+                      />
+                      <AvatarFallback>{avatarInitials}</AvatarFallback>
+                    </Avatar>
                     <span className="sr-only">Toggle user menu</span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -134,7 +211,7 @@ function Header() {
                   <DropdownMenuLabel>{studentData.personal.firstName}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href={`/student/dashboard/settings?${searchParams.toString()}`}>Settings</Link>
+                    <Link href={`/student/dashboard/settings?${queryString}`}>Settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem>Support</DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -164,8 +241,8 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
                 <Image
                 src={schoolLogo.imageUrl}
                 alt={schoolLogo.description}
-                width={60}
-                height={60}
+              width={48}
+              height={48}
                 data-ai-hint={schoolLogo.imageHint}
                 className="rounded-full"
                 />

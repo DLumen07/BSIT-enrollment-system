@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle, BadgeCheck, FileText } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle, BadgeCheck, FileText, Download, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,10 +39,11 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useAdmin, Application, rejectionReasons } from '../../context/admin-context';
+import { useAdmin, Application, ApplicationDocument, rejectionReasons } from '../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import type { Student, Subject } from '../../context/admin-context';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -51,12 +52,206 @@ const UNITS_FOR_2ND_YEAR = 36;
 const UNITS_FOR_3RD_YEAR = 72;
 const UNITS_FOR_4TH_YEAR = 108;
 
-const credentialLabels: { key: keyof Application['credentials']; label: string; requiredFor: Array<Application['status']> }[] = [
-    { key: 'birthCertificate', label: 'Birth Certificate', requiredFor: ['New', 'Transferee'] },
-    { key: 'grades', label: 'Form 138 / Report Card', requiredFor: ['New', 'Transferee'] },
-    { key: 'goodMoral', label: 'Good Moral Certificate', requiredFor: ['New', 'Transferee'] },
-    { key: 'registrationForm', label: 'Finished Registration Form', requiredFor: ['New', 'Old', 'Transferee'] },
+type CredentialRequirement = {
+    key: keyof Application['credentials'];
+    label: string;
+    requiredFor: Array<Application['status']>;
+    keywords?: string[];
+};
+
+type CredentialStatus = 'submitted' | 'pending' | 'rejected' | 'missing';
+
+type CredentialStatusInfo = {
+    status: CredentialStatus;
+    document: ApplicationDocument | null;
+};
+
+const credentialLabels: CredentialRequirement[] = [
+    { key: 'birthCertificate', label: 'Birth Certificate', requiredFor: ['New', 'Transferee'], keywords: ['birth certificate'] },
+    { key: 'grades', label: 'Form 138 / Report Card', requiredFor: ['New', 'Transferee'], keywords: ['form 138', 'report card'] },
+    { key: 'goodMoral', label: 'Good Moral Certificate', requiredFor: ['New', 'Transferee'], keywords: ['good moral'] },
+    { key: 'registrationForm', label: 'Finished Registration Form', requiredFor: ['New', 'Old', 'Transferee'], keywords: ['registration form'] },
 ];
+
+const normalizeForMatch = (value: string | null | undefined): string => {
+    if (!value) {
+        return '';
+    }
+    return value.toLowerCase();
+};
+
+const collapseForMatch = (value: string): string => value.replace(/[^a-z0-9]/g, '');
+
+const getDocumentTimestamp = (document: ApplicationDocument): number => {
+    const source = document.updatedAt ?? document.uploadedAt;
+    if (!source) {
+        return 0;
+    }
+    const parsed = Date.parse(source);
+    return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const findDocumentForCredential = (documents: ApplicationDocument[], keywords?: string[]): ApplicationDocument | null => {
+    const normalizedKeywords = (keywords ?? [])
+        .map((keyword) => normalizeForMatch(keyword).trim())
+        .filter((keyword) => keyword !== '');
+
+    if (normalizedKeywords.length === 0) {
+        return null;
+    }
+
+    let bestMatch: ApplicationDocument | null = null;
+    let bestTimestamp = -Infinity;
+
+    documents.forEach((document) => {
+        const combined = `${document.name ?? ''} ${document.fileName ?? ''}`;
+        const normalizedCombined = normalizeForMatch(combined);
+        const collapsedCombined = collapseForMatch(normalizedCombined);
+
+        const matches = normalizedKeywords.some((keyword) => {
+            const collapsedKeyword = collapseForMatch(keyword);
+            return (
+                normalizedCombined.includes(keyword)
+                || (collapsedKeyword !== '' && collapsedCombined.includes(collapsedKeyword))
+            );
+        });
+
+        if (!matches) {
+            return;
+        }
+
+        const timestamp = getDocumentTimestamp(document);
+        if (timestamp > bestTimestamp) {
+            bestMatch = document;
+            bestTimestamp = timestamp;
+        }
+    });
+
+    return bestMatch;
+};
+
+const mapDocumentStatus = (status: ApplicationDocument['status']): CredentialStatus => {
+    if (status === 'Pending') {
+        return 'pending';
+    }
+    if (status === 'Rejected') {
+        return 'rejected';
+    }
+    return 'submitted';
+};
+
+const credentialStatusMeta: Record<CredentialStatus, { label: string; icon: typeof CheckCircle2; className: string }> = {
+    submitted: { label: 'Submitted', icon: CheckCircle2, className: 'text-green-500' },
+    pending: { label: 'Pending Review', icon: Clock, className: 'text-amber-500' },
+    rejected: { label: 'Rejected', icon: XCircle, className: 'text-red-500' },
+    missing: { label: 'Not submitted', icon: AlertTriangle, className: 'text-muted-foreground' },
+};
+
+const defaultCredentialStatus: CredentialStatusInfo = { status: 'missing', document: null };
+
+const formatDocumentDate = (value: string | null | undefined): string => {
+    if (!value) {
+        return '—';
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return value;
+    }
+    return parsed.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+};
+
+const formatDocumentSize = (bytes: number | null | undefined): string => {
+    if (bytes === null || bytes === undefined || bytes <= 0) {
+        return '—';
+    }
+    if (bytes < 1024) {
+        return `${bytes} B`;
+    }
+    if (bytes < 1024 * 1024) {
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const toRecord = (value: unknown): Record<string, unknown> | null => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    return null;
+};
+
+const pickRecord = (source: Record<string, unknown> | null, key: string): Record<string, unknown> | null => {
+    if (!source) {
+        return null;
+    }
+    return toRecord(source[key] ?? null);
+};
+
+const getStringValue = (source: Record<string, unknown> | null, key: string): string | null => {
+    if (!source || !Object.prototype.hasOwnProperty.call(source, key)) {
+        return null;
+    }
+    const raw = source[key];
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        return trimmed === '' ? null : trimmed;
+    }
+    return null;
+};
+
+const toStringArray = (value: unknown): string[] => {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    return value
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry) => entry !== '');
+};
+
+const withFallback = (value: string | null | undefined, fallback = 'Not provided'): string => {
+    if (value && value.trim() !== '') {
+        return value;
+    }
+    return fallback;
+};
+
+const getRequestedSubjectCodes = (application: Application | null): string[] => {
+    if (!application || !application.formSnapshot) {
+        return [];
+    }
+
+    const root = toRecord(application.formSnapshot);
+    if (!root) {
+        return [];
+    }
+
+    const nestedForm = pickRecord(root, 'formSnapshot');
+    const academic = pickRecord(nestedForm, 'academic') ?? pickRecord(root, 'academic');
+    const applicationSnapshot = pickRecord(root, '_application');
+    const applicationAcademic = pickRecord(applicationSnapshot, 'academic');
+
+    const buckets: string[][] = [];
+    buckets.push(toStringArray(root['subjects'] ?? null));
+    if (academic) {
+        buckets.push(toStringArray(academic['subjects'] ?? null));
+    }
+    if (applicationAcademic) {
+        buckets.push(toStringArray(applicationAcademic['subjects'] ?? null));
+    }
+
+    const uniqueCodes = new Set<string>();
+    buckets.flat().forEach((code) => {
+        if (code) {
+            uniqueCodes.add(code);
+        }
+    });
+
+    return Array.from(uniqueCodes);
+};
 
 
 export default function ManageApplicationsPage() {
@@ -143,6 +338,21 @@ export default function ManageApplicationsPage() {
     const totalUnitsForFoundStudent = useMemo(() => {
         return completedSubjectsForFoundStudent.reduce((acc, subj) => acc + subj.units, 0);
     }, [completedSubjectsForFoundStudent]);
+
+    const flattenedSubjectCatalog = useMemo(() => {
+        return Object.values(yearLevelSubjects).flat();
+    }, [yearLevelSubjects]);
+
+    const resolveDocumentBadgeVariant = (status: Application['documents'][number]['status']) => {
+        switch (status) {
+            case 'Pending':
+                return 'secondary' as const;
+            case 'Rejected':
+                return 'destructive' as const;
+            default:
+                return 'default' as const;
+        }
+    };
     
     const handleDirectEnrollSearch = () => {
         const student = students.find(s => s.studentId === directEnrollSearchId && s.status !== 'Enrolled');
@@ -228,8 +438,15 @@ export default function ManageApplicationsPage() {
         if (foundStudent.year === 2) yearKey = '2nd-year';
         if (foundStudent.year === 3) yearKey = '3rd-year';
         if (foundStudent.year === 4) yearKey = '4th-year';
-        return yearLevelSubjects[yearKey] || [];
-    }, [yearLevelSubjects, foundStudent]);
+
+        const subjectsForYear = yearLevelSubjects[yearKey] ?? [];
+        const validSemesters: Array<'1st-sem' | '2nd-sem' | 'summer'> = ['1st-sem', '2nd-sem', 'summer'];
+        const activeSemester = validSemesters.includes(adminData.semester as '1st-sem' | '2nd-sem' | 'summer')
+            ? (adminData.semester as '1st-sem' | '2nd-sem' | 'summer')
+            : '1st-sem';
+        const filtered = subjectsForYear.filter(subject => subject.semester === activeSemester);
+        return filtered.length > 0 ? filtered : subjectsForYear;
+    }, [yearLevelSubjects, foundStudent, adminData.semester]);
 
 
     const completedSubjectsForEnrollment = useMemo(() => {
@@ -241,27 +458,36 @@ export default function ManageApplicationsPage() {
     }, [adminData, applicationToEnroll, prerequisiteOverrides]);
 
 
-  const availableSubjectsForEnrollment = useMemo(() => {
-    if (!applicationToEnroll) return [];
-    
-    let yearKey: '1st-year' | '2nd-year' | '3rd-year' | '4th-year' = '1st-year';
-    if (applicationToEnroll.year === 1) yearKey = '1st-year';
-    if (applicationToEnroll.year === 2) yearKey = '2nd-year';
-    if (applicationToEnroll.year === 3) yearKey = '3rd-year';
-    if (applicationToEnroll.year === 4) yearKey = '4th-year';
+    const availableSubjectsForEnrollment = useMemo(() => {
+        if (!applicationToEnroll) {
+            return [];
+        }
 
-    return yearLevelSubjects[yearKey] || [];
-  }, [yearLevelSubjects, applicationToEnroll]);
+        const requestedCodes = getRequestedSubjectCodes(applicationToEnroll);
+        if (requestedCodes.length === 0) {
+            return [];
+        }
+
+        const requestedSet = new Set(requestedCodes);
+        const orderedSubjects: Subject[] = [];
+
+        requestedCodes.forEach((code) => {
+            const match = flattenedSubjectCatalog.find((subject) => subject.code === code);
+            if (match) {
+                orderedSubjects.push(match);
+            }
+        });
+
+        return orderedSubjects;
+    }, [applicationToEnroll, flattenedSubjectCatalog]);
 
     const allPrerequisites = useMemo(() => {
         const prereqs = new Set<string>();
-        Object.values(yearLevelSubjects).flat().forEach(subject => {
-            if (subject.prerequisite) {
-                prereqs.add(subject.prerequisite);
-            }
+        Object.values(yearLevelSubjects).flat().forEach((subject) => {
+            getSubjectPrerequisites(subject).forEach((code) => prereqs.add(code));
         });
         const allSubjects = Object.values(yearLevelSubjects).flat();
-        return Array.from(prereqs).map(code => allSubjects.find(s => s.code === code)).filter(Boolean) as Subject[];
+        return Array.from(prereqs).map((code) => allSubjects.find((s) => s.code === code)).filter(Boolean) as Subject[];
     }, [yearLevelSubjects]);
 
   const openEnrollDialog = (application: Application) => {
@@ -275,6 +501,147 @@ export default function ManageApplicationsPage() {
     setEnlistedSubjects([]);
   }, [enrollBlock]);
 
+    useEffect(() => {
+        if (!isEnrollDialogOpen) {
+                return;
+        }
+        setEnlistedSubjects(availableSubjectsForEnrollment);
+    }, [isEnrollDialogOpen, availableSubjectsForEnrollment]);
+
+
+    const formReview = useMemo(() => {
+        if (!selectedApplication?.formSnapshot) {
+            return null;
+        }
+
+        const root = toRecord(selectedApplication.formSnapshot);
+        if (!root) {
+            return null;
+        }
+
+        const nestedForm = pickRecord(root, 'formSnapshot');
+        const personal = pickRecord(nestedForm, 'personal') ?? pickRecord(root, 'personal');
+        const contact = pickRecord(nestedForm, 'contact') ?? pickRecord(root, 'contact');
+        const address = pickRecord(nestedForm, 'address') ?? pickRecord(root, 'address');
+        const family = pickRecord(nestedForm, 'family') ?? pickRecord(root, 'family');
+        const additional = pickRecord(nestedForm, 'additional') ?? pickRecord(root, 'additional');
+        const education = pickRecord(nestedForm, 'education') ?? pickRecord(root, 'education');
+        const academic = pickRecord(nestedForm, 'academic') ?? pickRecord(root, 'academic');
+        const student = pickRecord(root, 'student');
+
+        const firstName = getStringValue(personal, 'firstName');
+        const middleName = getStringValue(personal, 'middleName');
+        const lastName = getStringValue(personal, 'lastName');
+        const nameSegments = [firstName, middleName, lastName].filter((segment): segment is string => !!segment && segment.trim() !== '');
+        const fullName = nameSegments.length > 0 ? nameSegments.join(' ') : selectedApplication.name;
+
+        const email = getStringValue(contact, 'email') ?? getStringValue(student, 'email');
+        const phoneNumber = getStringValue(contact, 'phoneNumber');
+
+        const rootSubjects = toStringArray(root['subjects'] ?? null);
+        const academicSubjects = academic ? toStringArray(academic['subjects'] ?? null) : [];
+        const subjectCodes = Array.from(new Set([...rootSubjects, ...academicSubjects]));
+
+        const subjects = subjectCodes.map((code) => {
+            const match = flattenedSubjectCatalog.find((subject) => subject.code === code);
+            return {
+                code,
+                description: match?.description ?? null,
+                units: match?.units ?? null,
+            };
+        });
+
+        return {
+            student: {
+                id: getStringValue(student, 'studentIdNumber') ?? selectedApplication.studentId,
+                email,
+                status: getStringValue(academic, 'status') ?? getStringValue(root, 'studentStatus') ?? selectedApplication.status,
+                block: getStringValue(academic, 'block') ?? getStringValue(root, 'blockName') ?? selectedApplication.block ?? null,
+                specialization: getStringValue(academic, 'specialization') ?? getStringValue(root, 'specialization'),
+                course: getStringValue(academic, 'course') ?? getStringValue(root, 'course') ?? selectedApplication.course,
+                yearLevel: getStringValue(academic, 'yearLevel') ?? getStringValue(root, 'yearLevel') ?? `${selectedApplication.year}`,
+            },
+            personal: {
+                name: fullName,
+                birthdate: getStringValue(personal, 'birthdate'),
+                sex: getStringValue(personal, 'sex'),
+                civilStatus: getStringValue(personal, 'civilStatus'),
+                nationality: getStringValue(personal, 'nationality'),
+                religion: getStringValue(personal, 'religion'),
+                dialect: getStringValue(personal, 'dialect'),
+            },
+            contact: {
+                email,
+                phoneNumber,
+            },
+            address: {
+                currentAddress: getStringValue(address, 'currentAddress'),
+                permanentAddress: getStringValue(address, 'permanentAddress'),
+            },
+            family: {
+                fathersName: getStringValue(family, 'fathersName'),
+                fathersOccupation: getStringValue(family, 'fathersOccupation'),
+                mothersName: getStringValue(family, 'mothersName'),
+                mothersOccupation: getStringValue(family, 'mothersOccupation'),
+                guardiansName: getStringValue(family, 'guardiansName'),
+            },
+            additional: {
+                emergencyContactName: getStringValue(additional, 'emergencyContactName'),
+                emergencyContactAddress: getStringValue(additional, 'emergencyContactAddress'),
+                emergencyContactNumber: getStringValue(additional, 'emergencyContactNumber'),
+            },
+            education: {
+                elementarySchool: getStringValue(education, 'elementarySchool'),
+                elemYearGraduated: getStringValue(education, 'elemYearGraduated'),
+                secondarySchool: getStringValue(education, 'secondarySchool'),
+                secondaryYearGraduated: getStringValue(education, 'secondaryYearGraduated'),
+                collegiateSchool: getStringValue(education, 'collegiateSchool'),
+            },
+            subjects,
+        };
+    }, [selectedApplication, flattenedSubjectCatalog]);
+
+        const selectedApplicationDocuments = selectedApplication?.documents ?? [];
+        const credentialStatuses = useMemo<Partial<Record<keyof Application['credentials'], CredentialStatusInfo>>>(() => {
+            if (!selectedApplication) {
+                return {};
+            }
+
+            const baseCredentials = selectedApplication.credentials ?? {};
+            const documents = selectedApplicationDocuments;
+            const result: Partial<Record<keyof Application['credentials'], CredentialStatusInfo>> = {};
+
+            credentialLabels.forEach((credential) => {
+                const matchedDocument = findDocumentForCredential(documents, credential.keywords);
+                if (matchedDocument) {
+                    result[credential.key] = {
+                        status: mapDocumentStatus(matchedDocument.status),
+                        document: matchedDocument,
+                    };
+                    return;
+                }
+
+                const canUseFormSnapshot = (
+                    credential.key === 'registrationForm'
+                    && Boolean(baseCredentials[credential.key])
+                    && Boolean(selectedApplication.formSnapshot)
+                );
+
+                result[credential.key] = canUseFormSnapshot
+                    ? {
+                        status: 'submitted',
+                        document: null,
+                    }
+                    : { ...defaultCredentialStatus };
+            });
+
+            return result;
+        }, [selectedApplication, selectedApplicationDocuments]);
+        const formattedSubmittedAt = selectedApplication?.submittedAt ? formatDocumentDate(selectedApplication.submittedAt) : null;
+        const personalBirthdate = formReview?.personal?.birthdate ? formatDocumentDate(formReview.personal.birthdate) : null;
+        const contactEmail = formReview?.contact?.email ?? formReview?.student?.email ?? null;
+        const contactPhone = formReview?.contact?.phoneNumber ?? null;
+        const reviewSubjects = formReview?.subjects ?? [];
 
   const handleOpenRejectionDialog = (application: Application) => {
     setRejectionDialog({ isOpen: true, application });
@@ -494,9 +861,29 @@ export default function ManageApplicationsPage() {
   const statuses = ['all', ...Array.from(new Set(allAppsForFilters.map(app => app.status)))];
   const isFiltered = searchTerm || filters.course !== 'all' || filters.year !== 'all' || filters.status !== 'all';
 
-  const SubjectCheckbox = ({ subject, checked, onCheckedChange, completedSubjects }: { subject: Subject; checked: boolean; onCheckedChange: (checked: boolean) => void; completedSubjects: { code: string, units: number }[] }) => {
-    const prerequisite = subject.prerequisite;
-    const hasPassedPrerequisite = !prerequisite || completedSubjects.some(cs => cs.code === prerequisite);
+  function getSubjectPrerequisites(subject: Subject): string[] {
+      if (Array.isArray(subject.prerequisites) && subject.prerequisites.length > 0) {
+          return subject.prerequisites;
+      }
+      if (subject.prerequisite) {
+          return [subject.prerequisite];
+      }
+      return [];
+  }
+
+  function hasMetPrerequisites(subject: Subject, completedSubjects: { code: string; units: number }[]): boolean {
+      const prerequisites = getSubjectPrerequisites(subject);
+      if (prerequisites.length === 0) {
+          return true;
+      }
+      const completedCodes = new Set(completedSubjects.map((entry) => entry.code));
+      return prerequisites.every((code) => completedCodes.has(code));
+  }
+
+    const SubjectCheckbox = ({ subject, checked, onCheckedChange, completedSubjects }: { subject: Subject; checked: boolean; onCheckedChange: (checked: boolean) => void; completedSubjects: { code: string, units: number }[] }) => {
+        const prerequisites = getSubjectPrerequisites(subject);
+        const unmetPrereqs = prerequisites.filter((code) => !completedSubjects.some((cs) => cs.code === code));
+        const hasPassedPrerequisite = unmetPrereqs.length === 0;
 
     const checkbox = (
         <Checkbox
@@ -518,7 +905,9 @@ export default function ManageApplicationsPage() {
                     <span>{checkbox}</span>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>Prerequisite not met: {prerequisite}</p>
+                    <p>
+                        Prerequisite{unmetPrereqs.length > 1 ? 's' : ''} not met: {unmetPrereqs.join(', ')}
+                    </p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
@@ -618,26 +1007,29 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                         <div className="space-y-3 mt-4 pt-4 border-t">
                                             <h4 className="font-medium">Enlist Subjects</h4>
                                             <div className="space-y-2">
-                                                {availableSubjectsForDirectEnroll.map(subject => (
-                                                    <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md", !subject.prerequisite || completedSubjectsForFoundStudent.some(cs => cs.code === subject.prerequisite) ? "" : "bg-muted/50")}>
-                                                        <SubjectCheckbox
-                                                            subject={subject}
-                                                            checked={directEnlistedSubjects.some(s => s.id === subject.id)}
-                                                            onCheckedChange={(checked) => {
-                                                                if (checked) {
-                                                                    setDirectEnlistedSubjects(prev => [...prev, subject]);
-                                                                } else {
-                                                                    setDirectEnlistedSubjects(prev => prev.filter(s => s.id !== subject.id));
-                                                                }
-                                                            }}
-                                                            completedSubjects={completedSubjectsForFoundStudent}
-                                                        />
-                                                        <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal", !(!subject.prerequisite || completedSubjectsForFoundStudent.some(cs => cs.code === subject.prerequisite)) && "text-muted-foreground")}>
-                                                            {subject.code} - {subject.description}
-                                                        </Label>
-                                                        <span className="text-xs text-muted-foreground">{subject.units} units</span>
-                                                    </div>
-                                                ))}
+                                                {availableSubjectsForDirectEnroll.map((subject) => {
+                                                    const prerequisitesMet = hasMetPrerequisites(subject, completedSubjectsForFoundStudent);
+                                                    return (
+                                                        <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md", prerequisitesMet ? "" : "bg-muted/50")}>
+                                                            <SubjectCheckbox
+                                                                subject={subject}
+                                                                checked={directEnlistedSubjects.some((s) => s.id === subject.id)}
+                                                                onCheckedChange={(checked) => {
+                                                                    if (checked) {
+                                                                        setDirectEnlistedSubjects((prev) => [...prev, subject]);
+                                                                    } else {
+                                                                        setDirectEnlistedSubjects((prev) => prev.filter((s) => s.id !== subject.id));
+                                                                    }
+                                                                }}
+                                                                completedSubjects={completedSubjectsForFoundStudent}
+                                                            />
+                                                            <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal", !prerequisitesMet && "text-muted-foreground")}>
+                                                                {subject.code} - {subject.description}
+                                                            </Label>
+                                                            <span className="text-xs text-muted-foreground">{subject.units} units</span>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}
@@ -969,7 +1361,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
         
         {selectedApplication && (
             <Dialog open={!!selectedApplication} onOpenChange={(open) => !open && setSelectedApplication(null)}>
-                <DialogContent className="sm:max-w-md rounded-xl">
+                <DialogContent className="sm:max-w-lg rounded-xl">
                     <DialogHeader>
                         <DialogTitle>Student Credentials</DialogTitle>
                         <DialogDescription>Review the submitted documents for this applicant.</DialogDescription>
@@ -989,6 +1381,12 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                 {selectedApplication.status}
                             </p>
                         </div>
+                        {formattedSubmittedAt && (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <p className="text-sm font-medium text-right col-span-1">Submitted</p>
+                                <p className="col-span-3 text-sm">{formattedSubmittedAt}</p>
+                            </div>
+                        )}
                          {selectedApplication.rejectionReason && (
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <p className="text-sm font-medium text-right col-span-1">Reason</p>
@@ -996,23 +1394,70 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             </div>
                         )}
                         <div className="space-y-3 mt-4">
-                            {credentialLabels.filter(cred => cred.requiredFor.includes(selectedApplication.status)).map(({ key, label }) => (
-                                <div key={key} className="flex items-center justify-between">
-                                    <span className="text-sm">{label}</span>
-                                     {key === 'registrationForm' && selectedApplication.credentials[key] ? (
-                                        <Button variant="secondary" size="sm" className="h-7 rounded-md" onClick={() => setIsReviewFormOpen(true)}>
-                                            <FileText className="h-3 w-3 mr-2" />
-                                            View Form
-                                        </Button>
-                                    ) : (
-                                         selectedApplication.credentials[key] ? (
-                                            <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                        ) : (
-                                            <XCircle className="h-5 w-5 text-red-500" />
-                                        )
-                                    )}
+                            {credentialLabels
+                                .filter((cred) => cred.requiredFor.includes(selectedApplication.status))
+                                .map((credential) => {
+                                    const statusInfo = credentialStatuses[credential.key] ?? defaultCredentialStatus;
+                                    const statusMeta = credentialStatusMeta[statusInfo.status];
+                                    const StatusIcon = statusMeta.icon;
+                                    const canViewForm = (
+                                        credential.key === 'registrationForm'
+                                        && Boolean(selectedApplication.credentials[credential.key])
+                                        && Boolean(selectedApplication.formSnapshot)
+                                    );
+
+                                    return (
+                                        <div key={credential.key} className="flex items-center justify-between">
+                                            <span className="text-sm">{credential.label}</span>
+                                            {canViewForm ? (
+                                                <Button variant="secondary" size="sm" className="h-7 rounded-md" onClick={() => setIsReviewFormOpen(true)}>
+                                                    <FileText className="h-3 w-3 mr-2" />
+                                                    View Form
+                                                </Button>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <StatusIcon className={`h-4 w-4 ${statusMeta.className}`} />
+                                                    <span className="text-xs text-muted-foreground">{statusMeta.label}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                        <div className="mt-6 space-y-2">
+                            <h4 className="text-sm font-semibold">Submitted Files</h4>
+                            {selectedApplicationDocuments.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">No documents have been uploaded yet.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {selectedApplicationDocuments.map((doc) => {
+                                        const downloadUrl = doc.filePath ? buildApiUrl(doc.filePath) : null;
+                                        return (
+                                            <div key={doc.id} className="flex flex-col gap-2 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                                                <div>
+                                                    <p className="font-medium">{doc.name || doc.fileName}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {formatDocumentDate(doc.uploadedAt)}
+                                                        {doc.fileSize ? ` • ${formatDocumentSize(doc.fileSize)}` : ''}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant={resolveDocumentBadgeVariant(doc.status)}>{doc.status}</Badge>
+                                                    {downloadUrl ? (
+                                                        <Button asChild variant="outline" size="sm" className="h-8 rounded-full">
+                                                            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                                                                <Download className="mr-2 h-4 w-4" /> View
+                                                            </a>
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">Unavailable</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
                     <DialogFooter>
@@ -1054,27 +1499,107 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                         </DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[70vh] overflow-y-auto p-1 pr-4">
-                        <div className="space-y-6">
-                            <div>
-                                <h4 className="font-semibold mb-2">Personal Information</h4>
-                                <div className="border rounded-lg p-4 space-y-1">
-                                    <ReviewField label="Name" value={selectedApplication.name} />
-                                    <ReviewField label="Email" value={`${selectedApplication.name.toLowerCase().replace(' ', '.')}@example.com`} />
-                                    <ReviewField label="Sex" value="Male" />
-                                    <ReviewField label="Phone" value="09123456789" />
-                                    <ReviewField label="Birthdate" value="January 1, 2004" />
-                                </div>
+                        {formReview ? (
+                            <div className="space-y-6">
+                                <section>
+                                    <h4 className="font-semibold mb-2">Student Details</h4>
+                                    <div className="border rounded-lg p-4 space-y-1">
+                                        <ReviewField label="Student ID" value={withFallback(formReview.student.id ?? selectedApplication.studentId)} />
+                                        <ReviewField label="Course" value={withFallback(formReview.student.course ?? selectedApplication.course)} />
+                                        <ReviewField label="Year Level" value={withFallback(formReview.student.yearLevel ?? `${selectedApplication.year}`)} />
+                                        <ReviewField label="Student Type" value={withFallback(formReview.student.status ?? selectedApplication.status)} />
+                                        <ReviewField label="Block" value={withFallback(formReview.student.block ?? selectedApplication.block ?? null)} />
+                                        <ReviewField label="Specialization" value={withFallback(formReview.student.specialization, 'None')} />
+                                        <ReviewField label="Email" value={withFallback(contactEmail)} />
+                                        <ReviewField label="Phone" value={withFallback(contactPhone)} />
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h4 className="font-semibold mb-2">Personal Information</h4>
+                                    <div className="border rounded-lg p-4 space-y-1">
+                                        <ReviewField label="Full Name" value={withFallback(formReview.personal.name ?? selectedApplication.name)} />
+                                        <ReviewField label="Birthdate" value={withFallback(personalBirthdate)} />
+                                        <ReviewField label="Sex" value={withFallback(formReview.personal.sex)} />
+                                        <ReviewField label="Civil Status" value={withFallback(formReview.personal.civilStatus)} />
+                                        <ReviewField label="Nationality" value={withFallback(formReview.personal.nationality)} />
+                                        <ReviewField label="Religion" value={withFallback(formReview.personal.religion)} />
+                                        <ReviewField label="Dialect" value={withFallback(formReview.personal.dialect)} />
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h4 className="font-semibold mb-2">Address</h4>
+                                    <div className="border rounded-lg p-4 space-y-1">
+                                        <ReviewField label="Current Address" value={withFallback(formReview.address.currentAddress)} />
+                                        <ReviewField label="Permanent Address" value={withFallback(formReview.address.permanentAddress)} />
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h4 className="font-semibold mb-2">Family Background</h4>
+                                    <div className="border rounded-lg p-4 space-y-1">
+                                        <ReviewField label="Father's Name" value={withFallback(formReview.family.fathersName)} />
+                                        <ReviewField label="Father's Occupation" value={withFallback(formReview.family.fathersOccupation)} />
+                                        <ReviewField label="Mother's Name" value={withFallback(formReview.family.mothersName)} />
+                                        <ReviewField label="Mother's Occupation" value={withFallback(formReview.family.mothersOccupation)} />
+                                        <ReviewField label="Guardian's Name" value={withFallback(formReview.family.guardiansName)} />
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h4 className="font-semibold mb-2">Emergency Contact</h4>
+                                    <div className="border rounded-lg p-4 space-y-1">
+                                        <ReviewField label="Contact Name" value={withFallback(formReview.additional.emergencyContactName)} />
+                                        <ReviewField label="Contact Number" value={withFallback(formReview.additional.emergencyContactNumber)} />
+                                        <ReviewField label="Contact Address" value={withFallback(formReview.additional.emergencyContactAddress)} />
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h4 className="font-semibold mb-2">Education History</h4>
+                                    <div className="border rounded-lg p-4 space-y-1">
+                                        <ReviewField label="Elementary School" value={withFallback(formReview.education.elementarySchool)} />
+                                        <ReviewField label="Elementary Year Graduated" value={withFallback(formReview.education.elemYearGraduated)} />
+                                        <ReviewField label="Secondary School" value={withFallback(formReview.education.secondarySchool)} />
+                                        <ReviewField label="Secondary Year Graduated" value={withFallback(formReview.education.secondaryYearGraduated)} />
+                                        <ReviewField label="Previous College" value={withFallback(formReview.education.collegiateSchool, 'None')} />
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h4 className="font-semibold mb-2">Enlisted Subjects</h4>
+                                    {reviewSubjects.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">No subjects were selected in this application.</p>
+                                    ) : (
+                                        <div className="border rounded-lg overflow-hidden">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Code</TableHead>
+                                                        <TableHead>Description</TableHead>
+                                                        <TableHead className="w-20 text-right">Units</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {reviewSubjects.map((subject) => (
+                                                        <TableRow key={`subject-${subject.code}`}>
+                                                            <TableCell className="font-medium">{subject.code}</TableCell>
+                                                            <TableCell>{withFallback(subject.description ?? null, 'Subject details unavailable')}</TableCell>
+                                                            <TableCell className="text-right">{subject.units !== null && subject.units !== undefined ? subject.units : '—'}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    )}
+                                </section>
                             </div>
-                             <div>
-                                <h4 className="font-semibold mb-2">Academic Information</h4>
-                                <div className="border rounded-lg p-4 space-y-1">
-                                    <ReviewField label="Course" value={selectedApplication.course} />
-                                    <ReviewField label="Year Level" value={`${selectedApplication.year}`} />
-                                    <ReviewField label="Student Type" value={selectedApplication.status} />
-                                    <ReviewField label="Block" value={selectedApplication.block} />
-                                </div>
+                        ) : (
+                            <div className="flex items-center justify-center rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                                No form details were captured for this application.
                             </div>
-                        </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsReviewFormOpen(false)} className="rounded-xl">Close</Button>
@@ -1198,9 +1723,9 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                         <div className="flex items-center space-x-2">
                                             <Checkbox
                                                 id="select-all-subjects"
-                                                checked={enlistedSubjects.length === availableSubjectsForEnrollment.filter(s => !s.prerequisite || completedSubjectsForEnrollment.some(cs => cs.code === s.prerequisite)).length}
+                                                checked={enlistedSubjects.length > 0 && enlistedSubjects.length === availableSubjectsForEnrollment.filter((s) => hasMetPrerequisites(s, completedSubjectsForEnrollment)).length}
                                                 onCheckedChange={(checked) => {
-                                                    const subjectsWithMetPrereqs = availableSubjectsForEnrollment.filter(s => !s.prerequisite || completedSubjectsForEnrollment.some(cs => cs.code === s.prerequisite));
+                                                    const subjectsWithMetPrereqs = availableSubjectsForEnrollment.filter((s) => hasMetPrerequisites(s, completedSubjectsForEnrollment));
                                                     if (checked) {
                                                         setEnlistedSubjects(subjectsWithMetPrereqs);
                                                     } else {
@@ -1214,26 +1739,32 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                         </div>
                                     </div>
                                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                                        {availableSubjectsForEnrollment.map(subject => (
-                                            <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md", !subject.prerequisite || completedSubjectsForEnrollment.some(cs => cs.code === subject.prerequisite) ? "" : "bg-muted/50")}>
-                                                <SubjectCheckbox
-                                                    subject={subject}
-                                                    checked={enlistedSubjects.some(s => s.id === subject.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        if (checked) {
-                                                            setEnlistedSubjects(prev => [...prev, subject]);
-                                                        } else {
-                                                            setEnlistedSubjects(prev => prev.filter(s => s.id !== subject.id));
-                                                        }
-                                                    }}
-                                                    completedSubjects={completedSubjectsForEnrollment}
-                                                />
-                                                <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal cursor-pointer", !(!subject.prerequisite || completedSubjectsForEnrollment.some(cs => cs.code === subject.prerequisite)) && "text-muted-foreground cursor-not-allowed")}>
-                                                    {subject.code} - {subject.description}
-                                                </Label>
-                                                <span className="text-xs text-muted-foreground">{subject.units} units</span>
-                                            </div>
-                                        ))}
+                                        {availableSubjectsForEnrollment.map((subject) => {
+                                            const prerequisitesMet = hasMetPrerequisites(subject, completedSubjectsForEnrollment);
+                                            return (
+                                                <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md", prerequisitesMet ? "" : "bg-muted/50")}>
+                                                    <SubjectCheckbox
+                                                        subject={subject}
+                                                        checked={enlistedSubjects.some((s) => s.id === subject.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                setEnlistedSubjects((prev) => [...prev, subject]);
+                                                            } else {
+                                                                setEnlistedSubjects((prev) => prev.filter((s) => s.id !== subject.id));
+                                                            }
+                                                        }}
+                                                        completedSubjects={completedSubjectsForEnrollment}
+                                                    />
+                                                    <Label
+                                                        htmlFor={`sub-${subject.id}`}
+                                                        className={cn("flex-1 font-normal cursor-pointer", !prerequisitesMet && "text-muted-foreground cursor-not-allowed")}
+                                                    >
+                                                        {subject.code} - {subject.description}
+                                                    </Label>
+                                                    <span className="text-xs text-muted-foreground">{subject.units} units</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}

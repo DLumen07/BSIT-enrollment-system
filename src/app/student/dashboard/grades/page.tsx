@@ -65,6 +65,19 @@ const formatNumericValue = (value: number | null): string => {
   return fixed.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
 };
 
+const formatGradeDisplay = (value: StudentGradeRecord['grade'] | null): string => {
+  if (value === 'INC') {
+    return 'INC';
+  }
+  if (typeof value === 'number') {
+    return formatNumericValue(value);
+  }
+  if (value === null) {
+    return 'N/A';
+  }
+  return String(value);
+};
+
 const determineStanding = (gpa: number | null): string => {
   if (gpa === null) {
     return 'Pending Evaluation';
@@ -259,13 +272,19 @@ export default function GradesPage() {
                           </TableHeader>
                           <TableBody>
                             {group.subjects.map((subject) => {
-                              const gradeValue = typeof subject.grade === 'number' ? subject.grade : null;
-                              const isFailing = (gradeValue !== null && gradeValue > 3) || (subject.remark?.toLowerCase() === 'failed');
-                              const hasTermGrades = termOrder.some((term) => typeof subject.terms?.[term]?.grade === 'number');
+                              const remarkNormalized = subject.remark?.trim().toUpperCase() ?? null;
+                              const gradeValue = subject.grade ?? (remarkNormalized === 'INC' ? 'INC' : null);
+                              const numericGradeValue = typeof gradeValue === 'number' ? gradeValue : null;
+                              const isFailing =
+                                (numericGradeValue !== null && numericGradeValue > 3) ||
+                                gradeValue === 'INC' ||
+                                remarkNormalized === 'FAILED';
+                              const hasTermGrades = termOrder.some((term) => subject.terms?.[term]?.grade !== undefined && subject.terms?.[term]?.grade !== null);
                               const termSummary = termOrder
                                 .map((term) => {
-                                  const termGrade = subject.terms?.[term]?.grade ?? null;
-                                  return `${termLabels[term]}: ${formatNumericValue(termGrade)}`;
+                                  const rawTermGrade = subject.terms?.[term]?.grade ?? null;
+                                  const termGrade = rawTermGrade ?? (remarkNormalized === 'INC' ? 'INC' : null);
+                                  return `${termLabels[term]}: ${formatGradeDisplay(termGrade)}`;
                                 })
                                 .join(' • ');
                               return (
@@ -281,7 +300,7 @@ export default function GradesPage() {
                                     ) : null}
                                   </TableCell>
                                   <TableCell className={cn('text-right font-semibold', isFailing && 'text-destructive')}>
-                                    {formatNumericValue(gradeValue)}
+                                    {formatGradeDisplay(gradeValue)}
                                     {subject.remark ? (
                                       <span className="ml-2 text-xs text-muted-foreground">{subject.remark}</span>
                                     ) : null}

@@ -19,6 +19,17 @@ ON DUPLICATE KEY UPDATE
   admin_role = VALUES(admin_role),
   avatar_url = VALUES(avatar_url);
 
+-- System settings
+INSERT INTO system_settings (id, academic_year, semester, enrollment_start_date, enrollment_end_date, phased_schedule_json)
+VALUES
+  (1, '2024-2025', '1st-sem', '2024-08-01', '2024-08-15', NULL)
+ON DUPLICATE KEY UPDATE
+  academic_year = VALUES(academic_year),
+  semester = VALUES(semester),
+  enrollment_start_date = VALUES(enrollment_start_date),
+  enrollment_end_date = VALUES(enrollment_end_date),
+  phased_schedule_json = VALUES(phased_schedule_json);
+
 -- Blocks
 INSERT INTO blocks (id, name, year_level, course, specialization, capacity) VALUES
   (1, 'BSIT 3-A', 3, 'BSIT', 'AP', 40),
@@ -31,26 +42,34 @@ ON DUPLICATE KEY UPDATE
   capacity = VALUES(capacity);
 
 -- Subjects
-INSERT INTO subjects (id, code, description, units, prerequisite_id, year_level) VALUES
-  (8, 'IT 101', 'Introduction to Computing', 3, NULL, 1),
-  (9, 'IT 201', 'Data Structures & Algorithms', 3, 8, 2),
-  (10, 'IT 301', 'Web Development', 3, 9, 3),
-  (11, 'MATH 101', 'Calculus I', 3, NULL, 1)
+INSERT INTO subjects (id, code, description, units, semester, prerequisite_id, year_level) VALUES
+  (8, 'IT 101', 'Introduction to Computing', 3, '1st-sem', NULL, 1),
+  (9, 'IT 201', 'Data Structures & Algorithms', 3, '1st-sem', 8, 2),
+  (10, 'IT 301', 'Web Development', 3, '1st-sem', 9, 3),
+  (11, 'MATH 101', 'Calculus I', 3, '1st-sem', NULL, 1)
 ON DUPLICATE KEY UPDATE
   code = VALUES(code),
   description = VALUES(description),
   units = VALUES(units),
+  semester = VALUES(semester),
   prerequisite_id = VALUES(prerequisite_id),
   year_level = VALUES(year_level);
+
+-- Subject prerequisites
+INSERT INTO subject_prerequisites (subject_id, prerequisite_subject_id) VALUES
+  (9, 8),
+  (10, 9)
+ON DUPLICATE KEY UPDATE
+  prerequisite_subject_id = VALUES(prerequisite_subject_id);
 
 -- Student profiles
 INSERT INTO student_profiles (
   user_id, student_id_number, name, course, year_level, enrollment_status,
-  block_id, specialization, sex, phone_number, status
+  block_id, specialization, sex, phone_number, status, enrollment_track
 ) VALUES
-  (2, '24-00-0001', 'Alice Johnson', 'BSIT', 3, 'Enrolled', 1, 'AP', 'Female', '09123456789', 'Old'),
-  (3, '24-00-0002', 'Bob Williams', 'BSIT', 3, 'Not Enrolled', 2, 'DD', 'Male', '09123456780', 'Old'),
-  (4, '24-00-0003', 'Charlie Brown', 'ACT', 1, 'Enrolled', 3, NULL, 'Male', '09123456781', 'New')
+  (2, '24-00-0001', 'Alice Johnson', 'BSIT', 3, 'Enrolled', 1, 'AP', 'Female', '09123456789', 'Old', 'Regular'),
+  (3, '24-00-0002', 'Bob Williams', 'BSIT', 3, 'Not Enrolled', 2, 'DD', 'Male', '09123456780', 'Old', 'Irregular'),
+  (4, '24-00-0003', 'Charlie Brown', 'ACT', 1, 'Enrolled', 3, NULL, 'Male', '09123456781', 'New', 'Regular')
 ON DUPLICATE KEY UPDATE
   name = VALUES(name),
   course = VALUES(course),
@@ -60,7 +79,8 @@ ON DUPLICATE KEY UPDATE
   specialization = VALUES(specialization),
   sex = VALUES(sex),
   phone_number = VALUES(phone_number),
-  status = VALUES(status);
+  status = VALUES(status),
+  enrollment_track = VALUES(enrollment_track);
 
 -- Instructor profiles
 INSERT INTO instructor_profiles (user_id, name, avatar_url, department) VALUES
@@ -90,6 +110,18 @@ ON DUPLICATE KEY UPDATE
   `submitted_.at` = VALUES(`submitted_.at`),
   rejection_reason = VALUES(rejection_reason),
   form_data = VALUES(form_data);
+
+-- Announcements
+INSERT INTO announcements (id, title, message, audience, created_by, created_at, updated_at) VALUES
+  (1, 'Welcome Back!', 'Classes resume on Monday. Please check your schedules for updates.', 'All', 1, NOW() - INTERVAL 7 DAY, NOW() - INTERVAL 7 DAY),
+  (2, 'Enrollment Reminder', 'Enrollment for the 2nd semester closes this Friday.', 'Students', 1, NOW() - INTERVAL 2 DAY, NOW() - INTERVAL 2 DAY)
+ON DUPLICATE KEY UPDATE
+  title = VALUES(title),
+  message = VALUES(message),
+  audience = VALUES(audience),
+  created_by = VALUES(created_by),
+  created_at = VALUES(created_at),
+  updated_at = VALUES(updated_at);
 
 -- Student subjects
 INSERT INTO student_subjects (id, student_user_id, subject_id) VALUES

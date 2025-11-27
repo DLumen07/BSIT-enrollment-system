@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info, Users, Clock, BookOpen, UserCheck } from 'lucide-react';
@@ -27,26 +27,89 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PieChart, Pie, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { useStudent } from '@/app/student/context/student-context';
+import type { StudentDataType } from '@/app/student/context/student-context';
+import { Badge } from '@/components/ui/badge';
 
-
-const mockClassmates = [
-    { id: '22-01-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40' },
-    { id: '22-01-0456', name: 'Samantha Green', avatar: 'https://picsum.photos/seed/sg-student/40/40' },
-    { id: '22-01-0789', name: 'Michael Chen', avatar: 'https://picsum.photos/seed/mc-student/40/40' },
-    { id: '22-01-1111', name: 'Emily Davis', avatar: 'https://picsum.photos/seed/ed-student/40/40' },
-     { id: '22-01-0001', name: 'You', avatar: 'https://picsum.photos/seed/student-avatar/40/40' },
-];
-
-const profileCompletionData = [{ name: 'Completed', value: 75, fill: 'hsl(var(--primary))' }, { name: 'Remaining', value: 25, fill: 'hsl(var(--muted))' }];
 const profileCompletionConfig = {
     completed: { label: 'Completed', color: 'hsl(var(--primary))' },
     remaining: { label: 'Remaining', color: 'hsl(var(--muted))' },
 } satisfies ChartConfig
 
+const collectProfileFieldValues = (student: StudentDataType): Array<string | null | undefined> => (
+    [
+        student.personal.firstName,
+        student.personal.lastName,
+        student.personal.middleName,
+        student.personal.birthdate,
+        student.personal.sex,
+        student.personal.civilStatus,
+        student.personal.nationality,
+        student.personal.religion,
+        student.personal.dialect,
+        student.contact.email,
+        student.contact.phoneNumber,
+        student.address.currentAddress,
+        student.address.permanentAddress,
+        student.family.fathersName,
+        student.family.fathersOccupation,
+        student.family.mothersName,
+        student.family.mothersOccupation,
+        student.family.guardiansName,
+        student.family.guardiansOccupation,
+        student.family.guardiansAddress,
+        student.additional.emergencyContactName,
+        student.additional.emergencyContactAddress,
+        student.additional.emergencyContactNumber,
+        student.additional.livingWithFamily,
+        student.additional.boarding,
+        student.education.elementarySchool,
+        student.education.elemYearGraduated,
+        student.education.secondarySchool,
+        student.education.secondaryYearGraduated,
+        student.education.collegiateSchool,
+        student.education.collegiateYearGraduated,
+    ]
+);
+
+const calculateProfileCompletion = (student: StudentDataType): number => {
+    const values = collectProfileFieldValues(student);
+    if (values.length === 0) {
+        return 0;
+    }
+
+    const filled = values.filter((value) => typeof value === 'string' && value.trim() !== '').length;
+    const rawPercent = (filled / values.length) * 100;
+    return Math.min(100, Math.max(0, Math.round(rawPercent)));
+};
+
+const formatSemesterLabel = (semester?: string | null): string | null => {
+    if (!semester) {
+        return null;
+    }
+
+    const normalized = semester.toLowerCase();
+    if (normalized === '1st-sem') {
+        return '1st Semester';
+    }
+    if (normalized === '2nd-sem') {
+        return '2nd Semester';
+    }
+    if (normalized === 'summer') {
+        return 'Summer';
+    }
+    return semester;
+};
+
 
 export default function StudentDashboardPage() {
   const { studentData } = useStudent();
   const [isClassmatesDialogOpen, setIsClassmatesDialogOpen] = useState(false);
+    const classmates = useMemo(() => {
+        if (!studentData?.classmates) {
+            return [];
+        }
+        return [...studentData.classmates].sort((a, b) => a.name.localeCompare(b.name));
+    }, [studentData?.classmates]);
   
   if (!studentData) {
     return <div>Loading...</div>; // Or a loading spinner
@@ -55,6 +118,11 @@ export default function StudentDashboardPage() {
   const { isEnrolled } = studentData.enrollment;
   const { block } = studentData.academic;
   const allStudentSchedule = studentData.schedule;
+    const profileCompletionPercent = useMemo(() => calculateProfileCompletion(studentData), [studentData]);
+    const profileCompletionChartData = useMemo(() => ([
+        { name: 'Completed', value: profileCompletionPercent, fill: 'hsl(var(--primary))' },
+        { name: 'Remaining', value: Math.max(0, 100 - profileCompletionPercent), fill: 'hsl(var(--muted))' },
+    ]), [profileCompletionPercent]);
 
   const [todaysSchedule, setTodaysSchedule] = useState<typeof allStudentSchedule>([]);
 
@@ -72,6 +140,49 @@ export default function StudentDashboardPage() {
     const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
     return `${formattedHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
   }
+
+    const formatAnnouncementTimestamp = (isoString: string): string => {
+        if (!isoString) {
+            return 'Recently posted';
+        }
+        const parsed = new Date(isoString);
+        if (Number.isNaN(parsed.getTime())) {
+            return 'Recently posted';
+        }
+        return parsed.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+        });
+    };
+
+    const displayedAnnouncements = studentData.announcements.slice(0, 5);
+
+    const latestEnrollmentRecord = useMemo(() => {
+        const history = studentData.records?.enrollmentHistory ?? [];
+        if (history.length === 0) {
+            return null;
+        }
+
+        const sortedHistory = [...history].sort((a, b) => {
+            const aTime = a.recordedAt ? new Date(a.recordedAt).getTime() : 0;
+            const bTime = b.recordedAt ? new Date(b.recordedAt).getTime() : 0;
+            return bTime - aTime;
+        });
+
+        return sortedHistory[0];
+    }, [studentData.records?.enrollmentHistory]);
+
+    const fallbackTerm = studentData.currentTerm ?? null;
+    const academicYearDisplay = latestEnrollmentRecord?.academicYear
+        ?? (fallbackTerm?.academicYear ?? null);
+    const semesterDisplay = formatSemesterLabel(latestEnrollmentRecord?.semester ?? fallbackTerm?.semester ?? null);
+    const enrollmentTermSummary = academicYearDisplay && semesterDisplay
+        ? `A.Y. ${academicYearDisplay}, ${semesterDisplay}`
+        : academicYearDisplay
+            ? `A.Y. ${academicYearDisplay}`
+            : semesterDisplay;
 
   return (
     <main className="flex-1 p-4 sm:p-6">
@@ -152,7 +263,9 @@ export default function StudentDashboardPage() {
                             {isEnrolled ? (
                                 <>
                                     <p className="font-semibold text-green-500">Enrolled</p>
-                                    <p className="text-sm text-muted-foreground">A.Y. 2024-2025, 1st Sem</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {enrollmentTermSummary ?? 'Academic term details unavailable'}
+                                    </p>
                                 </>
                             ) : (
                                 <p className="font-semibold text-destructive">Not Enrolled</p>
@@ -195,20 +308,35 @@ export default function StudentDashboardPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {mockClassmates.sort((a, b) => a.name.localeCompare(b.name)).map(student => (
-                                                        <TableRow key={student.id}>
-                                                            <TableCell>
-                                                                <div className="flex items-center gap-3">
-                                                                    <Avatar className="h-8 w-8">
-                                                                        <AvatarImage src={student.avatar} alt={student.name} data-ai-hint="person avatar"/>
-                                                                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                                                                    </Avatar>
-                                                                    <span className="font-medium">{student.name}</span>
-                                                                </div>
+                                                    {classmates.length > 0 ? (
+                                                        classmates.map((student) => (
+                                                            <TableRow key={`${student.studentId}-${student.email ?? 'email'}`}>
+                                                                <TableCell>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <Avatar className="h-8 w-8">
+                                                                            <AvatarImage src={student.avatarUrl ?? undefined} alt={student.name} data-ai-hint="person avatar" />
+                                                                            <AvatarFallback>
+                                                                                {(student.name || student.studentId || '?').charAt(0).toUpperCase()}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                        <div className="flex flex-col">
+                                                                            <span className="font-medium">{student.name || 'Unnamed student'}</span>
+                                                                            {student.email && (
+                                                                                <span className="text-xs text-muted-foreground">{student.email}</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell>{student.studentId || '—'}</TableCell>
+                                                            </TableRow>
+                                                        ))
+                                                    ) : (
+                                                        <TableRow>
+                                                            <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
+                                                                No classmates are listed for this block yet.
                                                             </TableCell>
-                                                            <TableCell>{student.id}</TableCell>
                                                         </TableRow>
-                                                    ))}
+                                                    )}
                                                 </TableBody>
                                             </Table>
                                         </div>
@@ -243,14 +371,14 @@ export default function StudentDashboardPage() {
                                         content={<ChartTooltipContent hideLabel />}
                                     />
                                     <Pie
-                                        data={profileCompletionData}
+                                        data={profileCompletionChartData}
                                         dataKey="value"
                                         nameKey="name"
                                         innerRadius={60}
                                         strokeWidth={5}
                                         cornerRadius={40}
                                     >
-                                        {profileCompletionData.map((entry) => (
+                                        {profileCompletionChartData.map((entry) => (
                                             <Cell key={entry.name} fill={entry.fill} />
                                         ))}
                                     </Pie>
@@ -261,7 +389,7 @@ export default function StudentDashboardPage() {
                                         dominantBaseline="middle"
                                         className="fill-foreground text-2xl font-bold"
                                     >
-                                        {profileCompletionData[0].value}%
+                                        {profileCompletionPercent}%
                                     </text>
                                 </PieChart>
                             </ChartContainer>
@@ -274,7 +402,32 @@ export default function StudentDashboardPage() {
                         <CardDescription>Latest news and updates.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-sm">Midterm examinations are next week. Good luck!</p>
+                        {displayedAnnouncements.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No announcements are available right now. Check back soon for updates.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {displayedAnnouncements.map((announcement) => {
+                                    const authorName = announcement.createdBy.name?.trim() ?? '';
+                                    return (
+                                        <div key={announcement.id} className="rounded-lg border p-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="font-semibold leading-tight">{announcement.title}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {formatAnnouncementTimestamp(announcement.createdAt)}{authorName !== '' ? ` • ${authorName}` : ''}
+                                                    </p>
+                                                </div>
+                                                <Badge variant="secondary">{announcement.audience}</Badge>
+                                            </div>
+                                            <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">{announcement.message}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        {studentData.announcements.length > displayedAnnouncements.length && (
+                            <p className="mt-3 text-xs text-muted-foreground">Showing the latest {displayedAnnouncements.length} announcements.</p>
+                        )}
                     </CardContent>
                 </Card>
             </div>

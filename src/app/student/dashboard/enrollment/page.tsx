@@ -33,8 +33,39 @@ export default function EnrollmentPage() {
 
     const semesterLabel = semesterOptions.find(s => s.value === semester)?.label;
 
+    const apiBaseUrl = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+        .replace(/\/$/, '')
+        .trim();
+
     const handlePrint = () => {
-        window.print();
+        const studentEmail = studentData.contact.email?.trim();
+        if (!studentEmail) {
+            console.warn('Missing student email for registration form printing.');
+            return;
+        }
+
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const printUrl = `${apiBaseUrl}/print_registration_form.php?email=${encodeURIComponent(studentEmail)}`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+
+        const cleanup = () => {
+            setTimeout(() => {
+                iframe.remove();
+            }, 1500);
+        };
+
+        iframe.addEventListener('load', cleanup, { once: true });
+        iframe.src = printUrl;
+        document.body.appendChild(iframe);
     };
 
     const findApplicationByStudent = (applications: typeof pendingApplications) => {
