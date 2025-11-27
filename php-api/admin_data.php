@@ -240,11 +240,26 @@ try {
     $enrollmentEndDate = $systemSettings['enrollment_end_date'] ?? null;
 
     $phasedSchedule = [];
+    $activeEnrollmentPhase = null;
     if (!empty($systemSettings['phased_schedule_json'])) {
         $decodedSchedule = json_decode((string) $systemSettings['phased_schedule_json'], true);
         if (is_array($decodedSchedule)) {
-            $phasedSchedule = $decodedSchedule;
+            if (isset($decodedSchedule['phases']) && is_array($decodedSchedule['phases'])) {
+                $phasedSchedule = $decodedSchedule['phases'];
+            } else {
+                $phasedSchedule = $decodedSchedule;
+            }
+
+            if (isset($decodedSchedule['activePhase']) && is_string($decodedSchedule['activePhase'])) {
+                $activeEnrollmentPhase = strtolower(trim($decodedSchedule['activePhase']));
+            } elseif (isset($decodedSchedule['_meta']['activePhase']) && is_string($decodedSchedule['_meta']['activePhase'])) {
+                $activeEnrollmentPhase = strtolower(trim($decodedSchedule['_meta']['activePhase']));
+            }
         }
+    }
+
+    if ($activeEnrollmentPhase === null || $activeEnrollmentPhase === '') {
+        $activeEnrollmentPhase = 'all';
     }
 
     $academicYearOptions = build_academic_year_options($academicYear);
@@ -602,7 +617,12 @@ SQL;
                 'promotionHoldReason' => $row['promotion_hold_reason'] ?? null,
                 'specialization' => $row['specialization'],
                 'currentTermStatus' => $currentTermStatusMap[$studentUserId] ?? null,
+                'documents' => [],
             ];
+
+            if ($studentUserId > 0) {
+                $studentIdsForDocuments[$studentUserId] = true;
+            }
         }
         $result->free();
     } else {
@@ -1036,6 +1056,14 @@ SQL;
     }
 
     if (!empty($documentsByStudent)) {
+        foreach ($students as &$student) {
+            $studentUserId = isset($student['id']) ? (int) $student['id'] : 0;
+            if ($studentUserId > 0 && isset($documentsByStudent[$studentUserId])) {
+                $student['documents'] = $documentsByStudent[$studentUserId];
+            }
+        }
+        unset($student);
+
         foreach ($pendingApplications as &$application) {
             $studentUserId = isset($application['studentUserId']) ? (int) $application['studentUserId'] : 0;
             if ($studentUserId > 0 && isset($documentsByStudent[$studentUserId])) {
@@ -1314,6 +1342,7 @@ SQL;
         'enrollmentStartDate' => $enrollmentStartDate,
         'enrollmentEndDate' => $enrollmentEndDate,
         'phasedEnrollmentSchedule' => $phasedSchedule,
+        'activeEnrollmentPhase' => $activeEnrollmentPhase,
         'academicYearOptions' => $academicYearOptions,
         'semesterOptions' => $semesterOptions,
         'adminUsers' => $adminUsers,

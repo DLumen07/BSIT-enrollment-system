@@ -377,7 +377,7 @@ CREATE TABLE `student_documents` (
   `id` int(11) NOT NULL,
   `student_user_id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
-  `status` enum('Submitted','Pending','Rejected') NOT NULL DEFAULT 'Submitted',
+  `status` enum('Submitted','Pending','Approved','Rejected') NOT NULL DEFAULT 'Submitted',
   `file_name` varchar(255) NOT NULL,
   `file_path` varchar(500) NOT NULL,
   `file_size` bigint DEFAULT NULL,

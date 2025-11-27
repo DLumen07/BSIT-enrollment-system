@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS student_documents (
     id INT(11) NOT NULL AUTO_INCREMENT,
     student_user_id INT(11) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    status ENUM('Submitted','Pending','Rejected') NOT NULL DEFAULT 'Submitted',
+    status ENUM('Submitted','Pending','Approved','Rejected') NOT NULL DEFAULT 'Submitted',
     file_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(500) NOT NULL,
     file_size BIGINT DEFAULT NULL,

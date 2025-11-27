@@ -147,7 +147,7 @@ export type EnrollmentApplicationSnapshot = Record<string, unknown> | null;
 export type ApplicationDocument = {
     id: number;
     name: string;
-    status: 'Submitted' | 'Pending' | 'Rejected';
+    status: 'Submitted' | 'Pending' | 'Approved' | 'Rejected';
     fileName: string;
     filePath: string;
     fileType: string | null;
@@ -277,17 +277,18 @@ export type Student = {
     specialization?: 'AP' | 'DD';
     profileStatus?: 'New' | 'Old' | 'Transferee';
     currentTermStatus?: string | null;
+    documents?: ApplicationDocument[];
 };
 const initialStudentsList: Student[] = [
-    { id: 1, studentId: '21-00-0123', name: 'Alice Johnson', avatar: 'https://picsum.photos/seed/aj-student/40/40', email: 'alice.j@student.example.com', course: 'BSIT', year: 4, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09123456789', specialization: 'AP' },
-    { id: 2, studentId: '22-00-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40', email: 'bob.w@student.example.com', course: 'BSIT', year: 3, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456780', specialization: 'AP' },
-    { id: 3, studentId: '23-00-0345', name: 'Charlie Brown', avatar: 'https://picsum.photos/seed/cb-student/40/40', email: 'charlie.b@student.example.com', course: 'ACT', year: 2, status: 'Enrolled', sex: 'Male', phoneNumber: '09123456781', block: 'ACT 2-A' },
-    { id: 4, studentId: '23-00-0456', name: 'David Wilson', avatar: 'https://picsum.photos/seed/dw-student/40/40', email: 'david.w@student.example.com', course: 'ACT', year: 2, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456782' },
-    { id: 7, studentId: '24-00-0101', name: 'Frank Miller', avatar: 'https://picsum.photos/seed/fm-student/40/40', email: 'frank.m@student.example.com', course: 'ACT', year: 1, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456783' },
-    { id: 8, studentId: '23-00-0102', name: 'Grace Lee', avatar: 'https://picsum.photos/seed/gl-student/40/40', email: 'grace.l@student.example.com', course: 'ACT', year: 2, status: 'Enrolled', sex: 'Female', phoneNumber: '09123456784', block: 'ACT 2-A' },
-    { id: 9, studentId: '22-00-0103', name: 'Henry Taylor', avatar: 'https://picsum.photos/seed/ht-student/40/40', email: 'henry.t@student.example.com', course: 'BSIT', year: 3, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456785' },
-    { id: 10, studentId: '21-00-0104', name: 'Ivy Clark', avatar: 'https://picsum.photos/seed/ic-student/40/40', email: 'ivy.c@student.example.com', course: 'BSIT', year: 4, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09123456786' },
-    { id: 11, studentId: '24-00-1001', name: 'Gabby New', avatar: 'https://picsum.photos/seed/gn-student/40/40', email: 'gabby.n@student.example.com', course: 'ACT', year: 1, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09111111111' },
+    { id: 1, studentId: '21-00-0123', name: 'Alice Johnson', avatar: 'https://picsum.photos/seed/aj-student/40/40', email: 'alice.j@student.example.com', course: 'BSIT', year: 4, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09123456789', specialization: 'AP', documents: [] },
+    { id: 2, studentId: '22-00-0234', name: 'Bob Williams', avatar: 'https://picsum.photos/seed/bw-student/40/40', email: 'bob.w@student.example.com', course: 'BSIT', year: 3, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456780', specialization: 'AP', documents: [] },
+    { id: 3, studentId: '23-00-0345', name: 'Charlie Brown', avatar: 'https://picsum.photos/seed/cb-student/40/40', email: 'charlie.b@student.example.com', course: 'ACT', year: 2, status: 'Enrolled', sex: 'Male', phoneNumber: '09123456781', block: 'ACT 2-A', documents: [] },
+    { id: 4, studentId: '23-00-0456', name: 'David Wilson', avatar: 'https://picsum.photos/seed/dw-student/40/40', email: 'david.w@student.example.com', course: 'ACT', year: 2, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456782', documents: [] },
+    { id: 7, studentId: '24-00-0101', name: 'Frank Miller', avatar: 'https://picsum.photos/seed/fm-student/40/40', email: 'frank.m@student.example.com', course: 'ACT', year: 1, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456783', documents: [] },
+    { id: 8, studentId: '23-00-0102', name: 'Grace Lee', avatar: 'https://picsum.photos/seed/gl-student/40/40', email: 'grace.l@student.example.com', course: 'ACT', year: 2, status: 'Enrolled', sex: 'Female', phoneNumber: '09123456784', block: 'ACT 2-A', documents: [] },
+    { id: 9, studentId: '22-00-0103', name: 'Henry Taylor', avatar: 'https://picsum.photos/seed/ht-student/40/40', email: 'henry.t@student.example.com', course: 'BSIT', year: 3, status: 'Not Enrolled', sex: 'Male', phoneNumber: '09123456785', documents: [] },
+    { id: 10, studentId: '21-00-0104', name: 'Ivy Clark', avatar: 'https://picsum.photos/seed/ic-student/40/40', email: 'ivy.c@student.example.com', course: 'BSIT', year: 4, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09123456786', documents: [] },
+    { id: 11, studentId: '24-00-1001', name: 'Gabby New', avatar: 'https://picsum.photos/seed/gn-student/40/40', email: 'gabby.n@student.example.com', course: 'ACT', year: 1, status: 'Not Enrolled', sex: 'Female', phoneNumber: '09111111111', documents: [] },
 ];
 
 // --- Academic Records ---
@@ -429,6 +430,7 @@ const mockAdminData = {
         '3rd-year': { date: new Date('2024-08-03'), startTime: '08:00', endTime: '17:00' },
         '4th-year': { date: new Date('2024-08-04'), startTime: '08:00', endTime: '17:00' },
     },
+    activeEnrollmentPhase: 'all',
     academicYearOptions: ['2024-2025', '2023-2024'],
     semesterOptions: [
         { value: '1st-sem', label: '1st Semester' },
@@ -519,6 +521,7 @@ type BackendAdminDataPayload = {
     academicYearOptions?: string[];
     semesterOptions?: Array<{ value: string; label: string }>;
     announcements?: AnnouncementPayload[];
+    activeEnrollmentPhase?: string | null;
 };
 
 type AdminApiResponse =
@@ -1058,6 +1061,12 @@ const createAdminDataFromPayload = (
     const semester = payload?.semester ?? mockAdminData.semester;
     const enrollmentStartDate = parseDate(payload?.enrollmentStartDate ?? null) ?? mockAdminData.enrollmentStartDate;
     const enrollmentEndDate = parseDate(payload?.enrollmentEndDate ?? null) ?? mockAdminData.enrollmentEndDate;
+    const activeEnrollmentPhase = (() => {
+        if (typeof payload?.activeEnrollmentPhase === 'string' && payload.activeEnrollmentPhase.trim() !== '') {
+            return payload.activeEnrollmentPhase.trim().toLowerCase();
+        }
+        return mockAdminData.activeEnrollmentPhase;
+    })();
 
     const phasedEnrollmentSchedule = (() => {
         const incoming = payload?.phasedEnrollmentSchedule;
@@ -1117,6 +1126,14 @@ const createAdminDataFromPayload = (
         ? payload.students.map((student) => ({
             ...student,
             avatar: normalizeAvatarValue(student.avatar),
+            documents: Array.isArray(student.documents)
+                ? student.documents.map((doc) => ({
+                    ...doc,
+                    status: typeof doc.status === 'string' && doc.status.trim() !== ''
+                        ? doc.status
+                        : 'Submitted',
+                }))
+                : [],
             promotionHoldReason: student.promotionHoldReason ?? null,
         }))
         : [];
@@ -1136,6 +1153,7 @@ const createAdminDataFromPayload = (
         enrollmentStartDate,
         enrollmentEndDate,
         phasedEnrollmentSchedule,
+        activeEnrollmentPhase,
         academicYearOptions,
         semesterOptions,
         adminUsers,

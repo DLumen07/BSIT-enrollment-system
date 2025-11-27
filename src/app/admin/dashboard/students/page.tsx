@@ -116,6 +116,8 @@ const getDocumentStatusVariant = (status?: ApplicationDocument['status']) => {
             return 'secondary';
         case 'pending':
             return 'outline';
+        case 'approved':
+            return 'default';
         case 'rejected':
             return 'destructive';
         default:
@@ -161,6 +163,58 @@ export default function StudentsPage() {
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
     const [subjectActionBusy, setSubjectActionBusy] = useState(false);
     const [isAddSubjectPopoverOpen, setIsAddSubjectPopoverOpen] = useState(false);
+    const [documentActionId, setDocumentActionId] = useState<number | null>(null);
+
+    const mergeDocumentEntry = useCallback((documents: ApplicationDocument[] | undefined, updated: ApplicationDocument): ApplicationDocument[] => {
+        if (!Array.isArray(documents) || documents.length === 0) {
+            return [updated];
+        }
+        const index = documents.findIndex((doc) => doc.id === updated.id);
+        if (index === -1) {
+            return [updated, ...documents];
+        }
+        const clone = documents.slice();
+        clone[index] = { ...clone[index], ...updated };
+        return clone;
+    }, []);
+
+    const syncDocumentState = useCallback((studentUserId: number | null, updatedDoc: ApplicationDocument) => {
+        if (!studentUserId) {
+            return;
+        }
+
+        setAdminData(prev => ({
+            ...prev,
+            students: prev.students.map((student) =>
+                student.id === studentUserId
+                    ? { ...student, documents: mergeDocumentEntry(student.documents, updatedDoc) }
+                    : student,
+            ),
+        }));
+
+        setEnrolledStudents(prev => prev.map((student) =>
+            student.id === studentUserId
+                ? { ...student, documents: mergeDocumentEntry(student.documents, updatedDoc) }
+                : student,
+        ));
+
+        setSelectedStudent(prev => {
+            if (!prev || prev.id !== studentUserId) {
+                return prev;
+            }
+            return { ...prev, documents: mergeDocumentEntry(prev.documents, updatedDoc) };
+        });
+    }, [mergeDocumentEntry, setAdminData, setEnrolledStudents, setSelectedStudent]);
+
+    const buildDocumentUrl = useCallback((path?: string | null) => {
+        if (!path || path.trim() === '') {
+            return null;
+        }
+        if (/^https?:\/\//i.test(path)) {
+            return path;
+        }
+        return `${API_BASE_URL}/${path.replace(/^\/+/, '')}`;
+    }, [API_BASE_URL]);
 
     useEffect(() => {
         setEnrolledStudents(students.filter(student => student.status === 'Enrolled'));
@@ -214,6 +268,62 @@ export default function StudentsPage() {
     useEffect(() => {
         setSelectedSubjectId('');
     }, [selectedStudent]);
+
+    const handleDocumentStatusUpdate = useCallback(async (documentId: number, nextStatus: 'Approved' | 'Rejected') => {
+        setDocumentActionId(documentId);
+        try {
+            const response = await fetch(`${API_BASE_URL}/update_student_document_status.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ documentId, status: nextStatus }),
+            });
+
+            let payload: any = null;
+            try {
+                payload = await response.json();
+            } catch (jsonError) {
+                // Ignore parse issues; handled below via status.
+            }
+
+            if (!response.ok || !payload || payload.status !== 'success') {
+                throw new Error(payload?.message ?? 'Unable to update the document status.');
+            }
+
+            const updatedDoc = payload?.data?.document;
+            if (!updatedDoc) {
+                throw new Error('Server response did not include the updated document.');
+            }
+
+            const targetStudentId = Number(updatedDoc.studentUserId ?? 0) || null;
+            const normalizedDoc: ApplicationDocument = {
+                id: Number(updatedDoc.id ?? documentId),
+                name: typeof updatedDoc.name === 'string' && updatedDoc.name.trim() !== '' ? updatedDoc.name : 'Untitled Document',
+                status: updatedDoc.status ?? nextStatus,
+                fileName: updatedDoc.fileName ?? '',
+                filePath: updatedDoc.filePath ?? '',
+                fileType: updatedDoc.fileType ?? null,
+                fileSize: typeof updatedDoc.fileSize === 'number' ? updatedDoc.fileSize : null,
+                uploadedAt: updatedDoc.uploadedAt ?? null,
+                updatedAt: updatedDoc.updatedAt ?? null,
+            };
+
+            syncDocumentState(targetStudentId, normalizedDoc);
+
+            toast({
+                title: nextStatus === 'Approved' ? 'Document approved' : 'Document rejected',
+                description: `${normalizedDoc.name} marked as ${nextStatus.toLowerCase()}.`,
+            });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Update failed',
+                description: error instanceof Error ? error.message : 'Unable to process the document right now.',
+            });
+        } finally {
+            setDocumentActionId(null);
+        }
+    }, [API_BASE_URL, syncDocumentState, toast]);
 
     const openDeleteDialog = (student: Student) => {
         setSelectedStudent(student);
@@ -374,6 +484,36 @@ export default function StudentsPage() {
         const documents = matchedApplication?.documents ?? [];
         return documents.filter((doc): doc is ApplicationDocument => Boolean(doc));
     }, [selectedStudent, adminData.approvedApplications, adminData.pendingApplications, adminData.rejectedApplications]);
+
+    const combinedDocuments = useMemo(() => {
+        if (!selectedStudent) {
+            return submittedDocuments;
+        }
+
+        const primary = Array.isArray(selectedStudent.documents) ? selectedStudent.documents : [];
+        if (primary.length === 0 && submittedDocuments.length === 0) {
+            return [] as ApplicationDocument[];
+        }
+
+        const seenKeys = new Set<string | number>();
+        const merged: ApplicationDocument[] = [];
+
+        primary.forEach((doc) => {
+            const key = typeof doc.id === 'number' && doc.id > 0 ? doc.id : `${doc.name}-${doc.fileName}`;
+            seenKeys.add(key);
+            merged.push(doc);
+        });
+
+        submittedDocuments.forEach((doc) => {
+            const key = typeof doc.id === 'number' && doc.id > 0 ? doc.id : `${doc.name}-${doc.fileName}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                merged.push(doc);
+            }
+        });
+
+        return merged;
+    }, [selectedStudent, submittedDocuments]);
 
     const applySubjectUpdate = useCallback((studentId: number, updatedSubjects: Subject[]) => {
         setAdminData(prev => ({
@@ -654,33 +794,74 @@ export default function StudentsPage() {
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between">
                                             <h4 className="font-semibold text-sm">Submitted Documents</h4>
-                                            {submittedDocuments.length > 0 && (
+                                            {combinedDocuments.length > 0 && (
                                                 <Badge variant="secondary" className="rounded-full text-xs">
-                                                    {submittedDocuments.length} file{submittedDocuments.length === 1 ? '' : 's'}
+                                                    {combinedDocuments.length} file{combinedDocuments.length === 1 ? '' : 's'}
                                                 </Badge>
                                             )}
                                         </div>
                                         <div className="border rounded-lg divide-y">
-                                            {submittedDocuments.length > 0 ? (
-                                                submittedDocuments.map((doc, index) => {
+                                            {combinedDocuments.length > 0 ? (
+                                                combinedDocuments.map((doc, index) => {
                                                     const sizeLabel = formatDocumentSize(doc.fileSize);
                                                     const uploadedLabel = formatDocumentDate(doc.uploadedAt);
                                                     const key = doc.id ?? `${doc.name ?? doc.fileName ?? 'document'}-${index}`;
+                                                    const downloadUrl = buildDocumentUrl(doc.filePath ?? doc.fileName);
+                                                    const normalizedStatus = (doc.status ?? '').toLowerCase();
+                                                    const canModerate = typeof doc.id === 'number' && doc.id > 0;
+                                                    const isPendingAction = documentActionId === doc.id;
+                                                    const approveDisabled = !canModerate || normalizedStatus === 'approved' || isPendingAction;
+                                                    const rejectDisabled = !canModerate || normalizedStatus === 'rejected' || isPendingAction;
                                                     return (
-                                                        <div key={key} className="flex items-start justify-between gap-3 p-3">
-                                                            <div className="flex items-start gap-3">
-                                                                <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                                                                <div>
-                                                                    <p className="text-sm font-medium">{doc.name || doc.fileName || 'Untitled Document'}</p>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        {uploadedLabel ?? 'Upload date unavailable'}
-                                                                        {sizeLabel ? ` • ${sizeLabel}` : ''}
-                                                                    </p>
+                                                        <div key={key} className="p-3 space-y-3">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="flex items-start gap-3">
+                                                                    <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                                                    <div>
+                                                                        <p className="text-sm font-medium">{doc.name || doc.fileName || 'Untitled Document'}</p>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            {uploadedLabel ?? 'Upload date unavailable'}
+                                                                            {sizeLabel ? ` • ${sizeLabel}` : ''}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <Badge variant={getDocumentStatusVariant(doc.status)} className="text-xs">
+                                                                    {doc.status ?? 'Unknown'}
+                                                                </Badge>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                {downloadUrl ? (
+                                                                    <Button variant="ghost" size="sm" className="rounded-xl px-2" asChild>
+                                                                        <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                                                                            Download
+                                                                        </a>
+                                                                    </Button>
+                                                                ) : (
+                                                                    <span className="text-xs text-muted-foreground">File unavailable</span>
+                                                                )}
+                                                                <div className="flex items-center gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="rounded-xl"
+                                                                        disabled={rejectDisabled}
+                                                                        onClick={() => canModerate && handleDocumentStatusUpdate(doc.id, 'Rejected')}
+                                                                    >
+                                                                        Reject
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="rounded-xl"
+                                                                        disabled={approveDisabled}
+                                                                        onClick={() => canModerate && handleDocumentStatusUpdate(doc.id, 'Approved')}
+                                                                    >
+                                                                        Approve
+                                                                    </Button>
+                                                                    {isPendingAction && (
+                                                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                            <Badge variant={getDocumentStatusVariant(doc.status)} className="text-xs">
-                                                                {doc.status ?? 'Unknown'}
-                                                            </Badge>
                                                         </div>
                                                     );
                                                 })

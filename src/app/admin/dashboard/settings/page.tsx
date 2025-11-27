@@ -79,7 +79,17 @@ const PROGRAM_EVENTS_STORAGE_KEY = 'bsit_admin_program_events';
 export default function AdminSettingsPage() {
     const { toast } = useToast();
     const { adminData, setAdminData, refreshAdminData } = useAdmin();
-    const { currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate, academicYearOptions, semesterOptions } = adminData;
+    const {
+        currentUser,
+        academicYear,
+        semester,
+        enrollmentStartDate,
+        enrollmentEndDate,
+        academicYearOptions,
+        semesterOptions,
+        phasedEnrollmentSchedule,
+        activeEnrollmentPhase: serverActiveEnrollmentPhase = 'all',
+    } = adminData;
 
     const [announcementTitle, setAnnouncementTitle] = useState('');
     const [announcementMessage, setAnnouncementMessage] = useState('');
@@ -106,6 +116,7 @@ export default function AdminSettingsPage() {
 
     const [startDate, setStartDate] = useState<Date | undefined>(enrollmentStartDate);
     const [endDate, setEndDate] = useState<Date | undefined>(enrollmentEndDate);
+    const [activeEnrollmentPhase, setActiveEnrollmentPhase] = useState(serverActiveEnrollmentPhase ?? 'all');
 
     const [rolloverPreview, setRolloverPreview] = useState<RolloverSummary | null>(null);
     const [rolloverPreviewSignature, setRolloverPreviewSignature] = useState<string | null>(null);
@@ -142,6 +153,23 @@ export default function AdminSettingsPage() {
     ), [currentAcademicYear, academicYear, currentSemester, semester]);
 
     const selectedDateLabel = useMemo(() => format(programCalendarDate, 'PPPP'), [programCalendarDate]);
+
+    const enrollmentPhaseOptions = useMemo(() => {
+        const scheduleKeys = Object.keys(phasedEnrollmentSchedule ?? {});
+        if (scheduleKeys.length > 0) {
+            return scheduleKeys;
+        }
+        return ['1st-year', '2nd-year', '3rd-year', '4th-year'];
+    }, [phasedEnrollmentSchedule]);
+
+    const formatPhaseLabel = useCallback((value: string) => {
+        if (value === 'all') {
+            return 'All year levels';
+        }
+        return value
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+    }, []);
 
     const programsForSelectedDate = useMemo(() => {
         return programEvents
@@ -606,7 +634,8 @@ export default function AdminSettingsPage() {
         setCurrentSemester(semester);
         setStartDate(enrollmentStartDate);
         setEndDate(enrollmentEndDate);
-    }, [currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate]);
+        setActiveEnrollmentPhase(serverActiveEnrollmentPhase ?? 'all');
+    }, [currentUser, academicYear, semester, enrollmentStartDate, enrollmentEndDate, serverActiveEnrollmentPhase]);
 
     useEffect(() => {
         setAnnouncements(adminData.announcements ?? []);
@@ -688,12 +717,14 @@ export default function AdminSettingsPage() {
             const originalStartIso = formatDateForApi(enrollmentStartDate ?? null);
             const originalEndIso = formatDateForApi(enrollmentEndDate ?? null);
             const datesChanged = startDateIso !== originalStartIso || endDateIso !== originalEndIso;
-            if (datesChanged) {
+            const activePhaseChanged = activeEnrollmentPhase !== (serverActiveEnrollmentPhase ?? 'all');
+            if (datesChanged || activePhaseChanged) {
                 await callAdminApi('update_system_settings.php', {
                     academicYear: termChanged ? academicYear : currentAcademicYear,
                     semester: termChanged ? semester : currentSemester,
                     enrollmentStartDate: startDateIso,
                     enrollmentEndDate: endDateIso,
+                    activeEnrollmentPhase,
                 });
 
                 const settingsRefresh = await refreshAdminData();
@@ -707,6 +738,7 @@ export default function AdminSettingsPage() {
                 }
                 setStartDate(settingsRefresh.enrollmentStartDate);
                 setEndDate(settingsRefresh.enrollmentEndDate);
+                setActiveEnrollmentPhase(settingsRefresh.activeEnrollmentPhase ?? 'all');
             }
 
             if (termChanged) {
@@ -1147,6 +1179,31 @@ export default function AdminSettingsPage() {
                                 </Card>
                                 <Card className="rounded-xl">
                                     <CardHeader>
+                                        <CardTitle>Enrollment Phase Filter</CardTitle>
+                                        <CardDescription>Limit enrollment access to specific year levels during phased rollouts.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="enrollment-phase">Currently allowed year level</Label>
+                                            <Select value={activeEnrollmentPhase} onValueChange={setActiveEnrollmentPhase}>
+                                                <SelectTrigger id="enrollment-phase" className="rounded-xl">
+                                                    <SelectValue placeholder="Choose a phase" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All year levels</SelectItem>
+                                                    {enrollmentPhaseOptions.map((phase) => (
+                                                        <SelectItem key={phase} value={phase}>{formatPhaseLabel(phase)}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Students outside the selected year level will see a notice that enrollment is not yet open for them.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="rounded-xl">
+                                    <CardHeader>
                                         <CardTitle>Academic Rollover</CardTitle>
                                         <CardDescription>Preview and confirm promotions before activating the next term.</CardDescription>
                                     </CardHeader>
@@ -1392,6 +1449,7 @@ export default function AdminSettingsPage() {
                                                 onSelect={handleSelectProgramDate}
                                                 modifiers={{ programDay: calendarProgramDates }}
                                                 modifiersClassNames={{ programDay: 'border border-primary text-primary font-semibold' }}
+                                                    className="w-full"
                                                 initialFocus
                                             />
                                         </div>

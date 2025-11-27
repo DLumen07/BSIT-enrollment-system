@@ -56,6 +56,48 @@ function respond(int $statusCode, array $payload, ?mysqli $connection = null): v
     exit;
 }
 
+function normalize_phased_schedule_payload($value): array
+{
+    $result = [
+        'phases' => [],
+        'activePhase' => null,
+    ];
+
+    if ($value === null) {
+        return $result;
+    }
+
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        if (!is_array($decoded)) {
+            return $result;
+        }
+        $value = $decoded;
+    }
+
+    if (!is_array($value)) {
+        return $result;
+    }
+
+    if (isset($value['phases']) && is_array($value['phases'])) {
+        $result['phases'] = $value['phases'];
+    } else {
+        $result['phases'] = $value;
+    }
+
+    if (isset($value['activePhase']) && is_string($value['activePhase'])) {
+        $result['activePhase'] = trim((string) $value['activePhase']);
+    } elseif (isset($value['_meta']['activePhase']) && is_string($value['_meta']['activePhase'])) {
+        $result['activePhase'] = trim((string) $value['_meta']['activePhase']);
+    }
+
+    if ($result['activePhase'] === '') {
+        $result['activePhase'] = null;
+    }
+
+    return $result;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, [
         'status' => 'error',
@@ -74,11 +116,19 @@ $semester = isset($payload['semester']) ? trim((string) $payload['semester']) : 
 $enrollmentStartDate = isset($payload['enrollmentStartDate']) ? trim((string) $payload['enrollmentStartDate']) : '';
 $enrollmentEndDate = isset($payload['enrollmentEndDate']) ? trim((string) $payload['enrollmentEndDate']) : '';
 $phasedSchedule = $payload['phasedSchedule'] ?? null;
+$activeEnrollmentPhase = isset($payload['activeEnrollmentPhase']) ? strtolower(trim((string) $payload['activeEnrollmentPhase'])) : '';
 
 if ($academicYear === '' || $semester === '') {
     respond(400, [
         'status' => 'error',
         'message' => 'Academic year and semester are required.',
+    ], isset($conn) ? $conn : null);
+}
+
+if ($activeEnrollmentPhase !== '' && !preg_match('/^[a-z0-9\-]+$/', $activeEnrollmentPhase)) {
+    respond(422, [
+        'status' => 'error',
+        'message' => 'Active enrollment phase format is invalid.',
     ], isset($conn) ? $conn : null);
 }
 
@@ -114,20 +164,6 @@ if ($startDateValue !== null && $endDateValue !== null && $startDateValue > $end
 }
 
 $phasedScheduleJson = null;
-if ($phasedSchedule !== null) {
-    if (is_string($phasedSchedule)) {
-        $phasedScheduleJson = $phasedSchedule;
-    } else {
-        $encoded = json_encode($phasedSchedule, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        if ($encoded === false) {
-            respond(422, [
-                'status' => 'error',
-                'message' => 'Unable to encode phased schedule as JSON.',
-            ], isset($conn) ? $conn : null);
-        }
-        $phasedScheduleJson = $encoded;
-    }
-}
 
 try {
     if (!isset($conn) || !($conn instanceof mysqli)) {
@@ -135,6 +171,45 @@ try {
     }
 
     $conn->set_charset('utf8mb4');
+
+    $existingScheduleRow = null;
+    if ($result = $conn->query('SELECT phased_schedule_json FROM system_settings WHERE id = 1 LIMIT 1')) {
+        $existingScheduleRow = $result->fetch_assoc() ?: null;
+        $result->free();
+    }
+
+    $existingSchedulePayload = normalize_phased_schedule_payload($existingScheduleRow['phased_schedule_json'] ?? null);
+    $incomingSchedulePayload = normalize_phased_schedule_payload($phasedSchedule);
+
+    $phasesToPersist = $phasedSchedule !== null
+        ? $incomingSchedulePayload['phases']
+        : $existingSchedulePayload['phases'];
+
+    $activePhaseFromPayload = $incomingSchedulePayload['activePhase'];
+    $activePhaseToPersist = $activeEnrollmentPhase !== ''
+        ? $activeEnrollmentPhase
+        : ($activePhaseFromPayload ?? $existingSchedulePayload['activePhase']);
+
+    if ($activePhaseToPersist === '') {
+        $activePhaseToPersist = null;
+    }
+
+    $shouldPersistPhasedData = !empty($phasesToPersist) || $activePhaseToPersist !== null;
+    if ($shouldPersistPhasedData) {
+        $phasedPayload = ['phases' => $phasesToPersist];
+        if ($activePhaseToPersist !== null) {
+            $phasedPayload['activePhase'] = $activePhaseToPersist;
+        }
+
+        $encoded = json_encode($phasedPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($encoded === false) {
+            respond(422, [
+                'status' => 'error',
+                'message' => 'Unable to encode phased schedule as JSON.',
+            ], $conn);
+        }
+        $phasedScheduleJson = $encoded;
+    }
 
     $sql = 'INSERT INTO system_settings (id, academic_year, semester, enrollment_start_date, enrollment_end_date, phased_schedule_json)
             VALUES (1, ?, ?, ?, ?, ?)
@@ -174,6 +249,7 @@ try {
             'enrollmentStartDate' => $startDateValue,
             'enrollmentEndDate' => $endDateValue,
             'phasedScheduleJson' => $phasedScheduleJson !== null ? json_decode($phasedScheduleJson, true) : null,
+            'activeEnrollmentPhase' => $activePhaseToPersist,
         ],
     ], $conn);
 } catch (Throwable $e) {
