@@ -9,13 +9,13 @@
     {
       "id": "school-logo",
       "description": "A logo for the school.",
-      "imageUrl": "/site-logo.png",
+      "imageUrl": "/image/system-logo.svg",
       "imageHint": "school logo"
     },
     {
       "id": "school-logo-sm",
       "description": "A small logo for the school.",
-      "imageUrl": "/site-logo.png",
+      "imageUrl": "/image/system-logo.svg",
       "imageHint": "school logo"
     }
   ]

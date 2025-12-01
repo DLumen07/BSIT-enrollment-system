@@ -50,6 +50,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAdmin, Student, Subject, SemesterValue, ApplicationDocument } from '../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
+import { notifyDataChanged } from '@/lib/live-sync';
 
 const normalizeSubjectCode = (code?: string | null): string => {
     if (typeof code !== 'string') {
@@ -142,6 +143,45 @@ type ModifySubjectResponse = {
     };
 };
 
+const ORF_RELEASE_STORAGE_KEY = 'admin_orf_release_history_v1';
+
+type OrfReleaseMap = Record<string, string>;
+
+const readStoredOrfReleases = (): OrfReleaseMap => {
+    if (typeof window === 'undefined') {
+        return {};
+    }
+    try {
+        const raw = window.localStorage.getItem(ORF_RELEASE_STORAGE_KEY);
+        if (!raw) {
+            return {};
+        }
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return Object.entries(parsed).reduce<OrfReleaseMap>((acc, [key, value]) => {
+                if (typeof key === 'string' && typeof value === 'string') {
+                    acc[key] = value;
+                }
+                return acc;
+            }, {});
+        }
+    } catch (error) {
+        console.warn('[AdminStudents] Failed to read ORF release history.', error);
+    }
+    return {};
+};
+
+const persistOrfReleases = (map: OrfReleaseMap) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+    try {
+        window.localStorage.setItem(ORF_RELEASE_STORAGE_KEY, JSON.stringify(map));
+    } catch (error) {
+        console.warn('[AdminStudents] Failed to persist ORF release history.', error);
+    }
+};
+
 export default function StudentsPage() {
     const { adminData, setAdminData } = useAdmin();
     const { students } = adminData;
@@ -164,6 +204,87 @@ export default function StudentsPage() {
     const [subjectActionBusy, setSubjectActionBusy] = useState(false);
     const [isAddSubjectPopoverOpen, setIsAddSubjectPopoverOpen] = useState(false);
     const [documentActionId, setDocumentActionId] = useState<number | null>(null);
+    const [orfReleaseMap, setOrfReleaseMap] = useState<OrfReleaseMap>({});
+
+    useEffect(() => {
+        setOrfReleaseMap(readStoredOrfReleases());
+    }, []);
+
+    const buildOrfReleaseKey = useCallback((studentId?: number | null) => {
+        if (!studentId || studentId <= 0) {
+            return null;
+        }
+        const academicYear = typeof adminData.academicYear === 'string' && adminData.academicYear.trim() !== ''
+            ? adminData.academicYear.trim()
+            : 'AY-UNSPECIFIED';
+        const semester = typeof adminData.semester === 'string' && adminData.semester.trim() !== ''
+            ? adminData.semester.trim()
+            : 'SEM-UNSPECIFIED';
+        return `${academicYear}|${semester}|${studentId}`;
+    }, [adminData.academicYear, adminData.semester]);
+
+    const isOrfReleased = useCallback((student?: Student | null) => {
+        if (!student) {
+            return false;
+        }
+        const key = buildOrfReleaseKey(student.id);
+        return key ? Boolean(orfReleaseMap[key]) : false;
+    }, [buildOrfReleaseKey, orfReleaseMap]);
+
+    const recordOrfRelease = useCallback((student: Student) => {
+        const key = buildOrfReleaseKey(student?.id);
+        if (!key) {
+            return;
+        }
+        setOrfReleaseMap((prev) => {
+            if (prev[key]) {
+                return prev;
+            }
+            const next = { ...prev, [key]: new Date().toISOString() };
+            persistOrfReleases(next);
+            return next;
+        });
+    }, [buildOrfReleaseKey]);
+
+    const handleClaimOrf = useCallback((student: Student) => {
+        if (!student?.email) {
+            toast({
+                title: 'Email unavailable',
+                description: 'Student email is required to generate the ORF.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        if (isOrfReleased(student)) {
+            toast({
+                title: 'ORF already released',
+                description: 'This student already has an ORF for the current term.',
+            });
+            return;
+        }
+
+        const claimUrl = `${API_BASE_URL}/print_orf_form.php?email=${encodeURIComponent(student.email)}&ts=${Date.now()}`;
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+
+        const cleanup = () => {
+            setTimeout(() => iframe.remove(), 1500);
+        };
+
+        iframe.addEventListener('load', cleanup, { once: true });
+        iframe.src = claimUrl;
+        document.body.appendChild(iframe);
+        recordOrfRelease(student);
+        toast({
+            title: 'ORF released',
+            description: `A copy of ${student.name}'s ORF has been generated for ${adminData.semester} ${adminData.academicYear}.`,
+        });
+    }, [API_BASE_URL, adminData.academicYear, adminData.semester, isOrfReleased, recordOrfRelease, toast]);
 
     const mergeDocumentEntry = useCallback((documents: ApplicationDocument[] | undefined, updated: ApplicationDocument): ApplicationDocument[] => {
         if (!Array.isArray(documents) || documents.length === 0) {
@@ -215,6 +336,26 @@ export default function StudentsPage() {
         }
         return `${API_BASE_URL}/${path.replace(/^\/+/, '')}`;
     }, [API_BASE_URL]);
+
+    const handleViewDocument = useCallback((url?: string | null) => {
+        if (!url) {
+            toast({
+                variant: 'destructive',
+                title: 'File unavailable',
+                description: 'This document does not have a downloadable file yet.',
+            });
+            return;
+        }
+        try {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Unable to open document',
+                description: error instanceof Error ? error.message : 'Failed to open the document in a new tab.',
+            });
+        }
+    }, [toast]);
 
     useEffect(() => {
         setEnrolledStudents(students.filter(student => student.status === 'Enrolled'));
@@ -314,6 +455,8 @@ export default function StudentsPage() {
                 title: nextStatus === 'Approved' ? 'Document approved' : 'Document rejected',
                 description: `${normalizedDoc.name} marked as ${nextStatus.toLowerCase()}.`,
             });
+            notifyDataChanged();
+            notifyDataChanged('student-documents');
         } catch (error) {
             toast({
                 variant: 'destructive',
@@ -580,6 +723,7 @@ export default function StudentsPage() {
                     ? 'The subject was added to the student.'
                     : 'The subject was removed from the student.',
             });
+            notifyDataChanged();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to update subjects.';
             toast({
@@ -733,7 +877,20 @@ export default function StudentsPage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuItem onSelect={() => openProfileDialog(student)}>View Profile</DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={() => toast({ title: 'Feature in progress', description: 'Claiming ORF is not yet implemented.' })}>Claim ORF</DropdownMenuItem>
+                                                        {isOrfReleased(student) ? (
+                                                            <DropdownMenuItem disabled className="uppercase tracking-wide font-semibold text-muted-foreground">
+                                                                ORF RELEASED
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem
+                                                                onSelect={(event) => {
+                                                                    event.preventDefault();
+                                                                    handleClaimOrf(student);
+                                                                }}
+                                                            >
+                                                                Claim ORF
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
                                                             className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
@@ -782,7 +939,7 @@ export default function StudentsPage() {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <h4 className="font-semibold text-sm">Details</h4>
-                                        <div className="border rounded-lg p-3 space-y-1">
+                                        <div className="border rounded-2xl p-4 space-y-1 bg-muted/10 shadow-sm">
                                             <InfoField label="Status" value={selectedStudent.status} />
                                             <InfoField label="Block" value={selectedStudent.block} />
                                             <InfoField label="Email" value={selectedStudent.email} />
@@ -800,7 +957,7 @@ export default function StudentsPage() {
                                                 </Badge>
                                             )}
                                         </div>
-                                        <div className="border rounded-lg divide-y">
+                                        <div className="border rounded-2xl bg-muted/20 p-2 space-y-2 max-h-[180px] overflow-y-auto no-scrollbar">
                                             {combinedDocuments.length > 0 ? (
                                                 combinedDocuments.map((doc, index) => {
                                                     const sizeLabel = formatDocumentSize(doc.fileSize);
@@ -813,7 +970,10 @@ export default function StudentsPage() {
                                                     const approveDisabled = !canModerate || normalizedStatus === 'approved' || isPendingAction;
                                                     const rejectDisabled = !canModerate || normalizedStatus === 'rejected' || isPendingAction;
                                                     return (
-                                                        <div key={key} className="p-3 space-y-3">
+                                                        <div
+                                                            key={key}
+                                                            className="p-3 space-y-3 rounded-xl border border-border/40 bg-background/70 shadow-sm"
+                                                        >
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="flex items-start gap-3">
                                                                     <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
@@ -830,33 +990,58 @@ export default function StudentsPage() {
                                                                 </Badge>
                                                             </div>
                                                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                {downloadUrl ? (
-                                                                    <Button variant="ghost" size="sm" className="rounded-xl px-2" asChild>
-                                                                        <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                                                                            Download
-                                                                        </a>
-                                                                    </Button>
-                                                                ) : (
+                                                                {!downloadUrl && (
                                                                     <span className="text-xs text-muted-foreground">File unavailable</span>
                                                                 )}
                                                                 <div className="flex items-center gap-2">
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        className="rounded-xl"
-                                                                        disabled={rejectDisabled}
-                                                                        onClick={() => canModerate && handleDocumentStatusUpdate(doc.id, 'Rejected')}
-                                                                    >
-                                                                        Reject
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="rounded-xl"
-                                                                        disabled={approveDisabled}
-                                                                        onClick={() => canModerate && handleDocumentStatusUpdate(doc.id, 'Approved')}
-                                                                    >
-                                                                        Approve
-                                                                    </Button>
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger asChild>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                disabled={isPendingAction}
+                                                                            >
+                                                                                <span className="sr-only">Open document actions</span>
+                                                                                <MoreHorizontal className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent align="end">
+                                                                            <DropdownMenuItem
+                                                                                disabled={!downloadUrl}
+                                                                                onSelect={(event) => {
+                                                                                    event.preventDefault();
+                                                                                    handleViewDocument(downloadUrl);
+                                                                                }}
+                                                                            >
+                                                                                View
+                                                                            </DropdownMenuItem>
+                                                                            <DropdownMenuItem
+                                                                                disabled={approveDisabled}
+                                                                                onSelect={(event) => {
+                                                                                    event.preventDefault();
+                                                                                    if (!canModerate || approveDisabled || typeof doc.id !== 'number') {
+                                                                                        return;
+                                                                                    }
+                                                                                    handleDocumentStatusUpdate(doc.id, 'Approved');
+                                                                                }}
+                                                                            >
+                                                                                Accept
+                                                                            </DropdownMenuItem>
+                                                                            <DropdownMenuItem
+                                                                                disabled={rejectDisabled}
+                                                                                onSelect={(event) => {
+                                                                                    event.preventDefault();
+                                                                                    if (!canModerate || rejectDisabled || typeof doc.id !== 'number') {
+                                                                                        return;
+                                                                                    }
+                                                                                    handleDocumentStatusUpdate(doc.id, 'Rejected');
+                                                                                }}
+                                                                            >
+                                                                                Reject
+                                                                            </DropdownMenuItem>
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
                                                                     {isPendingAction && (
                                                                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                                                     )}
@@ -929,46 +1114,48 @@ export default function StudentsPage() {
                                             </PopoverContent>
                                         </Popover>
                                     </div>
-                                    <div className="border rounded-lg max-h-[320px] overflow-y-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-32">Subject</TableHead>
-                                                    <TableHead>Description</TableHead>
-                                                    <TableHead className="text-right w-24">Units</TableHead>
-                                                    <TableHead className="text-right w-20">Actions</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {(selectedStudent.enlistedSubjects || []).length > 0 ? (
-                                                    (selectedStudent.enlistedSubjects || []).map(subject => (
-                                                        <TableRow key={subject.code}>
-                                                            <TableCell className="font-medium">{subject.code}</TableCell>
-                                                            <TableCell className="text-sm text-muted-foreground">
-                                                                {subject.description || '—'}
-                                                            </TableCell>
-                                                            <TableCell className="text-right">{subject.units}</TableCell>
-                                                            <TableCell className="text-right">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8"
-                                                                    onClick={() => handleRemoveSubject(subject.id)}
-                                                                    disabled={subjectActionBusy}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                    <span className="sr-only">Remove subject</span>
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))
-                                                ) : (
+                                    <div className="border rounded-2xl shadow-sm">
+                                        <div className="max-h-[392px] overflow-y-auto no-scrollbar">
+                                            <Table>
+                                                <TableHeader>
                                                     <TableRow>
-                                                        <TableCell colSpan={4} className="text-center h-24">No subjects enlisted for this semester.</TableCell>
+                                                        <TableHead className="w-32">Subject</TableHead>
+                                                        <TableHead>Description</TableHead>
+                                                        <TableHead className="text-right w-24">Units</TableHead>
+                                                        <TableHead className="text-right w-20">Actions</TableHead>
                                                     </TableRow>
-                                                )}
-                                            </TableBody>
-                                        </Table>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {(selectedStudent.enlistedSubjects || []).length > 0 ? (
+                                                        (selectedStudent.enlistedSubjects || []).map(subject => (
+                                                            <TableRow key={subject.code}>
+                                                                <TableCell className="font-medium">{subject.code}</TableCell>
+                                                                <TableCell className="text-sm text-muted-foreground">
+                                                                    {subject.description || '—'}
+                                                                </TableCell>
+                                                                <TableCell className="text-right">{subject.units}</TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8"
+                                                                        onClick={() => handleRemoveSubject(subject.id)}
+                                                                        disabled={subjectActionBusy}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                        <span className="sr-only">Remove subject</span>
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))
+                                                    ) : (
+                                                        <TableRow>
+                                                            <TableCell colSpan={4} className="text-center h-24">No subjects enlisted for this semester.</TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

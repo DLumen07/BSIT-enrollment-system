@@ -5,9 +5,8 @@ header('Content-Type: text/html; charset=UTF-8');
 
 $emailParam = trim((string) ($_GET['email'] ?? ''));
 $studentIdParam = trim((string) ($_GET['student_id'] ?? ''));
-$variantParam = strtolower(trim((string) ($_GET['variant'] ?? '')));
-$variant = $variantParam === 'orf' ? 'orf' : 'standard';
-$isOrfVariant = $variant === 'orf';
+$variant = 'orf';
+$isOrfVariant = true;
 
 function respondWithError(string $message): void {
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Registration Form</title>';
@@ -141,6 +140,24 @@ function formatSchoolLine(?string $school, ?string $year): string {
     return htmlspecialchars($yearTrimmed, ENT_QUOTES, 'UTF-8');
 }
 
+function findLogoAssets(): array {
+    $sets = [
+        'ascot' => ['ASCT LOGO.png', 'registrar-logo.svg', 'OSMS-LOGO.svg', 'ascot-logo.png', 'ascot-logo.jpg', 'ascot-logo.jpeg'],
+        'bsit' => ['bsit-logo.png', 'bsit-logo.jpg', 'bsit-logo.jpeg', 'BSIT LOGO.png', 'BSIT LOGO.jpg'],
+    ];
+    $found = [];
+    foreach ($sets as $key => $candidates) {
+        foreach ($candidates as $filename) {
+            $fullPath = __DIR__ . '/assets/' . $filename;
+            if (file_exists($fullPath)) {
+                $found[$key] = 'assets/' . $filename;
+                break;
+            }
+        }
+    }
+    return $found;
+}
+
 if ($emailParam === '' && $studentIdParam === '') {
     respondWithError('Missing student identifier. Please include an "email" or "student_id" query parameter.');
     if (isset($conn) && $conn instanceof mysqli) {
@@ -199,6 +216,23 @@ try {
         : sprintf('%d-%d', (int) date('Y'), (int) date('Y') + 1);
     $semesterValue = isset($settingsRow['semester']) ? (string) $settingsRow['semester'] : '';
     $semesterLabel = mapSemesterLabel($semesterValue);
+    $academicYearDigits = preg_replace('/[^0-9\-]/', '', $academicYear);
+    if ($academicYearDigits !== '') {
+        $spacedYear = preg_replace('/(\d)/', '$1 ', $academicYearDigits);
+        $spacedYear = preg_replace('/-/', ' - ', $spacedYear);
+        $spacedYear = preg_replace('/\s+/', ' ', $spacedYear ?? '');
+        $headerAcademicYear = strtoupper(trim($spacedYear));
+        if ($headerAcademicYear === '') {
+            $headerAcademicYear = strtoupper(trim($academicYear));
+        }
+    } else {
+        $headerAcademicYear = strtoupper(trim($academicYear));
+    }
+    $headerTermText = sprintf(
+        'ACADEMIC YEAR %s · %s',
+        $headerAcademicYear,
+        strtoupper($semesterLabel !== '' ? $semesterLabel : '1ST SEMESTER')
+    );
 
     $subjects = [];
     $subjectsSql = 'SELECT subj.code, subj.description, subj.units, subj.semester
@@ -476,23 +510,17 @@ try {
         $feeTotals['balance'] += $feeItem['balance'];
     }
 
-    $logoImageUrl = null;
-    $logoCandidates = ['ascot-logo.png', 'ascot-logo.jpg', 'ascot-logo.jpeg'];
-    foreach ($logoCandidates as $logoFile) {
-        $candidateLogoPath = __DIR__ . '/assets/' . $logoFile;
-        if (file_exists($candidateLogoPath)) {
-            $logoImageUrl = 'assets/' . $logoFile;
-            break;
-        }
-    }
+    $logos = findLogoAssets();
+    $ascotLogo = $logos['ascot'] ?? null;
+    $bsitLogo = $logos['bsit'] ?? null;
 
     ob_start();
 
     $bodyClass = $isOrfVariant ? 'variant-orf' : 'variant-standard';
     $containerClass = $isOrfVariant ? 'container container-orf' : 'container';
     $watermarkDisplay = $isOrfVariant ? '' : 'Enrolled';
-    $shouldRenderLogoWatermark = $isOrfVariant && $logoImageUrl !== null;
-    $formTitle = $isOrfVariant ? 'Official Registration Form (ORF Copy)' : 'Certificate of Registration';
+    $shouldRenderLogoWatermark = $isOrfVariant && $ascotLogo !== null;
+    $formTitle = $isOrfVariant ? 'Official Registration Form' : 'Certificate of Registration';
     ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -500,29 +528,49 @@ try {
         <meta charset="UTF-8">
 
         <style>
-            * { box-sizing: border-box; }
-            body { font-family: "Arial MT", Arial, Helvetica, sans-serif; background: #f4f5f7; margin: 0; padding: 32px; color: #111827; }
-            body.variant-orf { background: #bfe9cf; color: #0b2f1c; }
-            .container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 32px 36px; border-radius: 16px; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08); position: relative; overflow: hidden; }
+            @page { margin: 0; }
+            * {
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            html { background: #7fde88; height: 100%; }
+            body { font-family: "Arial MT", Arial, Helvetica, sans-serif; background: #7fde88; margin: 0; padding: 0; color: #0b2f1c; min-height: 100%; }
+            body.variant-orf { background: #7fde88; color: #0b3319; }
+            .page-wrap { min-height: 100vh; display: flex; flex-direction: column; }
+            .container { flex: 1; max-width: 900px; margin: 0 auto; background: #7fde88; padding: 32px 36px; border-radius: 0; box-shadow: none; position: relative; overflow: hidden; border: 0; }
             .container-orf {
-                border: 2px solid #166534;
-                background: #ebf7ef;
-                box-shadow: 0 32px 60px rgba(12, 83, 43, 0.25);
-                background-image: linear-gradient(rgba(22, 101, 52, 0.08) 1px, transparent 1px);
-                background-size: 100% 34px;
+                border: 0;
+                background: #7fde88;
+                box-shadow: 0 35px 65px rgba(12, 83, 43, 0.25);
+                background-image: none;
             }
             .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-36deg); font-size: 180px; text-transform: uppercase; letter-spacing: 12px; font-weight: 500; font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif; color: #0f172a; opacity: 0.06; pointer-events: none; white-space: nowrap; }
             .container-orf .watermark { color: rgba(15, 81, 50, 0.25); }
             .watermark-logo { transform: translate(-50%, -50%) rotate(0deg); opacity: 0.16; }
             .watermark-logo img { width: 360px; height: 360px; object-fit: contain; filter: saturate(0) brightness(1.05); opacity: 0.16; }
-            .header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; font-family: "Times New Roman", Times, serif; }
-            .header-logo { width: 90px; height: 90px; object-fit: contain; }
-            .header-text { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
-            .fallback-header { text-transform: uppercase; font-size: 15px; letter-spacing: 1px; }
-            .fallback-sub { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
-            .form-title { font-size: 16px; letter-spacing: 1px; font-weight: 700; }
-            body.variant-orf .form-title { color: #0f5132; }
-            body.variant-orf .fallback-sub { color: #14532d; }
+            .report-header {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                border-bottom: none;
+                padding: 12px 20px;
+                margin: 4px auto 12px;
+                width: 100%;
+                max-width: 780px;
+                text-align: center;
+                position: relative;
+                font-family: "Times New Roman", "Segoe UI", Arial, sans-serif;
+            }
+            .logo-wrapper,
+            .header-spacer { width: 118px; height: 118px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+            .logo-wrapper img { height: 110px; width: auto; max-width: 100%; object-fit: contain; display: block; }
+            .report-header > .logo-wrapper:first-child { margin: 0; }
+            .header-copy { flex: 1; text-align: center; letter-spacing: 0.9px; font-size: 12px; color: #000000; }
+            .header-copy .org-line { text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
+            .header-title { font-size: 18px; margin: 6px 0 4px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+            .header-term { font-size: 14px; letter-spacing: 1px; font-weight: 600; text-transform: uppercase; }
             .field-underline { border-bottom: 0.4px solid #111; padding: 1px 4px 0; min-height: 14px; display: inline-block; line-height: 1; }
             body.variant-orf .field-underline { border-color: #14532d; }
             .student-info-section { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; font-size: 11.5px; }
@@ -587,8 +635,10 @@ try {
             .assessment-row .line { flex: 1; border-bottom: 0.4px solid #111; height: 1px; }
             .generated-footer { text-align: right; font-size: 10px; color: #4b5563; margin-top: 16px; }
             @media print {
-                body { background: #ffffff; padding: 0; }
-                .container { box-shadow: none; border-radius: 0; margin: 0; width: 100%; padding: 24px 28px; }
+                html { background: #7fde88 !important; }
+                body { background: #7fde88 !important; padding: 0; }
+                .page-wrap { min-height: 100vh; }
+                .container { box-shadow: none; border-radius: 0; margin: 0; width: 100%; padding: 24px 28px; background: #7fde88 !important; border: 0; }
                 .no-print { display: none !important; }
                 .field-underline { min-height: 16px; display: inline-block; }
                 table.subjects tbody td { border-bottom-color: #777; }
@@ -596,24 +646,31 @@ try {
         </style>
     </head>
     <body class="<?= htmlspecialchars($bodyClass, ENT_QUOTES, 'UTF-8') ?>">
-        <div class="<?= htmlspecialchars($containerClass, ENT_QUOTES, 'UTF-8') ?>">
-            <?php if ($shouldRenderLogoWatermark): ?>
+        <div class="page-wrap"><div class="<?= htmlspecialchars($containerClass, ENT_QUOTES, 'UTF-8') ?>">
+            <?php if ($shouldRenderLogoWatermark && $ascotLogo !== null): ?>
                 <div class="watermark watermark-logo">
-                    <img src="<?= htmlspecialchars($logoImageUrl, ENT_QUOTES, 'UTF-8') ?>" alt="ASCOT Emblem" />
+                    <img src="<?= htmlspecialchars($ascotLogo, ENT_QUOTES, 'UTF-8') ?>" alt="ASCOT Emblem" />
                 </div>
             <?php else: ?>
                 <div class="watermark"><?= htmlspecialchars($watermarkDisplay, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
-            <div class="header">
-                <?php if ($logoImageUrl !== null): ?>
-                    <img src="<?= htmlspecialchars($logoImageUrl, ENT_QUOTES, 'UTF-8') ?>" alt="ASCOT Logo" class="header-logo" />
+            <header class="report-header">
+                <?php if ($ascotLogo !== null): ?>
+                    <div class="logo-wrapper">
+                        <img src="<?= htmlspecialchars($ascotLogo, ENT_QUOTES, 'UTF-8') ?>" alt="ASCOT Logo" />
+                    </div>
+                <?php else: ?>
+                    <div class="header-spacer"></div>
                 <?php endif; ?>
-                <div class="header-text">
-                    <div class="fallback-header">Aurora State College of Technology</div>
-                    <div class="fallback-sub">Baler, Aurora</div>
-                    <div class="fallback-header form-title"><?= htmlspecialchars($formTitle, ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="header-copy">
+                    <div class="org-line">REPUBLIC OF THE PHILIPPINES</div>
+                    <div class="org-line">AURORA STATE COLLEGE OF TECHNOLOGY</div>
+                    <div class="org-line">OFFICE OF THE REGISTRAR</div>
+                    <div class="header-title">OFFICAL REGISTRATION FORM</div>
+                    <div class="header-term"><?= htmlspecialchars($headerTermText, ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
-            </div>
+                <div class="header-spacer"></div>
+            </header>
             <div class="student-info-section">
                 <div class="info-row">
                     <div class="info-field">
@@ -841,7 +898,7 @@ try {
                 SIGNATURE IS NOT REQUIRED
             </div>
 
-        </div>
+        </div></div>
         <script>
             window.addEventListener('load', function () {
                 setTimeout(function () {

@@ -1,8 +1,8 @@
 
 'use client';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { CheckCircle, Clock, CloudUpload, Download, FileText } from 'lucide-react';
+import { CheckCircle, Clock, CloudUpload, Download, FileText, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
     Table,
@@ -17,8 +17,32 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useStudent } from '@/app/student/context/student-context';
 import { useToast } from '@/hooks/use-toast';
+import { notifyDataChanged, DATA_SYNC_CHANNEL } from '@/lib/live-sync';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+const REQUIRED_DOCUMENTS = [
+    { value: 'Birth Certificate', label: 'Birth Certificate' },
+    { value: 'Form 138 / Report Card', label: 'Form 138 / Report Card' },
+    { value: 'Good Moral Certificate', label: 'Good Moral Certificate' },
+];
 
 const normalizeStatusVariant = (status: string): 'default' | 'secondary' | 'outline' | 'destructive' => {
     const normalized = status.trim().toLowerCase();
@@ -76,6 +100,9 @@ export default function RecordsPage() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [documentName, setDocumentName] = useState('');
     const [uploading, setUploading] = useState(false);
+    const [deletingDocumentId, setDeletingDocumentId] = useState<number | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [pendingDeleteDoc, setPendingDeleteDoc] = useState<{ id: number; label: string } | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const apiBaseUrl = useMemo(() => {
@@ -120,13 +147,7 @@ export default function RecordsPage() {
         }
 
         setSelectedFile(file);
-        if (file && documentName.trim() === '') {
-            const derivedName = file.name.replace(/\.[^.]+$/, '').trim();
-            if (derivedName !== '') {
-                setDocumentName(derivedName);
-            }
-        }
-    }, [documentName, toast]);
+    }, [toast]);
 
     const refreshStudentRecords = useCallback(async () => {
         const email = studentData?.contact?.email;
@@ -197,9 +218,16 @@ export default function RecordsPage() {
             return;
         }
 
-        const trimmedName = documentName.trim() !== ''
-            ? documentName.trim()
-            : selectedFile.name.replace(/\.[^.]+$/, '').trim();
+        if (documentName.trim() === '') {
+            toast({
+                variant: 'destructive',
+                title: 'Select a requirement',
+                description: 'Please choose which registrar requirement this upload fulfills.',
+            });
+            return;
+        }
+
+        const trimmedName = documentName.trim();
 
         setUploading(true);
 
@@ -249,6 +277,8 @@ export default function RecordsPage() {
 
             handleFileReset();
             await refreshStudentRecords();
+            notifyDataChanged();
+            notifyDataChanged('student-documents');
         } catch (error) {
             toast({
                 variant: 'destructive',
@@ -259,6 +289,118 @@ export default function RecordsPage() {
             setUploading(false);
         }
     }, [selectedFile, documentName, studentData?.contact?.email, apiBaseUrl, refreshStudentRecords, setStudentData, toast, handleFileReset]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') {
+            return;
+        }
+
+        let channel: BroadcastChannel | null = null;
+        try {
+            channel = new BroadcastChannel(DATA_SYNC_CHANNEL);
+        } catch (error) {
+            console.warn('[StudentRecords] Unable to subscribe to data sync channel.', error);
+            return;
+        }
+
+        const handler = (event: MessageEvent<{ topic?: string }>) => {
+            if (event.data?.topic === 'student-documents') {
+                refreshStudentRecords();
+            }
+        };
+
+        channel.addEventListener('message', handler);
+        return () => {
+            channel?.removeEventListener('message', handler);
+            channel?.close();
+        };
+    }, [refreshStudentRecords]);
+
+    const handleDeleteDocument = useCallback(async (documentId: number) => {
+        if (!studentData?.contact?.email) {
+            toast({
+                variant: 'destructive',
+                title: 'Missing student email',
+                description: 'We could not determine which student account owns this document.',
+            });
+            return false;
+        }
+
+        setDeletingDocumentId(documentId);
+        try {
+            const response = await fetch(`${apiBaseUrl}/delete_student_document.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ documentId, email: studentData.contact.email }),
+            });
+
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload || payload.status !== 'success') {
+                throw new Error(payload?.message ?? 'Failed to delete the document.');
+            }
+
+            setStudentData((previous) => {
+                if (!previous) {
+                    return previous;
+                }
+                const existingRecords = previous.records ?? { enrollmentHistory: [], documents: [] };
+                return {
+                    ...previous,
+                    records: {
+                        enrollmentHistory: existingRecords.enrollmentHistory ?? [],
+                        documents: (existingRecords.documents ?? []).filter((doc) => doc.id !== documentId),
+                    },
+                };
+            });
+
+            toast({
+                title: 'Document removed',
+                description: 'The document has been deleted successfully.',
+            });
+
+            await refreshStudentRecords();
+            notifyDataChanged();
+            notifyDataChanged('student-documents');
+            return true;
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Delete failed',
+                description: error instanceof Error ? error.message : 'Unable to delete the document right now.',
+            });
+            return false;
+        } finally {
+            setDeletingDocumentId(null);
+        }
+    }, [apiBaseUrl, refreshStudentRecords, setStudentData, studentData?.contact?.email, toast]);
+
+    const promptDeleteDocument = useCallback((doc: { id?: number; name?: string | null; fileName?: string | null }) => {
+        if (!doc.id || doc.id <= 0) {
+            return;
+        }
+        const label = doc.name?.trim() || doc.fileName?.trim() || 'this document';
+        setPendingDeleteDoc({ id: doc.id, label });
+        setDeleteDialogOpen(true);
+    }, []);
+
+    const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
+        setDeleteDialogOpen(open);
+        if (!open) {
+            setPendingDeleteDoc(null);
+        }
+    }, []);
+
+    const confirmDeleteDocument = useCallback(async () => {
+        if (!pendingDeleteDoc) {
+            return;
+        }
+        const success = await handleDeleteDocument(pendingDeleteDoc.id);
+        if (success) {
+            setDeleteDialogOpen(false);
+            setPendingDeleteDoc(null);
+        }
+    }, [handleDeleteDocument, pendingDeleteDoc]);
 
     return (
         <main className="flex-1 space-y-6 p-4 sm:p-6">
@@ -304,9 +446,9 @@ export default function RecordsPage() {
                                                         <Badge variant={statusVariant}>{entry.status || '—'}</Badge>
                                                         <span className="text-muted-foreground">{formatDisplayDate(entry.recordedAt)}</span>
                                                     </div>
-                                                    {typeof entry.gpa === 'number' && !Number.isNaN(entry.gpa) && (
+                                                    {typeof entry.gwa === 'number' && !Number.isNaN(entry.gwa) && (
                                                         <p className="mt-1 text-sm">
-                                                            GPA: <span className="font-medium">{entry.gpa.toFixed(2)}</span>
+                                                            GWA: <span className="font-medium">{entry.gwa.toFixed(2)}</span>
                                                         </p>
                                                     )}
                                                     {entry.notes && entry.notes.trim() !== '' && (
@@ -326,20 +468,36 @@ export default function RecordsPage() {
                     <Card className="rounded-xl">
                         <CardHeader>
                             <CardTitle>Submit Document</CardTitle>
-                            <CardDescription>Upload images or PDF files required by the registrar.</CardDescription>
+                            <CardDescription>Upload the registrar requirements listed below.</CardDescription>
                         </CardHeader>
                         <form onSubmit={handleUpload}>
                             <CardContent className="space-y-4">
+                                <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                                    <p className="font-medium text-foreground">Required documents:</p>
+                                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                                        {REQUIRED_DOCUMENTS.map((doc) => (
+                                            <li key={doc.value}>{doc.label}</li>
+                                        ))}
+                                    </ul>
+                                </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="document-name">Document Name</Label>
-                                    <Input
-                                        id="document-name"
-                                        placeholder="e.g., Birth Certificate"
+                                    <Label htmlFor="document-name">Select Requirement</Label>
+                                    <Select
                                         value={documentName}
-                                        onChange={(event) => setDocumentName(event.target.value)}
-                                        className="rounded-xl"
+                                        onValueChange={setDocumentName}
                                         disabled={uploading}
-                                    />
+                                    >
+                                        <SelectTrigger id="document-name" className="rounded-xl">
+                                            <SelectValue placeholder="Choose a document" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {REQUIRED_DOCUMENTS.map((doc) => (
+                                                <SelectItem key={doc.value} value={doc.value}>
+                                                    {doc.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="document-file">Attachment</Label>
@@ -368,7 +526,7 @@ export default function RecordsPage() {
                                 <Button
                                     type="submit"
                                     className="rounded-xl"
-                                    disabled={uploading || !selectedFile}
+                                    disabled={uploading || !selectedFile || !documentName}
                                 >
                                     <CloudUpload className="mr-2 h-4 w-4" />
                                     {uploading ? 'Uploading…' : 'Upload Document'}
@@ -403,6 +561,8 @@ export default function RecordsPage() {
                                         {documents.map((doc) => {
                                             const variant = normalizeStatusVariant(doc.status);
                                             const downloadUrl = doc.filePath ? buildApiUrl(doc.filePath) : null;
+                                            const canDelete = typeof doc.id === 'number' && doc.id > 0;
+                                            const isDeleting = deletingDocumentId === doc.id;
                                             return (
                                                 <TableRow key={doc.id}>
                                                     <TableCell className="font-medium">{doc.name || doc.fileName}</TableCell>
@@ -412,15 +572,27 @@ export default function RecordsPage() {
                                                     <TableCell>{formatDisplayDate(doc.uploadedAt)}</TableCell>
                                                     <TableCell>{formatFileSize(doc.fileSize)}</TableCell>
                                                     <TableCell className="text-right">
-                                                        {downloadUrl ? (
-                                                            <Button asChild variant="outline" size="sm" className="rounded-full">
-                                                                <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                                                                    <Download className="mr-2 h-4 w-4" /> View
-                                                                </a>
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {downloadUrl ? (
+                                                                <Button asChild variant="outline" size="sm" className="rounded-full">
+                                                                    <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                                                                        <Download className="mr-2 h-4 w-4" /> View
+                                                                    </a>
+                                                                </Button>
+                                                            ) : (
+                                                                <span className="text-xs text-muted-foreground">Unavailable</span>
+                                                            )}
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8"
+                                                                disabled={!canDelete || isDeleting}
+                                                                onClick={() => canDelete && promptDeleteDocument(doc)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                                <span className="sr-only">Delete document</span>
                                                             </Button>
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground">Unavailable</span>
-                                                        )}
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -432,6 +604,31 @@ export default function RecordsPage() {
                     </Card>
                 </div>
             </div>
+            <AlertDialog open={deleteDialogOpen} onOpenChange={handleDeleteDialogOpenChange}>
+                <AlertDialogContent className="rounded-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete document?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {pendingDeleteDoc
+                                ? `"${pendingDeleteDoc.label}" will be permanently removed. You cannot undo this action.`
+                                : 'This document will be permanently removed. You cannot undo this action.'}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                confirmDeleteDocument();
+                            }}
+                            disabled={!pendingDeleteDoc || deletingDocumentId === pendingDeleteDoc.id}
+                        >
+                            {pendingDeleteDoc && deletingDocumentId === pendingDeleteDoc.id ? 'Removing…' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </main>
     );
 }

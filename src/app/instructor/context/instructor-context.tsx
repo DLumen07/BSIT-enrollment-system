@@ -7,6 +7,7 @@ import type { AdminAnnouncement, Student, Subject } from '@/app/admin/context/ad
 import { useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { resolveMediaUrl } from '@/lib/utils';
+import { notifyDataChanged } from '@/lib/live-sync';
 
 type InstructorPersonal = {
     id: number;
@@ -355,6 +356,8 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
       newGrades[studentId] = studentGrades;
       return { ...prevInstructorData, grades: newGrades };
     });
+
+    notifyDataChanged();
   }, [adminData, buildApiUrl, instructorData, setAdminData]);
 
   if (!instructorData) {

@@ -562,6 +562,7 @@ SQL;
         }
     }
 
+    $studentIdsForDocuments = [];
     $students = [];
     $studentsQuery = "SELECT sp.*, u.email, b.name AS block_name
                        FROM student_profiles sp
@@ -932,7 +933,6 @@ SQL;
     $pendingApplications = [];
     $approvedApplications = [];
     $rejectedApplications = [];
-    $studentIdsForDocuments = [];
     $applicationsQuery = "SELECT ea.id, ea.student_user_id, ea.status, ea.block_name, ea.`submitted_.at` AS submitted_at,
                                  ea.rejection_reason, ea.form_data, sp.student_id_number, sp.name AS student_name,
                                  sp.course, sp.year_level, sp.status AS student_status, sp.enrollment_track

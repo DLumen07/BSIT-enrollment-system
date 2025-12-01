@@ -23,6 +23,7 @@ import { ChartContainer, ChartTooltipContent, type ChartConfig } from '@/compone
 import { Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useAdmin, type AdminReportSummary } from '../../context/admin-context';
+import { UNIFAST_FEE_ITEMS, UNIFAST_FEE_TOTALS, formatCurrency } from '@/lib/unifast-fees';
 
 const DEFAULT_SUMMARY: AdminReportSummary = {
   totalStudents: 0,
@@ -48,6 +49,10 @@ const yearLevelChartConfig: ChartConfig = {
   students: { label: 'Students' },
 };
 
+const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+  .replace(/\/$/, '')
+  .trim();
+
 export default function ReportsPage() {
   const { adminData } = useAdmin();
   const {
@@ -56,6 +61,7 @@ export default function ReportsPage() {
     academicYearOptions,
     semesterOptions,
     reports,
+    students,
   } = adminData;
 
   const [academicYear, setAcademicYear] = React.useState(globalAcademicYear);
@@ -98,21 +104,97 @@ export default function ReportsPage() {
   const termKey = `${academicYear}::${semester}`;
   const currentReport = reports.byTerm[termKey];
 
-  const summary = currentReport?.summary ?? DEFAULT_SUMMARY;
+  const derivedCurrentTermReport = React.useMemo(() => {
+    if (
+      academicYear !== globalAcademicYear
+      || semester !== globalSemester
+      || !Array.isArray(students)
+      || students.length === 0
+    ) {
+      return null;
+    }
 
-  const yearLevelData = React.useMemo(
-    () =>
-      currentReport?.yearLevelDistribution.map((entry) => ({
-        level: entry.label,
-        students: entry.students,
-        fill: YEAR_LEVEL_COLOR_MAP[entry.yearLevel] ?? FALLBACK_YEAR_COLOR,
-      })) ?? [],
-    [currentReport],
-  );
+    const enrolledStudents = students.filter((student) => student.status === 'Enrolled');
+    if (enrolledStudents.length === 0) {
+      return null;
+    }
 
-  const masterList = currentReport?.masterList ?? [];
+    const normalizeProfileStatus = (value?: string | null) => {
+      if (!value) {
+        return 'Old';
+      }
+      const normalized = value.trim();
+      return normalized === '' ? 'Old' : normalized;
+    };
 
-  const semesterLabel = React.useMemo(() => {
+    const newStudentsCount = enrolledStudents.filter((student) => normalizeProfileStatus(student.profileStatus) === 'New').length;
+    const oldStudentsCount = enrolledStudents.filter((student) => normalizeProfileStatus(student.profileStatus) === 'Old').length;
+    const transfereeCount = enrolledStudents.filter((student) => normalizeProfileStatus(student.profileStatus) === 'Transferee').length;
+
+    const rosterTotals = {
+      onHold: students.filter((student) => {
+        const status = (student.currentTermStatus ?? '').toLowerCase();
+        return status.includes('hold') || Boolean(student.promotionHoldReason);
+      }).length,
+      notEnrolled: students.filter((student) => student.status === 'Not Enrolled').length,
+      graduated: students.filter((student) => student.status === 'Graduated').length,
+    };
+
+    const summary: AdminReportSummary = {
+      totalStudents: students.length,
+      totalEnrollees: enrolledStudents.length,
+      newStudents: newStudentsCount,
+      oldStudents: oldStudentsCount,
+      transferees: transfereeCount,
+      onHoldStudents: rosterTotals.onHold,
+      notEnrolledStudents: rosterTotals.notEnrolled,
+      graduatedStudents: rosterTotals.graduated,
+    };
+
+    const yearLevelBuckets = new Map<number, number>();
+    enrolledStudents.forEach((student) => {
+      const yearLevel = Number(student.year) || 0;
+      if (yearLevel <= 0) {
+        return;
+      }
+      yearLevelBuckets.set(yearLevel, (yearLevelBuckets.get(yearLevel) ?? 0) + 1);
+    });
+
+    const suffixForYear = (year: number): string => {
+      if (year === 1) return 'st';
+      if (year === 2) return 'nd';
+      if (year === 3) return 'rd';
+      return 'th';
+    };
+
+    const yearLevelDistribution = Array.from(yearLevelBuckets.entries())
+      .map(([yearLevel, count]) => ({
+        yearLevel,
+        yearKey: `${yearLevel}y`,
+        label: `${yearLevel}${suffixForYear(yearLevel)} Year`,
+        students: count,
+      }))
+      .sort((a, b) => a.yearLevel - b.yearLevel);
+
+    const masterList = enrolledStudents.map((student) => ({
+      id: student.studentId,
+      name: student.name,
+      course: student.course,
+      year: student.year ?? 0,
+      status: normalizeProfileStatus(student.profileStatus),
+      block: student.block ?? null,
+      email: student.email ?? null,
+      enrollmentStatus: student.status,
+    }));
+
+    return {
+      summary,
+      yearLevelDistribution,
+      masterList,
+    };
+  }, [academicYear, semester, globalAcademicYear, globalSemester, students]);
+
+  const fallbackSemesterLabel = React.useMemo(() => {
     if (currentReport) {
       return currentReport.semesterLabel;
     }
@@ -124,13 +206,85 @@ export default function ReportsPage() {
     return option?.label ?? 'Unknown Semester';
   }, [currentReport, reports.terms, academicYear, semester, semesterOptions]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const resolvedReport = React.useMemo(() => {
+    if (derivedCurrentTermReport) {
+      return {
+        academicYear,
+        semester,
+        semesterLabel: fallbackSemesterLabel,
+        summary: derivedCurrentTermReport.summary,
+        yearLevelDistribution: derivedCurrentTermReport.yearLevelDistribution,
+        masterList: derivedCurrentTermReport.masterList,
+      };
+    }
+    return currentReport ?? null;
+  }, [derivedCurrentTermReport, academicYear, semester, fallbackSemesterLabel, currentReport]);
+
+  const summary = resolvedReport?.summary ?? DEFAULT_SUMMARY;
+
+  const yearLevelData = React.useMemo(
+    () =>
+      resolvedReport?.yearLevelDistribution.map((entry) => ({
+        level: entry.label,
+        students: entry.students,
+        fill: YEAR_LEVEL_COLOR_MAP[entry.yearLevel] ?? FALLBACK_YEAR_COLOR,
+      })) ?? [],
+    [resolvedReport],
+  );
+
+    const perStudentAssessment = UNIFAST_FEE_TOTALS.amount;
+    const totalProjectedCoverage = summary.totalEnrollees * perStudentAssessment;
+    const aggregatedFeeItems = React.useMemo(
+      () =>
+        UNIFAST_FEE_ITEMS.map((item) => ({
+          ...item,
+          total: item.amount * summary.totalEnrollees,
+        })),
+      [summary.totalEnrollees],
+    );
+
+  const masterList = resolvedReport?.masterList ?? [];
+
+  const semesterLabel = resolvedReport?.semesterLabel ?? fallbackSemesterLabel;
+
+  const handlePrint = React.useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (!academicYear || !semester) {
+      console.warn('Missing academic year or semester for report printing.');
+      return;
+    }
+
+    const params = new URLSearchParams({
+      academic_year: academicYear,
+      semester,
+    });
+
+    const printUrl = `${API_BASE_URL}/print_enrollment_report.php?${params.toString()}`;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+
+    const cleanup = () => {
+      setTimeout(() => {
+        iframe.remove();
+      }, 1500);
+    };
+
+    iframe.addEventListener('load', cleanup, { once: true });
+    iframe.src = printUrl;
+    document.body.appendChild(iframe);
+  }, [academicYear, semester]);
 
   const getStatusVariant = (status: string) => (status === 'New' || status === 'Transferee' ? 'secondary' : 'default');
 
-  const hasReportData = Boolean(currentReport);
+  const hasReportData = Boolean(resolvedReport);
 
   return (
     <>
@@ -252,6 +406,54 @@ export default function ReportsPage() {
                   </CardContent>
                 </Card>
               </div>
+
+              <Card className="rounded-xl">
+                <CardHeader>
+                  <CardTitle>Accounting Overview (RA 10931)</CardTitle>
+                  <CardDescription>Projected UniFAST coverage based on the current enrollment roster.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-xl border bg-muted/40 p-3">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Per Student Assessment</p>
+                      <p className="text-2xl font-semibold">{formatCurrency(perStudentAssessment)}</p>
+                    </div>
+                    <div className="rounded-xl border bg-muted/40 p-3">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Enrolled Students</p>
+                      <p className="text-2xl font-semibold">{summary.totalEnrollees.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-xl border bg-muted/40 p-3">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Projected UniFAST Coverage</p>
+                      <p className="text-2xl font-semibold">{formatCurrency(totalProjectedCoverage)}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border overflow-x-auto no-scrollbar">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fee</TableHead>
+                          <TableHead className="text-right">Per Student</TableHead>
+                          <TableHead className="text-right">Projected Coverage</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {aggregatedFeeItems.map((fee) => (
+                          <TableRow key={fee.description}>
+                            <TableCell className="font-medium">{fee.description}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(fee.amount)}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">{formatCurrency(fee.total)}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-muted/50 font-semibold">
+                          <TableCell>Total</TableCell>
+                          <TableCell className="text-right">{formatCurrency(perStudentAssessment)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(totalProjectedCoverage)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
                 <Card className="rounded-xl lg:col-span-2">

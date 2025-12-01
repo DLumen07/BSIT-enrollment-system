@@ -12,6 +12,7 @@ import { Camera, Eye, EyeOff } from 'lucide-react';
 import { useInstructor } from '@/app/instructor/context/instructor-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import { resolveMediaUrl } from '@/lib/utils';
+import { notifyDataChanged } from '@/lib/live-sync';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
     .replace(/\/+$/, '')
@@ -142,6 +143,8 @@ export default function InstructorSettingsPage() {
                 );
                 return { ...prev, instructors: updatedInstructors };
             });
+
+            notifyDataChanged();
 
             toast({ title: 'Profile photo updated', description: 'Your avatar has been refreshed.' });
         } catch (error) {

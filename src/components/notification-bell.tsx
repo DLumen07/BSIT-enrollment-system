@@ -75,6 +75,7 @@ export type NotificationBellProps = {
   onMarkAllAsRead: () => void;
   onDismissNotification?: (id: string) => void;
   emptyMessage?: string;
+  enableSound?: boolean;
 };
 
 export const NotificationBell: React.FC<NotificationBellProps> = ({
@@ -84,7 +85,66 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   onMarkAllAsRead,
   onDismissNotification,
   emptyMessage = 'We will let you know when something needs your attention.',
+  enableSound = true,
 }) => {
+  const previousUnreadRef = React.useRef(unreadCount);
+  const knownIdsRef = React.useRef<Set<string>>(new Set(notifications.map((n) => n.id)));
+  const audioContextRef = React.useRef<AudioContext | null>(null);
+
+  const playNotificationChime = React.useCallback(() => {
+    if (!enableSound || typeof window === 'undefined') {
+      return;
+    }
+    const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) {
+      return;
+    }
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContextClass();
+      }
+      const ctx = audioContextRef.current;
+      const resumePromise = ctx.state === 'suspended' ? ctx.resume() : Promise.resolve();
+      resumePromise.then(() => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+        gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + 0.3);
+      }).catch(() => {
+        /* Ignore autoplay errors */
+      });
+    } catch {
+      /* Swallow audio init errors */
+    }
+  }, [enableSound]);
+
+  React.useEffect(() => {
+    if (!enableSound) {
+      knownIdsRef.current = new Set(notifications.map((n) => n.id));
+      previousUnreadRef.current = unreadCount;
+      return;
+    }
+    const incomingIds = new Set(notifications.map((n) => n.id));
+    const hasNewNotification = notifications.some((notification) => !knownIdsRef.current.has(notification.id));
+    const hasMoreUnread = unreadCount > previousUnreadRef.current;
+    if (hasNewNotification || hasMoreUnread) {
+      playNotificationChime();
+    }
+    knownIdsRef.current = incomingIds;
+    previousUnreadRef.current = unreadCount;
+  }, [notifications, unreadCount, enableSound, playNotificationChime]);
+
+  React.useEffect(() => () => {
+    audioContextRef.current?.close().catch(() => undefined);
+  }, []);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

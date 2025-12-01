@@ -6,28 +6,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { useStudent } from '@/app/student/context/student-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import { useRouter } from 'next/navigation';
 import { isStudentProfileComplete } from '@/app/student/utils/profile-completeness';
 import { useToast } from '@/hooks/use-toast';
 
-
-const steps = [
-    { id: 'Step 1', name: 'Personal & Family Information' },
-    { id: 'Step 2', name: 'Additional & Educational Background' },
-    { id: 'Step 3', name: 'Academic Information' },
-];
 
 type SelectableSubjectOption = {
     id: string;
@@ -36,14 +24,6 @@ type SelectableSubjectOption = {
     prerequisites: string[];
     eligible: boolean;
     ineligibilityReason: string | null;
-};
-
-const safeParseDate = (value?: string | null): Date | undefined => {
-    if (!value) {
-        return undefined;
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
 const deriveCourseForYearLevel = (year?: string, fallback: string = 'ACT'): 'ACT' | 'BSIT' => {
@@ -55,38 +35,6 @@ const deriveCourseForYearLevel = (year?: string, fallback: string = 'ACT'): 'ACT
     }
     return fallback === 'BSIT' ? 'BSIT' : 'ACT';
 };
-
-const personalFamilySchema = z.object({
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
-    middleName: z.string().optional(),
-    email: z.string().email('Invalid email address'),
-    phoneNumber: z.string().min(10, 'Invalid phone number'),
-    birthdate: z.date({ required_error: "A date of birth is required." }),
-    currentAddress: z.string().min(1, 'Current address is required'),
-    permanentAddress: z.string().min(1, 'Permanent address is required'),
-    nationality: z.string().min(1, 'Nationality is required'),
-    religion: z.string().min(1, 'Religion is required'),
-    dialect: z.string().min(1, 'Dialect is required'),
-    sex: z.enum(['Male', 'Female']),
-    civilStatus: z.enum(['Single', 'Married', 'Widowed', 'Separated']),
-    fathersName: z.string().min(1, "Father's name is required"),
-    fathersOccupation: z.string().min(1, "Father's occupation is required"),
-    mothersName: z.string().min(1, "Mother's name is required"),
-    mothersOccupation: z.string().min(1, "Mother's occupation is required"),
-    guardiansName: z.string().optional(),
-});
-
-const additionalInfoSchema = z.object({
-    emergencyContactName: z.string().min(1, 'Emergency contact name is required'),
-    emergencyContactAddress: z.string().min(1, 'Emergency contact address is required'),
-    emergencyContactNumber: z.string().min(10, 'Invalid emergency contact number'),
-    elementarySchool: z.string().min(1, 'Elementary school is required'),
-    elemYearGraduated: z.string().min(4, 'Invalid year'),
-    secondarySchool: z.string().min(1, 'Secondary school is required'),
-    secondaryYearGraduated: z.string().min(4, 'Invalid year'),
-    collegiateSchool: z.string().optional(),
-});
 
 const baseAcademicSchema = z.object({
     course: z.string().min(1, 'Course is required'),
@@ -110,164 +58,9 @@ const applySpecializationRule = <T extends z.ZodTypeAny>(schema: T) =>
 
 const academicSchema = applySpecializationRule(baseAcademicSchema);
 
-// Full schema for new students
-const newStudentSchema = applySpecializationRule(
-    personalFamilySchema.merge(additionalInfoSchema).merge(baseAcademicSchema)
-);
+type EnrollmentSchemaType = z.infer<typeof academicSchema>;
 
-// Schema for old students (only step 3 is relevant)
-const oldStudentSchema = academicSchema;
-
-type EnrollmentSchemaType = z.infer<typeof newStudentSchema>;
-
-function Step1() {
-    return (
-        <div className="space-y-6">
-            <h3 className="text-lg font-medium">Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField name="firstName" render={({ field }) => (
-                    <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField name="lastName" render={({ field }) => (
-                    <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField name="middleName" render={({ field }) => (
-                    <FormItem><FormLabel>Middle Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="email" render={({ field }) => (
-                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} type="email" className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField name="phoneNumber" render={({ field }) => (
-                    <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input {...field} type="tel" className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-            <FormField name="birthdate" render={({ field }) => {
-                const selectedDate = field.value instanceof Date ? field.value : safeParseDate(field.value as unknown as string);
-                return (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Birthdate</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button variant={"outline"} className={cn("pl-3 text-left font-normal rounded-xl", !selectedDate && "text-muted-foreground")}>
-                                        {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={selectedDate}
-                                    onSelect={field.onChange}
-                                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                    initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                    </FormItem>
-                );
-            }} />
-            <FormField name="currentAddress" render={({ field }) => (
-                <FormItem><FormLabel>Current Address</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="permanentAddress" render={({ field }) => (
-                <FormItem><FormLabel>Permanent Address</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField name="nationality" render={({ field }) => (
-                    <FormItem><FormLabel>Nationality</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField name="religion" render={({ field }) => (
-                    <FormItem><FormLabel>Religion</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField name="dialect" render={({ field }) => (
-                    <FormItem><FormLabel>Dialect</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="sex" render={({ field }) => (
-                    <FormItem><FormLabel>Sex</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select sex" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                )} />
-                <FormField name="civilStatus" render={({ field }) => (
-                    <FormItem><FormLabel>Civil Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select civil status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem><SelectItem value="Widowed">Widowed</SelectItem><SelectItem value="Separated">Separated</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                )} />
-            </div>
-            <div className="border-t pt-6 mt-6">
-                <h3 className="text-lg font-medium">Family Information</h3>
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="fathersName" render={({ field }) => (
-                    <FormItem><FormLabel>Father's Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField name="fathersOccupation" render={({ field }) => (
-                    <FormItem><FormLabel>Father's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="mothersName" render={({ field }) => (
-                    <FormItem><FormLabel>Mother's Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField name="mothersOccupation" render={({ field }) => (
-                    <FormItem><FormLabel>Mother's Occupation</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="guardiansName" render={({ field }) => (
-                    <FormItem><FormLabel>Guardian's Name (Optional)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-        </div>
-    );
-}
-
-function Step2() {
-    return (
-        <div className="space-y-6">
-            <div className="border-t pt-6 mt-6">
-                <h3 className="text-lg font-medium">Emergency Contact</h3>
-            </div>
-            <FormField name="emergencyContactName" render={({ field }) => (
-                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="emergencyContactAddress" render={({ field }) => (
-                <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="emergencyContactNumber" render={({ field }) => (
-                <FormItem><FormLabel>Contact Number</FormLabel><FormControl><Input {...field} type="tel" className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-            )} />
-            <div className="border-t pt-6 mt-6">
-                <h3 className="text-lg font-medium">Educational Background</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField name="elementarySchool" render={({ field }) => (
-                    <FormItem><FormLabel>Elementary School</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                 <FormField name="elemYearGraduated" render={({ field }) => (
-                    <FormItem><FormLabel>Year Graduated</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField name="secondarySchool" render={({ field }) => (
-                    <FormItem><FormLabel>Secondary School</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-                 <FormField name="secondaryYearGraduated" render={({ field }) => (
-                    <FormItem><FormLabel>Year Graduated</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField name="collegiateSchool" render={({ field }) => (
-                    <FormItem><FormLabel>Collegiate School (If transferee)</FormLabel><FormControl><Input {...field} className="rounded-xl" /></FormControl><FormMessage /></FormItem>
-                )} />
-            </div>
-        </div>
-    );
-}
-
-function Step3() {
+function AcademicSelectionSection() {
     const { adminData } = useAdmin();
     const { studentData } = useStudent();
     const form = useFormContext();
@@ -383,6 +176,14 @@ function Step3() {
 
     const hasEligibleSubjects = useMemo(() => availableSubjects.some((subject) => subject.eligible), [availableSubjects]);
 
+    const unifastLabel = useMemo(() => {
+        const track = studentData?.academic.enrollmentTrack?.trim().toLowerCase();
+        if (track && track.includes('unifast')) {
+            return 'Covered by UniFAST (RA 10931)';
+        }
+        return 'Not covered by UniFAST';
+    }, [studentData?.academic.enrollmentTrack]);
+
     useEffect(() => {
         const currentSelections = form.getValues('subjects') ?? [];
         const eligibleIds = new Set(availableSubjects.filter((subject) => subject.eligible).map((subject) => subject.id));
@@ -416,6 +217,21 @@ function Step3() {
                 <FormField name="status" render={({ field }) => (
                     <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                 )} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <FormLabel htmlFor="unifast-status">UniFAST</FormLabel>
+                    <Input
+                        id="unifast-status"
+                        value={unifastLabel}
+                        disabled
+                        readOnly
+                        className="rounded-xl"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                        This status is managed by the registrar under RA 10931.
+                    </p>
+                </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField name="yearLevel" render={({ field }) => (
@@ -565,7 +381,6 @@ export default function EnrollmentFormPage() {
     const { refreshAdminData } = useAdmin();
     const { toast } = useToast();
     const router = useRouter();
-    const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const profileComplete = studentData ? isStudentProfileComplete(studentData) : false;
 
@@ -605,53 +420,12 @@ export default function EnrollmentFormPage() {
         );
     }
     
-    const isNewStudent = useMemo(() => {
-        const yearNumber = parseInt(studentData.academic.yearLevel, 10);
-        return yearNumber === 1 && studentData.academic.status !== 'Old';
-    }, [studentData]);
-
-    useEffect(() => {
-        if (studentData && !isNewStudent) {
-            setCurrentStep(2);
-        } else {
-            setCurrentStep(0);
-        }
-    }, [isNewStudent, studentData]);
-
-    const currentSchema = isNewStudent ? newStudentSchema : oldStudentSchema;
-
     const methods = useForm<EnrollmentSchemaType>({
-        resolver: zodResolver(currentSchema),
+        resolver: zodResolver(academicSchema),
         defaultValues: useMemo(() => {
             if (!studentData) return {};
             const yearNumber = parseInt(studentData.academic.yearLevel, 10);
             return {
-                firstName: studentData.personal.firstName,
-                lastName: studentData.personal.lastName,
-                middleName: studentData.personal.middleName,
-                email: studentData.contact.email,
-                phoneNumber: studentData.contact.phoneNumber,
-                birthdate: safeParseDate(studentData.personal.birthdate),
-                currentAddress: studentData.address.currentAddress,
-                permanentAddress: studentData.address.permanentAddress,
-                nationality: studentData.personal.nationality,
-                religion: studentData.personal.religion,
-                dialect: studentData.personal.dialect,
-                sex: studentData.personal.sex,
-                civilStatus: studentData.personal.civilStatus || 'Single',
-                fathersName: studentData.family.fathersName,
-                fathersOccupation: studentData.family.fathersOccupation,
-                mothersName: studentData.family.mothersName,
-                mothersOccupation: studentData.family.mothersOccupation,
-                guardiansName: studentData.family.guardiansName,
-                emergencyContactName: studentData.additional.emergencyContactName,
-                emergencyContactAddress: studentData.additional.emergencyContactAddress,
-                emergencyContactNumber: studentData.additional.emergencyContactNumber,
-                elementarySchool: studentData.education.elementarySchool,
-                elemYearGraduated: studentData.education.elemYearGraduated,
-                secondarySchool: studentData.education.secondarySchool,
-                secondaryYearGraduated: studentData.education.secondaryYearGraduated,
-                collegiateSchool: studentData.education.collegiateSchool,
                 status: yearNumber > 1 ? 'Old' : 'New',
                 yearLevel: studentData.academic.yearLevel,
                 course: deriveCourseForYearLevel(
@@ -661,7 +435,7 @@ export default function EnrollmentFormPage() {
                 specialization: studentData.academic.specialization || '',
                 subjects: [],
                 block: '',
-            };
+            } satisfies EnrollmentSchemaType;
         }, [studentData])
     });
     
@@ -673,55 +447,15 @@ export default function EnrollmentFormPage() {
                 studentData.academic.course,
             );
             methods.reset({
-                ...methods.getValues(),
                 status: yearNumber > 1 ? 'Old' : 'New',
                 yearLevel: studentData.academic.yearLevel,
                 course: normalizedCourse,
                 specialization: studentData.academic.specialization || '',
+                subjects: methods.getValues('subjects') ?? [],
+                block: methods.getValues('block') ?? '',
             });
         }
     }, [studentData, methods]);
-
-
-    const resolveString = (value: unknown, fallback: string): string => {
-        if (typeof value === 'string') {
-            const trimmed = value.trim();
-            if (trimmed !== '') {
-                return trimmed;
-            }
-        }
-        return fallback;
-    };
-
-    const resolveOptionalString = (value: unknown, fallback?: string | null): string | null => {
-        if (typeof value === 'string') {
-            const trimmed = value.trim();
-            return trimmed === '' ? null : trimmed;
-        }
-        if (typeof fallback === 'string') {
-            const trimmedFallback = fallback.trim();
-            return trimmedFallback === '' ? null : trimmedFallback;
-        }
-        return fallback ?? null;
-    };
-
-    const normalizeDateValue = (value: unknown, fallback?: string | null): string | null => {
-        if (value instanceof Date) {
-            return format(value, 'yyyy-MM-dd');
-        }
-        if (typeof value === 'string') {
-            const trimmed = value.trim();
-            if (trimmed === '') {
-                return fallback ?? null;
-            }
-            const parsed = new Date(trimmed);
-            if (!Number.isNaN(parsed.getTime())) {
-                return format(parsed, 'yyyy-MM-dd');
-            }
-            return trimmed;
-        }
-        return fallback ?? null;
-    };
 
     const buildFormSnapshot = (values: EnrollmentSchemaType) => {
         if (!studentData) {
@@ -729,50 +463,18 @@ export default function EnrollmentFormPage() {
         }
 
         return {
-            personal: {
-                firstName: resolveString(values.firstName, studentData.personal.firstName),
-                lastName: resolveString(values.lastName, studentData.personal.lastName),
-                middleName: resolveOptionalString(values.middleName, studentData.personal.middleName),
-                birthdate: normalizeDateValue(values.birthdate, studentData.personal.birthdate),
-                sex: resolveString(values.sex, studentData.personal.sex),
-                civilStatus: resolveString(values.civilStatus, studentData.personal.civilStatus ?? 'Single'),
-                nationality: resolveString(values.nationality, studentData.personal.nationality),
-                religion: resolveString(values.religion, studentData.personal.religion),
-                dialect: resolveString(values.dialect, studentData.personal.dialect),
-            },
-            contact: {
-                email: resolveString(values.email, studentData.contact.email),
-                phoneNumber: resolveString(values.phoneNumber, studentData.contact.phoneNumber),
-            },
-            address: {
-                currentAddress: resolveString(values.currentAddress, studentData.address.currentAddress),
-                permanentAddress: resolveString(values.permanentAddress, studentData.address.permanentAddress),
-            },
-            family: {
-                fathersName: resolveString(values.fathersName, studentData.family.fathersName),
-                fathersOccupation: resolveString(values.fathersOccupation, studentData.family.fathersOccupation),
-                mothersName: resolveString(values.mothersName, studentData.family.mothersName),
-                mothersOccupation: resolveString(values.mothersOccupation, studentData.family.mothersOccupation),
-                guardiansName: resolveOptionalString(values.guardiansName, studentData.family.guardiansName),
-            },
-            additional: {
-                emergencyContactName: resolveString(values.emergencyContactName, studentData.additional.emergencyContactName),
-                emergencyContactAddress: resolveString(values.emergencyContactAddress, studentData.additional.emergencyContactAddress),
-                emergencyContactNumber: resolveString(values.emergencyContactNumber, studentData.additional.emergencyContactNumber),
-            },
-            education: {
-                elementarySchool: resolveString(values.elementarySchool, studentData.education.elementarySchool),
-                elemYearGraduated: resolveString(values.elemYearGraduated, studentData.education.elemYearGraduated),
-                secondarySchool: resolveString(values.secondarySchool, studentData.education.secondarySchool),
-                secondaryYearGraduated: resolveString(values.secondaryYearGraduated, studentData.education.secondaryYearGraduated),
-                collegiateSchool: resolveOptionalString(values.collegiateSchool, studentData.education.collegiateSchool),
-            },
+            personal: studentData.personal,
+            contact: studentData.contact,
+            address: studentData.address,
+            family: studentData.family,
+            additional: studentData.additional,
+            education: studentData.education,
             academic: {
                 course: values.course,
                 yearLevel: values.yearLevel,
                 status: values.status,
                 block: values.block,
-                specialization: resolveOptionalString(values.specialization, studentData.academic.specialization),
+                specialization: values.specialization || studentData.academic.specialization || null,
                 subjects: values.subjects,
             },
         };
@@ -797,7 +499,14 @@ export default function EnrollmentFormPage() {
 
         try {
             const formSnapshot = buildFormSnapshot(data);
-            const specializationValue = resolveOptionalString(data.specialization, studentData.academic.specialization);
+            const specializationValue = (() => {
+                const trimmed = data.specialization?.trim();
+                if (trimmed) {
+                    return trimmed;
+                }
+                const fallback = studentData.academic.specialization?.trim();
+                return fallback && fallback.length > 0 ? fallback : null;
+            })();
 
             const payload = {
                 studentIdNumber: studentData.academic.studentId,
@@ -866,37 +575,6 @@ export default function EnrollmentFormPage() {
         }
     };
     
-    type FieldName = keyof EnrollmentSchemaType;
-
-    const next = async () => {
-        if (isSubmitting) {
-            return;
-        }
-
-        const fieldsByStep: FieldName[][] = [
-            Object.keys(personalFamilySchema.shape) as FieldName[],
-            Object.keys(additionalInfoSchema.shape) as FieldName[],
-            Object.keys(baseAcademicSchema.shape) as FieldName[],
-        ];
-
-        const fieldsToValidate = fieldsByStep[currentStep].map(field => field as string);
-        const output = await methods.trigger(fieldsToValidate, { shouldFocus: true });
-
-        if (!output) return;
-
-        if (currentStep < steps.length - 1) {
-             setCurrentStep(step => step + 1);
-        } else {
-             await methods.handleSubmit(processForm)();
-        }
-    };
-
-    const prev = () => {
-        if (currentStep > (isNewStudent ? 0 : 2)) {
-            setCurrentStep(step => step - 1);
-        }
-    };
-
     if (!studentData) {
         return <div>Loading form...</div>;
     }
@@ -909,35 +587,17 @@ export default function EnrollmentFormPage() {
                         <CardHeader>
                             <CardTitle>Enrollment Form</CardTitle>
                              <CardDescription>
-                                {isNewStudent 
-                                    ? `Please fill out all the necessary fields. (${steps[currentStep].name})`
-                                    : "Please select your block and subjects for the new semester."
-                                }
+                                Choose your block and enlist subjects for this term. Your profile information stays locked for registrar review.
                             </CardDescription>
-                            {isNewStudent && <Progress value={(currentStep / (steps.length - 1)) * 100} className="mt-4" />}
                         </CardHeader>
                         <CardContent>
-                            {currentStep === 0 && <Step1 />}
-                            {currentStep === 1 && <Step2 />}
-                            {currentStep === 2 && <Step3 />}
+                            <AcademicSelectionSection />
                         </CardContent>
                         <CardFooter>
-                           <div className="flex justify-between w-full">
-                                {currentStep > 0 && isNewStudent && (
-                                    <Button type="button" onClick={prev} variant="outline" className="rounded-xl" disabled={isSubmitting}>
-                                        Previous
-                                    </Button>
-                                )}
-                                
-                                {currentStep < 2 && isNewStudent ? (
-                                     <Button type="button" onClick={next} className="rounded-xl ml-auto" disabled={isSubmitting}>
-                                        Next
-                                    </Button>
-                                ) : (
-                                    <Button type="submit" className="rounded-xl ml-auto min-w-[200px]" disabled={isSubmitting}>
-                                        {isSubmitting ? 'Submitting...' : 'Submit Enrollment'}
-                                    </Button>
-                                )}
+                           <div className="flex justify-end w-full">
+                                <Button type="submit" className="rounded-xl min-w-[200px]" disabled={isSubmitting}>
+                                    {isSubmitting ? 'Submitting...' : 'Submit Enrollment'}
+                                </Button>
                             </div>
                         </CardFooter>
                     </Card>

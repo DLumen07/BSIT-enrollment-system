@@ -94,6 +94,8 @@ const toMinutes = (time?: string | null): number | null => {
 export default function AdminDashboardPage() {
   const { adminData } = useAdmin();
   const { adminUsers, instructors, students, pendingApplications, blocks } = adminData;
+  const currentUserRole = adminData.currentUser?.role ?? null;
+  const canAccessTotalUsers = currentUserRole !== 'Moderator';
 
   const isEnrolled = React.useCallback((status?: string | null) => {
     if (typeof status !== 'string') {
@@ -238,6 +240,18 @@ export default function AdminDashboardPage() {
 
   const shouldScrollSchedulingHealth = schedulingIssues.length > 5;
 
+  const totalUsersCard = (
+    <Card className="rounded-xl transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2">
+      <CardHeader>
+        <CardTitle>Total Users</CardTitle>
+        <CardDescription>All system users</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-3xl font-bold">{totalUsers}</p>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <>
       <main className="flex-1 p-4 sm:p-6 space-y-6">
@@ -275,17 +289,19 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/admin/dashboard/users" className="focus:outline-none">
-            <Card className="rounded-xl transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2">
-              <CardHeader>
-                <CardTitle>Total Users</CardTitle>
-                <CardDescription>All system users</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{totalUsers}</p>
-              </CardContent>
-            </Card>
-          </Link>
+          {canAccessTotalUsers ? (
+            <Link href="/admin/dashboard/users" className="focus:outline-none">
+              {totalUsersCard}
+            </Link>
+          ) : (
+            <div
+              className="opacity-70 cursor-not-allowed"
+              aria-disabled="true"
+              title="Moderators cannot access the user directory"
+            >
+              {totalUsersCard}
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="flex flex-col lg:col-span-2 rounded-xl">

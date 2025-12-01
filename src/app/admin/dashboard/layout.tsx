@@ -285,6 +285,8 @@ export default function AdminDashboardLayout({
     return seeds;
   }, [pendingApplications, enrollmentSchedule, blocks]);
 
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
   const notificationStorageKey = currentUser ? `admin-${currentUser.id}` : 'admin-guest';
   const {
     notifications,
@@ -297,16 +299,20 @@ export default function AdminDashboardLayout({
   const isModerator = currentUser?.role === 'Moderator';
 
   const handleLogout = () => {
+    setIsLoggingOut(true);
     sessionStorage.removeItem('currentUser');
     setAdminData(prev => ({ ...prev, currentUser: null }));
-    router.push('http://localhost:3000/');
+    router.push('/');
   };
 
   React.useEffect(() => {
     if (!currentUser) {
+      if (isLoggingOut) {
+        return;
+      }
       router.push('/admin-login');
     }
-  }, [currentUser, router]);
+  }, [currentUser, isLoggingOut, router]);
 
   if (!currentUser) {
     return (

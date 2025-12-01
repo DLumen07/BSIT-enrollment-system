@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileSignature, CheckCircle, Printer, Clock, XCircle } from 'lucide-react';
+import { FileSignature, CheckCircle, Printer, Clock, XCircle, User2, Phone, MapPin, GraduationCap, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,29 @@ export default function EnrollmentPage() {
     const enrollmentFormUrl = studentData.contact.email
         ? `/student/dashboard/enrollment/form?email=${encodeURIComponent(studentData.contact.email)}`
         : '/student/dashboard/enrollment/form';
+
+    const profileSetupSteps = [
+        {
+            title: 'Personal Information',
+            description: 'Ensure your legal name, birthdate, and demographic details match your submitted documents.',
+            Icon: User2,
+        },
+        {
+            title: 'Contact & Address Details',
+            description: 'Provide an active mobile number plus your current and permanent addresses for registrar updates.',
+            Icon: MapPin,
+        },
+        {
+            title: 'Guardian & Emergency Contacts',
+            description: 'List guardians and emergency contacts so we can reach someone quickly if needed.',
+            Icon: Phone,
+        },
+        {
+            title: 'Academic Background',
+            description: 'List your previous schools and upload any required supporting documents for evaluation.',
+            Icon: GraduationCap,
+        },
+    ] as const;
 
     const semesterLabel = semesterOptions.find(s => s.value === semester)?.label;
 
@@ -241,40 +264,68 @@ export default function EnrollmentPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {!profileComplete && (
-                            <Alert variant="destructive" className="mb-6 rounded-xl">
-                                <AlertTitle>Complete Your Profile First</AlertTitle>
-                                <AlertDescription>
-                                    We need your personal and contact information before you can submit an enrollment application.
-                                    Please review your&nbsp;
-                                    <Link href={profileUrl} className="font-medium underline">
-                                        student profile
-                                    </Link>
-                                    &nbsp;and make sure all required fields are filled out.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-xl">
-                            <FileSignature className="h-16 w-16 text-muted-foreground mb-4" />
-                            <h2 className="text-xl font-semibold mb-2">Ready to Enroll?</h2>
-                            <p className="text-muted-foreground mb-6">
-                                Click the button below to start the enrollment process. Ensure your required documents are ready for submission.
-                            </p>
-                            {profileComplete ? (
+                        {profileComplete ? (
+                            <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-xl">
+                                <FileSignature className="h-16 w-16 text-muted-foreground mb-4" />
+                                <h2 className="text-xl font-semibold mb-2">Ready to Enroll?</h2>
+                                <p className="text-muted-foreground mb-6">
+                                    Click the button below to start the enrollment process. Ensure your required documents are ready for submission.
+                                </p>
                                 <Button asChild size="lg" className="rounded-xl">
                                     <Link href={enrollmentFormUrl}>Enroll Now</Link>
                                 </Button>
-                            ) : (
-                                <div className="flex flex-col items-center gap-3 w-full">
-                                    <Button size="lg" className="rounded-xl w-full" disabled>
-                                        Complete Profile To Continue
-                                    </Button>
-                                    <Button variant="ghost" asChild className="rounded-xl w-full">
-                                        <Link href={profileUrl}>Go to Profile</Link>
-                                    </Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                <Alert variant="destructive" className="rounded-xl">
+                                    <AlertTitle>Complete Your Profile First</AlertTitle>
+                                    <AlertDescription>
+                                        We need your personal, contact, and academic information before you can submit an enrollment application.
+                                        Review your&nbsp;
+                                        <Link href={profileUrl} className="font-medium underline">
+                                            student profile
+                                        </Link>
+                                        &nbsp;and make sure every section below is complete.
+                                    </AlertDescription>
+                                </Alert>
+                                <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+                                    <div className="rounded-2xl border bg-muted/10 p-6">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <ClipboardList className="h-10 w-10 text-primary" />
+                                            <div>
+                                                <h3 className="text-base font-semibold">Profile checklist</h3>
+                                                <p className="text-sm text-muted-foreground">Finish each section to unlock enrollment.</p>
+                                            </div>
+                                        </div>
+                                        <ul className="space-y-4">
+                                            {profileSetupSteps.map(step => (
+                                                <li key={step.title} className="flex gap-4 items-start">
+                                                    <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                        <step.Icon className="h-4 w-4" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium">{step.title}</p>
+                                                        <p className="text-sm text-muted-foreground">{step.description}</p>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <div className="rounded-2xl bg-muted/40 p-6 flex flex-col gap-4">
+                                        <h3 className="text-lg font-semibold">Finish your profile</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Once every required field is filled out, you can return here and submit your enrollment form right away.
+                                        </p>
+                                        <Button asChild size="lg" className="rounded-xl w-full">
+                                            <Link href={profileUrl}>Go to Profile</Link>
+                                        </Button>
+                                        <p className="text-xs text-muted-foreground">
+                                            Tip: Your progress saves automatically, so you can update one section at a time.
+                                        </p>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </main>
@@ -343,7 +394,7 @@ export default function EnrollmentPage() {
                     </div>
 
                     <h3 className="text-lg font-semibold mb-4">Registered Subjects</h3>
-                    <div className="border rounded-lg">
+                    <div className="border rounded-xl overflow-hidden shadow-sm">
                         <Table>
                             <TableHeader>
                                 <TableRow>

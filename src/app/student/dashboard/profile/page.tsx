@@ -1,7 +1,7 @@
 
 'use client';
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,7 @@ import { Camera } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useStudent, type StudentDataType, normalizeStudentPayload } from '@/app/student/context/student-context';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import Link from 'next/link';
 import { resolveMediaUrl } from '@/lib/utils';
 
 
@@ -44,9 +45,17 @@ type EditableStudentProfile = {
     mothersName: string;
     mothersOccupation: string;
     guardiansName: string;
+    guardiansOccupation: string;
+    guardiansAddress: string;
     emergencyContactName: string;
     emergencyContactAddress: string;
     emergencyContactNumber: string;
+    livingWithFamily: string;
+    boarding: string;
+    differentlyAbled: string;
+    disability: string;
+    minorityGroup: string;
+    minority: string;
     elementarySchool: string;
     elemYearGraduated: string;
     secondarySchool: string;
@@ -73,9 +82,17 @@ const createEditableDataFromStudent = (student: StudentDataType): EditableStuden
     mothersName: student.family.mothersName ?? '',
     mothersOccupation: student.family.mothersOccupation ?? '',
     guardiansName: student.family.guardiansName ?? '',
+    guardiansOccupation: student.family.guardiansOccupation ?? '',
+    guardiansAddress: student.family.guardiansAddress ?? '',
     emergencyContactName: student.additional.emergencyContactName ?? '',
     emergencyContactAddress: student.additional.emergencyContactAddress ?? '',
     emergencyContactNumber: student.additional.emergencyContactNumber ?? '',
+    livingWithFamily: student.additional.livingWithFamily ?? '',
+    boarding: student.additional.boarding ?? '',
+    differentlyAbled: student.additional.differentlyAbled ?? '',
+    disability: student.additional.disability ?? '',
+    minorityGroup: student.additional.minorityGroup ?? '',
+    minority: student.additional.minority ?? '',
     elementarySchool: student.education.elementarySchool ?? '',
     elemYearGraduated: student.education.elemYearGraduated ?? '',
     secondarySchool: student.education.secondarySchool ?? '',
@@ -102,9 +119,17 @@ const EMPTY_EDITABLE_PROFILE: EditableStudentProfile = {
     mothersName: '',
     mothersOccupation: '',
     guardiansName: '',
+    guardiansOccupation: '',
+    guardiansAddress: '',
     emergencyContactName: '',
     emergencyContactAddress: '',
     emergencyContactNumber: '',
+    livingWithFamily: '',
+    boarding: '',
+    differentlyAbled: '',
+    disability: '',
+    minorityGroup: '',
+    minority: '',
     elementarySchool: '',
     elemYearGraduated: '',
     secondarySchool: '',
@@ -132,6 +157,9 @@ const normalizeDateForApi = (value: string): string => {
     return `${year}-${month}-${day}`;
 };
 
+const tabOrder = ['personal', 'address', 'additional', 'education'] as const;
+type TabKey = typeof tabOrder[number];
+
 
 export default function StudentProfilePage() {
     const { toast } = useToast();
@@ -152,6 +180,17 @@ export default function StudentProfilePage() {
     const [formError, setFormError] = React.useState<string | null>(null);
     const [avatarUploading, setAvatarUploading] = React.useState(false);
     const avatarInputRef = React.useRef<HTMLInputElement | null>(null);
+    const [activeTab, setActiveTab] = React.useState<TabKey>('personal');
+
+    const goToNextTab = React.useCallback((current: TabKey) => {
+        const index = tabOrder.indexOf(current);
+        if (index === -1) {
+            return;
+        }
+        const nextIndex = Math.min(index + 1, tabOrder.length - 1);
+        const nextTab = tabOrder[nextIndex];
+        setActiveTab(nextTab);
+    }, []);
 
     React.useEffect(() => {
         if (studentData) {
@@ -307,9 +346,17 @@ export default function StudentProfilePage() {
                 mothersName: editableData.mothersName.trim(),
                 mothersOccupation: editableData.mothersOccupation.trim(),
                 guardiansName: editableData.guardiansName.trim(),
+                guardiansOccupation: editableData.guardiansOccupation.trim(),
+                guardiansAddress: editableData.guardiansAddress.trim(),
                 emergencyContactName: editableData.emergencyContactName.trim(),
                 emergencyContactAddress: editableData.emergencyContactAddress.trim(),
                 emergencyContactNumber: editableData.emergencyContactNumber.trim(),
+                livingWithFamily: editableData.livingWithFamily.trim(),
+                boarding: editableData.boarding.trim(),
+                differentlyAbled: editableData.differentlyAbled.trim(),
+                disability: editableData.disability.trim(),
+                minorityGroup: editableData.minorityGroup.trim(),
+                minority: editableData.minority.trim(),
                 elementarySchool: editableData.elementarySchool.trim(),
                 elemYearGraduated: editableData.elemYearGraduated.trim(),
                 secondarySchool: editableData.secondarySchool.trim(),
@@ -370,6 +417,10 @@ export default function StudentProfilePage() {
             setEditableData(createEditableDataFromStudent(normalizedProfile));
 
             const updatedEmail = normalizedProfile.contact.email ?? '';
+            const updatedEnrollmentUrl = updatedEmail
+                ? `/student/dashboard/enrollment?email=${encodeURIComponent(updatedEmail)}`
+                : '/student/dashboard/enrollment';
+            const isStudentEnrolled = normalizedProfile.enrollment?.isEnrolled ?? false;
             if (typeof window !== 'undefined' && updatedEmail !== '') {
                 window.sessionStorage.setItem('bsit_student_email', updatedEmail);
             }
@@ -389,6 +440,16 @@ export default function StudentProfilePage() {
                 title: 'Profile saved',
                 description: 'Your profile has been updated successfully.',
             });
+
+            if (!isStudentEnrolled) {
+                toast({
+                    title: 'Redirecting to enrollment',
+                    description: 'Next, complete your enrollment form.',
+                });
+                setTimeout(() => {
+                    router.push(updatedEnrollmentUrl);
+                }, 600);
+            }
         } catch (error) {
             const message =
                 error instanceof Error ? error.message : 'Unable to update profile.';
@@ -407,10 +468,38 @@ export default function StudentProfilePage() {
         return <div>Loading profile...</div>;
     }
 
+    const enrollmentPageUrl = studentData.contact.email
+        ? `/student/dashboard/enrollment?email=${encodeURIComponent(studentData.contact.email)}`
+        : '/student/dashboard/enrollment';
+
     const avatarInitials = (
         `${editableData.firstName.slice(0, 1)}${editableData.lastName.slice(0, 1)}`.toUpperCase() ||
         'SN'
     );
+
+    const NextButton = ({ tabKey }: { tabKey: TabKey }) => {
+        const currentIndex = tabOrder.indexOf(tabKey);
+        const isLast = currentIndex === tabOrder.length - 1;
+
+        if (isLast) {
+            return (
+                <Button asChild variant="outline" className="rounded-xl">
+                    <Link href={enrollmentPageUrl}>Proceed to Enrollment</Link>
+                </Button>
+            );
+        }
+
+        return (
+            <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => goToNextTab(tabKey)}
+            >
+                Next
+            </Button>
+        );
+    };
 
     return (
         <main className="flex-1 p-4 sm:p-6 space-y-6">
@@ -475,7 +564,11 @@ export default function StudentProfilePage() {
                         </Card>
                     </div>
                     <div className="lg:col-span-2">
-                        <Tabs defaultValue="personal" className="w-full">
+                        <Tabs
+                            value={activeTab}
+                            onValueChange={(value: string) => setActiveTab(value as TabKey)}
+                            className="w-full"
+                        >
                             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 rounded-xl">
                                 <TabsTrigger value="personal">Personal</TabsTrigger>
                                 <TabsTrigger value="address">Address & Family</TabsTrigger>
@@ -582,6 +675,9 @@ export default function StudentProfilePage() {
                                             </div>
                                         </div>
                                     </CardContent>
+                                    <CardFooter className="flex justify-end pt-2">
+                                        <NextButton tabKey="personal" />
+                                    </CardFooter>
                                 </Card>
                             </TabsContent>
 
@@ -621,8 +717,19 @@ export default function StudentProfilePage() {
                                                 <Label htmlFor="guardiansName">Guardian's Name</Label>
                                                 <Input id="guardiansName" value={editableData.guardiansName} onChange={handleInputChange} className="rounded-xl" />
                                             </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="guardiansOccupation">Guardian's Occupation</Label>
+                                                <Input id="guardiansOccupation" value={editableData.guardiansOccupation} onChange={handleInputChange} className="rounded-xl" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="guardiansAddress">Guardian's Address</Label>
+                                                <Input id="guardiansAddress" value={editableData.guardiansAddress} onChange={handleInputChange} className="rounded-xl" />
+                                            </div>
                                         </div>
                                     </CardContent>
+                                    <CardFooter className="flex justify-end pt-2">
+                                        <NextButton tabKey="address" />
+                                    </CardFooter>
                                 </Card>
                             </TabsContent>
                             
@@ -650,7 +757,86 @@ export default function StudentProfilePage() {
                                                 className="rounded-xl"
                                             />
                                         </div>
+                                        <div className="border-t pt-4 space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Living With Family</Label>
+                                                    <Select
+                                                        value={editableData.livingWithFamily || undefined}
+                                                        onValueChange={(value) => handleSelectChange('livingWithFamily', value)}
+                                                    >
+                                                        <SelectTrigger className="rounded-xl">
+                                                            <SelectValue placeholder="Select option" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Yes">Yes</SelectItem>
+                                                            <SelectItem value="No">No</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Boarding</Label>
+                                                    <Select
+                                                        value={editableData.boarding || undefined}
+                                                        onValueChange={(value) => handleSelectChange('boarding', value)}
+                                                    >
+                                                        <SelectTrigger className="rounded-xl">
+                                                            <SelectValue placeholder="Select option" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Yes">Yes</SelectItem>
+                                                            <SelectItem value="No">No</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Differently Abled</Label>
+                                                    <Select
+                                                        value={editableData.differentlyAbled || undefined}
+                                                        onValueChange={(value) => handleSelectChange('differentlyAbled', value)}
+                                                    >
+                                                        <SelectTrigger className="rounded-xl">
+                                                            <SelectValue placeholder="Select option" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Yes">Yes</SelectItem>
+                                                            <SelectItem value="No">No</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="disability">If yes, specify condition</Label>
+                                                    <Input id="disability" value={editableData.disability} onChange={handleInputChange} className="rounded-xl" />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Minority Group</Label>
+                                                    <Select
+                                                        value={editableData.minorityGroup || undefined}
+                                                        onValueChange={(value) => handleSelectChange('minorityGroup', value)}
+                                                    >
+                                                        <SelectTrigger className="rounded-xl">
+                                                            <SelectValue placeholder="Select option" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Yes">Yes</SelectItem>
+                                                            <SelectItem value="No">No</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="minority">If yes, specify group</Label>
+                                                    <Input id="minority" value={editableData.minority} onChange={handleInputChange} className="rounded-xl" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </CardContent>
+                                    <CardFooter className="flex justify-end pt-2">
+                                        <NextButton tabKey="additional" />
+                                    </CardFooter>
                                 </Card>
                             </TabsContent>
 
@@ -694,9 +880,11 @@ export default function StudentProfilePage() {
                                     {formError}
                                 </p>
                             )}
-                            <Button type="submit" className="rounded-xl" disabled={saving}>
-                                {saving ? 'Saving...' : 'Save All Changes'}
-                            </Button>
+                            <div className="flex flex-wrap justify-end gap-3 w-full">
+                                <Button type="submit" className="rounded-xl" disabled={saving}>
+                                    {saving ? 'Saving...' : 'Save All Changes'}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1,10 +1,12 @@
 
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AdminUser, initialAdminUsers, roles as adminRoles } from '../data/admin-users';
 import { Subject as ScheduleSubject } from '../dashboard/schedule/[blockId]/page';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { resolveMediaUrl } from '@/lib/utils';
+import { DATA_SYNC_CHANNEL } from '@/lib/live-sync';
 
 // --- Data from instructors ---
 export type Instructor = {
@@ -1216,9 +1218,20 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     const historyLoadedRef = useRef<boolean>(false);
 
     const [adminData, rawSetAdminData] = useState<AdminDataType>(createAdminDataFromPayload(null));
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [hasRestoredUser, setHasRestoredUser] = useState(false);
+
+    const {
+        data: fetchedAdminData,
+        isPending: isAdminDataPending,
+        error: adminQueryError,
+        refetch: refetchAdminQuery,
+    } = useQuery({
+        queryKey: ['admin-data'],
+        queryFn: ({ signal }) => fetchAdminDataFromBackend(signal),
+        refetchInterval: 30_000,
+        refetchOnWindowFocus: true,
+        retry: 1,
+    });
 
     const storeAssignmentsHistory = useCallback((assignments: TeachingAssignment[]) => {
         teachingAssignmentsHistoryRef.current = assignments;
@@ -1274,65 +1287,57 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
         storeAssignmentsHistory(teachingAssignmentsHistoryRef.current);
     }, [storeAssignmentsHistory, rawSetAdminData]);
 
-  useEffect(() => {
-        let isMounted = true;
-        const controller = new AbortController();
+    useEffect(() => {
+        if (!fetchedAdminData) {
+            return;
+        }
+        setAdminDataWithHistory((prev) => ({
+            ...fetchedAdminData,
+            currentUser: prev.currentUser ?? fetchedAdminData.currentUser ?? null,
+        }));
+    }, [fetchedAdminData, setAdminDataWithHistory]);
 
-        fetchAdminDataFromBackend(controller.signal)
-            .then((data) => {
-                if (!isMounted) {
-                    return;
-                }
-                setAdminDataWithHistory((prev) => ({
-                    ...data,
-                    currentUser: prev.currentUser ?? data.currentUser ?? null,
-                }));
-                setError(null);
-            })
-            .catch((err) => {
-                if (!isMounted || controller.signal.aborted) {
-                    return;
-                }
-                const message = err instanceof Error ? err.message : 'Unexpected error while fetching admin data.';
-                console.error('[AdminProvider] fetchAdminData failed:', message);
-                setError(message);
-                setAdminDataWithHistory(createAdminDataFromPayload(null));
-            })
-            .finally(() => {
-                if (isMounted) {
-                    setLoading(false);
-                }
-            });
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') {
+            return;
+        }
 
-        return () => {
-            isMounted = false;
-            controller.abort();
+        let channel: BroadcastChannel | null = null;
+        try {
+            channel = new BroadcastChannel(DATA_SYNC_CHANNEL);
+        } catch (error) {
+            console.warn('[AdminProvider] Unable to subscribe to data sync channel.', error);
+            return;
+        }
+
+        const handler = (event: MessageEvent<{ topic?: string }>) => {
+            if (event.data?.topic === 'admin-data') {
+                refetchAdminQuery();
+            }
         };
-  }, [setAdminDataWithHistory]);
+
+        channel.addEventListener('message', handler);
+        return () => {
+            channel?.removeEventListener('message', handler);
+            channel?.close();
+        };
+    }, [refetchAdminQuery]);
 
     const refreshAdminData = useCallback(async () => {
-        try {
-            const data = await fetchAdminDataFromBackend();
-            let resolved: AdminDataType = data;
-            setAdminDataWithHistory((prev) => {
-                resolved = {
-                    ...data,
-                    currentUser: prev.currentUser ?? data.currentUser ?? null,
-                };
-                return resolved;
-            });
-            return resolved;
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Unexpected error while fetching admin data.';
-            console.error('[AdminProvider] refreshAdminData failed:', message);
-            throw err;
+        const result = await refetchAdminQuery();
+        if (result.data) {
+            return result.data;
         }
-    }, [setAdminDataWithHistory]);
+        if (result.error) {
+            throw result.error instanceof Error ? result.error : new Error('Unable to refresh admin data.');
+        }
+        throw new Error('Unable to refresh admin data.');
+    }, [refetchAdminQuery]);
 
 
     useEffect(() => {
         // Restore the logged-in user from session storage exactly once.
-        if (loading || hasRestoredUser) {
+        if (isAdminDataPending || hasRestoredUser) {
             return;
         }
 
@@ -1358,9 +1363,16 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
         } finally {
             setHasRestoredUser(true);
         }
-    }, [loading, hasRestoredUser, setAdminDataWithHistory]);
+    }, [isAdminDataPending, hasRestoredUser, setAdminDataWithHistory]);
 
-  if (loading) {
+        const loading = isAdminDataPending && !fetchedAdminData;
+        const error = adminQueryError
+                ? (adminQueryError instanceof Error
+                        ? adminQueryError.message
+                        : 'Unexpected error while fetching admin data.')
+                : null;
+
+    if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <LoadingSpinner className="h-8 w-8" />

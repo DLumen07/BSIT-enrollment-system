@@ -78,17 +78,17 @@ const formatGradeDisplay = (value: StudentGradeRecord['grade'] | null): string =
   return String(value);
 };
 
-const determineStanding = (gpa: number | null): string => {
-  if (gpa === null) {
+const determineStanding = (gwa: number | null): string => {
+  if (gwa === null) {
     return 'Pending Evaluation';
   }
-  if (gpa <= 1.75) {
+  if (gwa <= 1.75) {
     return "Dean's Lister";
   }
-  if (gpa <= 2.25) {
+  if (gwa <= 2.25) {
     return 'Good Standing';
   }
-  if (gpa <= 3.0) {
+  if (gwa <= 3.0) {
     return 'Satisfactory';
   }
   return 'Needs Improvement';
@@ -128,7 +128,7 @@ type GradeGroup = {
   rawSemester: string;
   label: string;
   subjects: StudentGradeRecord[];
-  gpa: number | null;
+  gwa: number | null;
   totalUnits: number;
   standing: string;
 };
@@ -153,7 +153,7 @@ const buildGradeGroups = (grades: StudentGradeRecord[]): GradeGroup[] => {
         rawSemester: entry.semester ?? '',
         label: '',
         subjects: [],
-        gpa: null,
+        gwa: null,
         totalUnits: 0,
         standing: 'Pending Evaluation',
       });
@@ -178,10 +178,10 @@ const buildGradeGroups = (grades: StudentGradeRecord[]): GradeGroup[] => {
       }
     });
 
-    const gpa = gradedUnits > 0 ? weighted / gradedUnits : null;
+    const gwa = gradedUnits > 0 ? weighted / gradedUnits : null;
     group.totalUnits = totalUnits;
-    group.gpa = gpa;
-    group.standing = determineStanding(gpa);
+    group.gwa = gwa;
+    group.standing = determineStanding(gwa);
     group.label = `A.Y. ${group.academicYear}, ${getSemesterLabel(group.semesterCode, group.rawSemester)}`;
   });
 
@@ -219,7 +219,7 @@ export default function GradesPage() {
             View your academic performance from previous semesters.
           </p>
         </div>
-        <Card className="max-w-3xl">
+        <Card className="max-w-3xl rounded-2xl">
           <CardHeader>
             <CardTitle>No Grades Recorded Yet</CardTitle>
             <CardDescription>
@@ -241,9 +241,13 @@ export default function GradesPage() {
       </div>
 
       <Tabs defaultValue={gradeGroups[0].key} className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:w-auto md:inline-grid">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:w-auto md:inline-grid rounded-full bg-muted/50 p-1">
           {gradeGroups.map((group) => (
-            <TabsTrigger key={group.key} value={group.key}>
+            <TabsTrigger
+              key={group.key}
+              value={group.key}
+              className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
               {group.label}
             </TabsTrigger>
           ))}
@@ -252,7 +256,7 @@ export default function GradesPage() {
           <TabsContent key={group.key} value={group.key}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
               <div className="lg:col-span-2">
-                <Card>
+                <Card className="rounded-2xl">
                   <CardHeader>
                     <CardTitle>Grade Details</CardTitle>
                     <CardDescription>
@@ -260,7 +264,7 @@ export default function GradesPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="border rounded-lg">
+                    <div className="border rounded-2xl overflow-hidden">
                       {group.subjects.length > 0 ? (
                         <Table>
                           <TableHeader>
@@ -318,7 +322,7 @@ export default function GradesPage() {
                 </Card>
               </div>
               <div className="space-y-6">
-                <Card>
+                <Card className="rounded-2xl">
                   <CardHeader>
                     <CardTitle>Semester Summary</CardTitle>
                   </CardHeader>
@@ -328,8 +332,8 @@ export default function GradesPage() {
                       <p className="text-lg font-bold">{group.totalUnits}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">General Point Average (GPA)</p>
-                      <p className="text-lg font-bold">{formatNumericValue(group.gpa)}</p>
+                      <p className="text-sm font-medium text-muted-foreground">General Weighted Average (GWA)</p>
+                      <p className="text-lg font-bold">{formatNumericValue(group.gwa)}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Academic Standing</p>

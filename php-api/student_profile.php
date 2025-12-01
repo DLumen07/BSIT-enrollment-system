@@ -296,52 +296,172 @@ SQL;
     $subjectScheduleMap = [];
     $subjectInstructorMap = [];
 
-    if ($blockId !== null && $blockId > 0) {
-        $scheduleSql = "SELECT sch.id, subj.code, subj.description, sch.day_of_week, 
-                                DATE_FORMAT(sch.start_time, '%H:%i') AS start_time,
-                                DATE_FORMAT(sch.end_time, '%H:%i') AS end_time,
-                                IFNULL(ip.name, 'TBA') AS instructor_name,
-                                IFNULL(sch.room, 'TBA') AS room
-                         FROM schedules sch
-                         INNER JOIN subjects subj ON subj.id = sch.subject_id
-                         LEFT JOIN instructor_profiles ip ON ip.user_id = sch.instructor_id
-                         WHERE sch.block_id = ?
-                         ORDER BY sch.day_of_week, sch.start_time";
-        $scheduleStmt = $conn->prepare($scheduleSql);
-        if ($scheduleStmt) {
-            $scheduleStmt->bind_param('i', $blockId);
-            $scheduleStmt->execute();
-            $scheduleResult = $scheduleStmt->get_result();
-            $colorCount = count($scheduleColorPalette);
-            $colorIndex = 0;
+    $subjectIds = [];
+    foreach ($subjects as $subjectEntry) {
+        if (isset($subjectEntry['id'])) {
+            $subjectIds[] = (int) $subjectEntry['id'];
+        }
+    }
+    $subjectIds = array_values(array_unique(array_filter($subjectIds, static fn ($id) => $id > 0)));
 
-            while ($scheduleResult && ($row = $scheduleResult->fetch_assoc())) {
-                $color = $colorCount > 0 ? $scheduleColorPalette[$colorIndex % $colorCount] : 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400';
-                $colorIndex++;
+    $colorCount = count($scheduleColorPalette);
+    $colorIndex = 0;
+    $subjectColorAssignments = [];
 
-                $schedule[] = [
-                    'id' => (int) $row['id'],
-                    'code' => safe_string($row['code']),
-                    'description' => safe_string($row['description']),
-                    'day' => safe_string($row['day_of_week']),
-                    'startTime' => safe_string($row['start_time']),
-                    'endTime' => safe_string($row['end_time']),
-                    'instructor' => safe_string($row['instructor_name']),
-                    'room' => safe_string($row['room']),
-                    'color' => $color,
-                ];
+    $appendScheduleEntry = function (array $row) use (
+        &$schedule,
+        &$subjectScheduleMap,
+        &$subjectInstructorMap,
+        &$subjectColorAssignments,
+        &$colorIndex,
+        $colorCount,
+        $scheduleColorPalette
+    ): void {
+        $subjectId = isset($row['subject_id']) ? (int) $row['subject_id'] : 0;
+        $subjectCode = safe_string($row['code'] ?? '');
+        if ($subjectCode === '') {
+            return;
+        }
 
-                $subjectCode = safe_string($row['code']);
-                $subjectInstructorMap[$subjectCode] = safe_string($row['instructor_name']);
-                $scheduleLabel = strtoupper(substr(safe_string($row['day_of_week']), 0, 1)) . ' ' . safe_string($row['start_time']) . '-' . safe_string($row['end_time']);
-                if (!isset($subjectScheduleMap[$subjectCode])) {
-                    $subjectScheduleMap[$subjectCode] = [];
-                }
-                if (!in_array($scheduleLabel, $subjectScheduleMap[$subjectCode], true)) {
-                    $subjectScheduleMap[$subjectCode][] = $scheduleLabel;
-                }
+        $dayValue = safe_string($row['day_of_week'] ?? '');
+        $startValue = safe_string($row['start_time'] ?? '');
+        $endValue = safe_string($row['end_time'] ?? '');
+        $instructorValue = safe_string($row['instructor_name'] ?? '');
+        $roomValue = safe_string($row['room'] ?? '');
+        $blockLabel = safe_string($row['block_name'] ?? '');
+
+        if (!isset($subjectColorAssignments[$subjectCode])) {
+            $subjectColorAssignments[$subjectCode] = $colorCount > 0
+                ? $scheduleColorPalette[$colorIndex % $colorCount]
+                : 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400';
+            $colorIndex++;
+        }
+        $colorClass = $subjectColorAssignments[$subjectCode];
+
+        $schedule[] = [
+            'id' => isset($row['id']) ? (int) $row['id'] : ($subjectId > 0 ? $subjectId : count($schedule) + 1),
+            'code' => $subjectCode,
+            'description' => safe_string($row['description'] ?? ''),
+            'day' => $dayValue,
+            'startTime' => $startValue,
+            'endTime' => $endValue,
+            'instructor' => $instructorValue !== '' ? $instructorValue : 'TBA',
+            'room' => $roomValue !== '' ? $roomValue : 'TBA',
+            'color' => $colorClass,
+            'block' => $blockLabel !== '' ? $blockLabel : null,
+        ];
+
+        $subjectInstructorMap[$subjectCode] = $instructorValue !== '' ? $instructorValue : 'TBA';
+
+        if (!isset($subjectScheduleMap[$subjectCode])) {
+            $subjectScheduleMap[$subjectCode] = [];
+        }
+
+        $scheduleLabel = '';
+        if ($dayValue !== '') {
+            $scheduleLabel = strtoupper(substr($dayValue, 0, 1));
+        }
+        if ($startValue !== '' || $endValue !== '') {
+            $scheduleLabel .= ($scheduleLabel !== '' ? ' ' : '') . $startValue;
+            if ($endValue !== '') {
+                $scheduleLabel .= '-' . $endValue;
             }
-            $scheduleStmt->close();
+        }
+        if ($scheduleLabel === '') {
+            $scheduleLabel = 'TBA';
+        }
+
+        if (!in_array($scheduleLabel, $subjectScheduleMap[$subjectCode], true)) {
+            $subjectScheduleMap[$subjectCode][] = $scheduleLabel;
+        }
+    };
+
+    if (!empty($subjectIds)) {
+        $orderClause = " ORDER BY FIELD(sch.day_of_week, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'), sch.start_time";
+        $subjectIdList = implode(',', array_map('intval', $subjectIds));
+        $coveredSubjectIds = [];
+
+        if ($blockId !== null && $blockId > 0) {
+            $blockScheduleSql = <<<SQL
+SELECT sch.id, sch.subject_id, subj.code, subj.description, sch.day_of_week,
+       DATE_FORMAT(sch.start_time, '%H:%i') AS start_time,
+       DATE_FORMAT(sch.end_time, '%H:%i') AS end_time,
+       IFNULL(ip.name, 'TBA') AS instructor_name,
+       IFNULL(sch.room, 'TBA') AS room,
+       COALESCE(b.name, CONCAT('Block ', sch.block_id)) AS block_name
+FROM schedules sch
+INNER JOIN subjects subj ON subj.id = sch.subject_id
+LEFT JOIN instructor_profiles ip ON ip.user_id = sch.instructor_id
+LEFT JOIN blocks b ON b.id = sch.block_id
+WHERE sch.block_id = {$blockId} AND sch.subject_id IN ({$subjectIdList})
+{$orderClause}
+SQL;
+
+            if ($blockScheduleResult = $conn->query($blockScheduleSql)) {
+                while ($row = $blockScheduleResult->fetch_assoc()) {
+                    $appendScheduleEntry($row);
+                    if (isset($row['subject_id'])) {
+                        $coveredSubjectIds[(int) $row['subject_id']] = true;
+                    }
+                }
+                $blockScheduleResult->free();
+            }
+        }
+
+        $remainingSubjectIds = [];
+        foreach ($subjectIds as $subjectId) {
+            if (!isset($coveredSubjectIds[$subjectId])) {
+                $remainingSubjectIds[] = $subjectId;
+            }
+        }
+
+        if (!empty($remainingSubjectIds)) {
+            $remainingList = implode(',', array_map('intval', $remainingSubjectIds));
+            $fallbackScheduleSql = <<<SQL
+SELECT sch.id, sch.subject_id, subj.code, subj.description, sch.day_of_week,
+       DATE_FORMAT(sch.start_time, '%H:%i') AS start_time,
+       DATE_FORMAT(sch.end_time, '%H:%i') AS end_time,
+       IFNULL(ip.name, 'TBA') AS instructor_name,
+       IFNULL(sch.room, 'TBA') AS room,
+       COALESCE(b.name, CONCAT('Block ', sch.block_id)) AS block_name
+FROM schedules sch
+INNER JOIN subjects subj ON subj.id = sch.subject_id
+LEFT JOIN instructor_profiles ip ON ip.user_id = sch.instructor_id
+LEFT JOIN blocks b ON b.id = sch.block_id
+WHERE sch.subject_id IN ({$remainingList})
+{$orderClause}
+SQL;
+
+            if ($fallbackScheduleResult = $conn->query($fallbackScheduleSql)) {
+                while ($row = $fallbackScheduleResult->fetch_assoc()) {
+                    $appendScheduleEntry($row);
+                }
+                $fallbackScheduleResult->free();
+            }
+        }
+    }
+
+    if (empty($schedule) && $blockId !== null && $blockId > 0) {
+        $fallbackBlockSql = <<<SQL
+SELECT sch.id, sch.subject_id, subj.code, subj.description, sch.day_of_week,
+       DATE_FORMAT(sch.start_time, '%H:%i') AS start_time,
+       DATE_FORMAT(sch.end_time, '%H:%i') AS end_time,
+       IFNULL(ip.name, 'TBA') AS instructor_name,
+       IFNULL(sch.room, 'TBA') AS room,
+       COALESCE(b.name, CONCAT('Block ', sch.block_id)) AS block_name
+FROM schedules sch
+INNER JOIN subjects subj ON subj.id = sch.subject_id
+LEFT JOIN instructor_profiles ip ON ip.user_id = sch.instructor_id
+LEFT JOIN blocks b ON b.id = sch.block_id
+WHERE sch.block_id = {$blockId}
+ORDER BY FIELD(sch.day_of_week, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'), sch.start_time
+SQL;
+
+        if ($fallbackBlockResult = $conn->query($fallbackBlockSql)) {
+            while ($row = $fallbackBlockResult->fetch_assoc()) {
+                $appendScheduleEntry($row);
+            }
+            $fallbackBlockResult->free();
         }
     }
 
@@ -467,7 +587,7 @@ SQL;
                 'semester' => safe_string($row['semester'] ?? ''),
                 'status' => safe_string($row['status'] ?? ''),
                 'recordedAt' => safe_string($row['created_at'] ?? ''),
-                'gpa' => null,
+                'gwa' => null,
                 'notes' => $notesValue !== '' ? $notesValue : null,
             ];
         }

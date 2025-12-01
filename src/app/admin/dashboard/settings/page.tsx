@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Eye, EyeOff, Calendar as CalendarIcon, Trash2, Download } from 'lucide-react';
 import { useAdmin } from '../../context/admin-context';
@@ -17,8 +16,10 @@ import type { AdminAnnouncement } from '../../context/admin-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import type { DayContentProps } from 'react-day-picker';
 import { format, isSameDay } from 'date-fns';
 import { cn, resolveMediaUrl } from '@/lib/utils';
+import { notifyDataChanged } from '@/lib/live-sync';
 import { Separator } from '@/components/ui/separator';
 import {
     AlertDialog,
@@ -181,6 +182,16 @@ export default function AdminSettingsPage() {
     }, [programCalendarDate, programEvents]);
 
     const calendarProgramDates = useMemo(() => programEvents.map((event) => new Date(event.date)), [programEvents]);
+
+    const calendarProgramDateKeys = useMemo(() => {
+        const keys = new Set<string>();
+        calendarProgramDates.forEach((date) => {
+            if (!Number.isNaN(date.getTime())) {
+                keys.add(date.toDateString());
+            }
+        });
+        return keys;
+    }, [calendarProgramDates]);
 
     const buildApiUrl = useCallback(
         (endpoint: string) => `${API_BASE_URL}/${endpoint.replace(/^\//, '')}`,
@@ -452,6 +463,8 @@ export default function AdminSettingsPage() {
             setAnnouncementMessage('');
             setAnnouncementAudience('Students');
 
+            notifyDataChanged();
+
             toast({
                 title: 'Announcement published',
                 description: 'Students will see the new announcement on their dashboard.',
@@ -515,6 +528,25 @@ export default function AdminSettingsPage() {
             description: 'The selected program entry was removed from the calendar.',
         });
     }, [toast]);
+
+    const ProgramCalendarDay = useCallback((dayProps: DayContentProps) => {
+        const { date, activeModifiers } = dayProps;
+        const hasProgram = calendarProgramDateKeys.has(date.toDateString());
+        return (
+            <div className="relative flex h-full w-full items-center justify-center text-sm font-medium">
+                <span>{date.getDate()}</span>
+                {hasProgram && (
+                    <span
+                        aria-hidden="true"
+                        className={cn(
+                            'absolute bottom-1 h-1.5 w-1.5 rounded-full',
+                            activeModifiers.selected ? 'bg-primary-foreground' : 'bg-primary',
+                        )}
+                    />
+                )}
+            </div>
+        );
+    }, [calendarProgramDateKeys]);
 
     const handlePreviewRollover = async () => {
         if (!currentUser || currentUser.role !== 'Super Admin') {
@@ -613,6 +645,7 @@ export default function AdminSettingsPage() {
                 title: 'Announcement removed',
                 description: 'The announcement is no longer visible to students.',
             });
+            notifyDataChanged();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to remove the announcement.';
             toast({
@@ -740,6 +773,8 @@ export default function AdminSettingsPage() {
                 setEndDate(settingsRefresh.enrollmentEndDate);
                 setActiveEnrollmentPhase(settingsRefresh.activeEnrollmentPhase ?? 'all');
             }
+
+            notifyDataChanged();
 
             if (termChanged) {
                 toast({
@@ -1254,78 +1289,69 @@ export default function AdminSettingsPage() {
                         </div>
                     </div>
                     <div className="lg:col-span-2 space-y-6">
-                        <Tabs defaultValue="profile" className="w-full space-y-4">
-                            <TabsList className="grid w-full grid-cols-2 rounded-xl">
-                                <TabsTrigger value="profile">Profile</TabsTrigger>
-                                <TabsTrigger value="password">Password</TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="profile">
-                                <Card className="rounded-xl h-full">
-                                    <CardHeader>
-                                        <CardTitle>Personal Information</CardTitle>
-                                        <CardDescription>
-                                            Update your personal details here.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="name">Full Name</Label>
-                                            <Input id="name" value={editableData.name} onChange={handleInputChange} className="rounded-xl" />
+                        <div className="grid gap-6 lg:grid-cols-2">
+                            <Card className="rounded-xl h-full">
+                                <CardHeader>
+                                    <CardTitle>Personal Information</CardTitle>
+                                    <CardDescription>
+                                        Update your personal details here.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Full Name</Label>
+                                        <Input id="name" value={editableData.name} onChange={handleInputChange} className="rounded-xl" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email">Email Address</Label>
+                                        <Input id="email" type="email" value={editableData.email} onChange={handleInputChange} className="rounded-xl" />
+                                    </div>
+                                    <InfoField label="Role" value={currentUser.role} />
+                                </CardContent>
+                            </Card>
+                            <Card className="rounded-xl h-full">
+                                <CardHeader>
+                                    <CardTitle>Change Password</CardTitle>
+                                    <CardDescription>
+                                        For security, please choose a strong password.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="current-password">Current Password</Label>
+                                        <div className="relative group">
+                                            <Input id="current-password" type={showCurrentPassword ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="rounded-xl pr-10" />
+                                            <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowCurrentPassword(prev => !prev)}>
+                                                {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </Button>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="email">Email Address</Label>
-                                            <Input id="email" type="email" value={editableData.email} onChange={handleInputChange} className="rounded-xl" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="new-password">New Password</Label>
+                                        <div className="relative group">
+                                            <Input id="new-password" type={showNewPassword ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="rounded-xl pr-10" />
+                                            <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowNewPassword(prev => !prev)}>
+                                                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </Button>
                                         </div>
-                                        <InfoField label="Role" value={currentUser.role} />
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                            <TabsContent value="password">
-                                <Card className="rounded-xl h-full">
-                                    <CardHeader>
-                                        <CardTitle>Change Password</CardTitle>
-                                        <CardDescription>
-                                            For security, please choose a strong password.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="current-password">Current Password</Label>
-                                            <div className="relative group">
-                                                <Input id="current-password" type={showCurrentPassword ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="rounded-xl pr-10" />
-                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowCurrentPassword(prev => !prev)}>
-                                                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                                </Button>
-                                            </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirm-password">Confirm New Password</Label>
+                                        <div className="relative group">
+                                            <Input id="confirm-password" type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="rounded-xl pr-10" />
+                                            <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowConfirmPassword(prev => !prev)}>
+                                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </Button>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="new-password">New Password</Label>
-                                            <div className="relative group">
-                                                <Input id="new-password" type={showNewPassword ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="rounded-xl pr-10" />
-                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowNewPassword(prev => !prev)}>
-                                                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="confirm-password">Confirm New Password</Label>
-                                            <div className="relative group">
-                                                <Input id="confirm-password" type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="rounded-xl pr-10" />
-                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowConfirmPassword(prev => !prev)}>
-                                                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter>
-                                        <Button type="button" onClick={handlePasswordChange} className="rounded-xl" disabled={isChangingPassword}>
-                                            {isChangingPassword ? 'Changing...' : 'Change Password'}
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-                            </TabsContent>
-                        </Tabs>
+                                    </div>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button type="button" onClick={handlePasswordChange} className="rounded-xl" disabled={isChangingPassword}>
+                                        {isChangingPassword ? 'Changing...' : 'Change Password'}
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </div>
                         {currentUser.role === 'Super Admin' && (
                             <>
                                 <Card className="rounded-xl">
@@ -1389,7 +1415,7 @@ export default function AdminSettingsPage() {
                                                     <h3 className="text-sm font-semibold text-muted-foreground">Published Announcements</h3>
                                                     <p className="text-xs text-muted-foreground">Newest messages appear first.</p>
                                                 </div>
-                                                <div className="space-y-4 max-h-[360px] overflow-y-auto pr-1">
+                                                <div className="space-y-4 max-h-[360px] overflow-y-auto pr-1 no-scrollbar">
                                                     {announcements.length === 0 && (
                                                         <p className="text-sm text-muted-foreground">No announcements have been published yet.</p>
                                                     )}
@@ -1442,16 +1468,46 @@ export default function AdminSettingsPage() {
                                         <CardDescription>Plan institutional programs and keep important dates at a glance.</CardDescription>
                                     </CardHeader>
                                     <CardContent className="grid gap-6 lg:grid-cols-2 lg:items-start">
-                                        <div className="rounded-xl border bg-muted/10 p-2 lg:sticky lg:top-0 lg:self-start">
+                                        <div className="rounded-2xl border bg-card p-3 shadow-sm lg:sticky lg:top-0 lg:self-start">
                                             <Calendar
                                                 mode="single"
                                                 selected={programCalendarDate}
                                                 onSelect={handleSelectProgramDate}
                                                 modifiers={{ programDay: calendarProgramDates }}
-                                                modifiersClassNames={{ programDay: 'border border-primary text-primary font-semibold' }}
-                                                    className="w-full"
+                                                className="w-full rounded-2xl"
+                                                classNames={{
+                                                    root: 'w-full',
+                                                    months: 'w-full space-y-4',
+                                                    month: 'w-full space-y-4',
+                                                    caption: 'flex items-center justify-between px-1',
+                                                    caption_label: 'text-base font-semibold',
+                                                    nav: 'flex items-center gap-2',
+                                                    nav_button: 'h-8 w-8 rounded-full border border-input bg-background hover:bg-primary/10',
+                                                    nav_button_previous: 'relative',
+                                                    nav_button_next: 'relative',
+                                                    table: 'w-full border-collapse',
+                                                    head_row: 'grid w-full grid-cols-7 text-center text-xs font-medium text-muted-foreground',
+                                                    head_cell: 'flex h-9 items-center justify-center',
+                                                    row: 'grid w-full grid-cols-7 gap-1 mt-2',
+                                                    cell: 'relative text-sm',
+                                                    day: 'relative inline-flex h-full w-full items-center justify-center rounded-xl text-sm font-medium text-foreground transition hover:bg-primary/10 aria-selected:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
+                                                    day_today: 'ring-2 ring-primary/60 text-primary font-semibold',
+                                                    day_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+                                                    day_outside: 'text-muted-foreground/50 opacity-70',
+                                                }}
+                                                components={{ DayContent: ProgramCalendarDay }}
                                                 initialFocus
                                             />
+                                            <div className="mt-4 flex flex-wrap items-center gap-3 px-1 text-xs text-muted-foreground">
+                                                <div className="flex items-center gap-1">
+                                                    <span className="inline-flex h-2 w-2 rounded-full bg-primary" />
+                                                    Program scheduled
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-primary/60 bg-primary/10" />
+                                                    Selected date
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="space-y-5 lg:max-h-[520px] lg:overflow-y-auto lg:pr-2">
                                             <div className="rounded-xl border p-4 space-y-4">

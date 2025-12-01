@@ -3,14 +3,15 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from "@/components/ui/toaster"
 import { AdminProvider } from './admin/context/admin-context';
+import { QueryProvider } from '@/components/providers/query-provider';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'BSIT Enrollment System',
   description: 'Enrollment management portal for the BSIT program.',
   icons: {
-    icon: '/image/favicon.svg.png',
-    shortcut: '/image/favicon.svg.png',
+    icon: '/image/system-logo.svg',
+    shortcut: '/image/system-logo.svg',
   },
 };
 
@@ -32,8 +33,8 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Geist+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <link rel="icon" type="image/png" href="/image/favicon.svg.png" />
-        <link rel="shortcut icon" type="image/png" href="/image/favicon.svg.png" />
+        <link rel="icon" type="image/svg+xml" href="/image/system-logo.svg" />
+        <link rel="shortcut icon" type="image/svg+xml" href="/image/system-logo.svg" />
       </head>
       <body className={cn("font-body antialiased transition-colors duration-300")}>
         <ThemeProvider
@@ -42,9 +43,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AdminProvider>
-            {children}
-          </AdminProvider>
+          <QueryProvider>
+            <AdminProvider>
+              {children}
+            </AdminProvider>
+          </QueryProvider>
           <Toaster />
         </ThemeProvider>
       </body>

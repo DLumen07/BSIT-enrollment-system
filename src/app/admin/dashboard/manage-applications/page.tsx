@@ -47,6 +47,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Student, Subject } from '../../context/admin-context';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { UNIFAST_FEE_ITEMS, UNIFAST_FEE_TOTALS, formatCurrency } from '@/lib/unifast-fees';
 
 const UNITS_FOR_2ND_YEAR = 36;
 const UNITS_FOR_3RD_YEAR = 72;
@@ -254,10 +255,22 @@ const getRequestedSubjectCodes = (application: Application | null): string[] => 
 };
 
 
+
 export default function ManageApplicationsPage() {
-    const { adminData, refreshAdminData } = useAdmin();
-  const { pendingApplications, approvedApplications, rejectedApplications, blocks, subjects: yearLevelSubjects, students } = adminData;
-  const { toast } = useToast();
+        const { adminData, refreshAdminData } = useAdmin();
+    const { pendingApplications, approvedApplications, rejectedApplications, blocks, subjects: yearLevelSubjects, students } = adminData;
+    const { toast } = useToast();
+
+        const currentUserRole = adminData.currentUser?.role ?? null;
+        const canManageApprovedApplications = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
+
+        const showRestrictedActionToast = useCallback(() => {
+                toast({
+                        variant: 'destructive',
+                        title: 'Action restricted',
+                        description: 'Only Admin or Super Admin accounts can enroll or modify approved applications.',
+                });
+        }, [toast]);
 
     const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api').replace(/\/$/, '');
     const buildApiUrl = useCallback((endpoint: string) => `${API_BASE_URL}/${endpoint.replace(/^\//, '')}`, [API_BASE_URL]);
@@ -380,6 +393,10 @@ export default function ManageApplicationsPage() {
     };
 
     const handleDirectEnrollSubmit = async () => {
+        if (!canManageApprovedApplications) {
+            showRestrictedActionToast();
+            return;
+        }
         if (!foundStudent || !directEnrollBlock) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select a block.' });
             return;
@@ -490,12 +507,16 @@ export default function ManageApplicationsPage() {
         return Array.from(prereqs).map((code) => allSubjects.find((s) => s.code === code)).filter(Boolean) as Subject[];
     }, [yearLevelSubjects]);
 
-  const openEnrollDialog = (application: Application) => {
-    setApplicationToEnroll(application);
-    setEnrollBlock(application.block || ''); // Use block from application
-    setIsEnrollDialogOpen(true);
-    setPrerequisiteOverrides([]);
-  };
+    const openEnrollDialog = (application: Application) => {
+        if (!canManageApprovedApplications) {
+                showRestrictedActionToast();
+                return;
+        }
+        setApplicationToEnroll(application);
+        setEnrollBlock(application.block || ''); // Use block from application
+        setIsEnrollDialogOpen(true);
+        setPrerequisiteOverrides([]);
+    };
 
   useEffect(() => {
     setEnlistedSubjects([]);
@@ -781,6 +802,11 @@ export default function ManageApplicationsPage() {
   const handleEnroll = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (!canManageApprovedApplications) {
+        showRestrictedActionToast();
+        return;
+    }
+
     if (!applicationToEnroll || !enrollBlock) {
         toast({
             variant: 'destructive',
@@ -933,14 +959,15 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                         Review, approve, and reject applications for enrollment.
                     </p>
                 </div>
-                 <Dialog open={isDirectEnrollOpen} onOpenChange={setIsDirectEnrollOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="rounded-full">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Direct Enroll Student
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="rounded-xl sm:max-w-lg">
+                 {canManageApprovedApplications ? (
+                    <Dialog open={isDirectEnrollOpen} onOpenChange={setIsDirectEnrollOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="rounded-full">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Direct Enroll Student
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="rounded-xl sm:max-w-lg">
                         {directEnrollStep === 1 && (
                             <>
                                 <DialogHeader>
@@ -1101,7 +1128,12 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             </>
                         )}
                     </DialogContent>
-                </Dialog>
+                    </Dialog>
+                 ) : (
+                    <Badge variant="outline" className="rounded-full px-4 py-1 text-muted-foreground">
+                        View-only access
+                    </Badge>
+                 )}
             </div>
             <Card className="rounded-xl">
                 <CardHeader>
@@ -1188,7 +1220,9 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                             <TableHead>Course</TableHead>
                                             <TableHead>Year</TableHead>
                                             <TableHead>Type</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            {canManageApprovedApplications && (
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            )}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1236,6 +1270,11 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             </div>
                         </TabsContent>
                         <TabsContent value="approved">
+                            {!canManageApprovedApplications && (
+                                <div className="mt-4 rounded-xl border border-dashed bg-muted/50 p-4 text-sm text-muted-foreground">
+                                    Approved applications are finalized by the Registrar Admin. You can monitor their status here, but only the registrar completes the enrollment process for these students.
+                                </div>
+                            )}
                              <div className="border rounded-lg mt-4">
                                 <Table>
                                     <TableHeader>
@@ -1256,27 +1295,34 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                                 <TableCell>{application.course}</TableCell>
                                                 <TableCell>{application.year}</TableCell>
                                                 <TableCell>{application.status}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
-                                                                <span className="sr-only">Open menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => openEnrollDialog(application)}>
-                                                                <UserPlus className="mr-2 h-4 w-4" />
-                                                                Enroll Student
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)}>
-                                                                <X className="mr-2 h-4 w-4" />
-                                                                Reject
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
+                                                {canManageApprovedApplications && (
+                                                    <TableCell className="text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
+                                                                    <span className="sr-only">Open menu</span>
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onSelect={() => setSelectedApplication(application)}>
+                                                                    <FileText className="mr-2 h-4 w-4" />
+                                                                    View Credentials
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onSelect={() => openEnrollDialog(application)}>
+                                                                    <UserPlus className="mr-2 h-4 w-4" />
+                                                                    Enroll Student
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)}>
+                                                                    <X className="mr-2 h-4 w-4" />
+                                                                    Reject
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                )}
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -1423,41 +1469,6 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                         </div>
                                     );
                                 })}
-                        </div>
-                        <div className="mt-6 space-y-2">
-                            <h4 className="text-sm font-semibold">Submitted Files</h4>
-                            {selectedApplicationDocuments.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">No documents have been uploaded yet.</p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {selectedApplicationDocuments.map((doc) => {
-                                        const downloadUrl = doc.filePath ? buildApiUrl(doc.filePath) : null;
-                                        return (
-                                            <div key={doc.id} className="flex flex-col gap-2 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                                                <div>
-                                                    <p className="font-medium">{doc.name || doc.fileName}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {formatDocumentDate(doc.uploadedAt)}
-                                                        {doc.fileSize ? ` • ${formatDocumentSize(doc.fileSize)}` : ''}
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Badge variant={resolveDocumentBadgeVariant(doc.status)}>{doc.status}</Badge>
-                                                    {downloadUrl ? (
-                                                        <Button asChild variant="outline" size="sm" className="h-8 rounded-full">
-                                                            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                                                                <Download className="mr-2 h-4 w-4" /> View
-                                                            </a>
-                                                        </Button>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">Unavailable</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
                         </div>
                     </div>
                     <DialogFooter>
@@ -1671,7 +1682,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                         </DialogDescription>
                     </DialogHeader>
                     <form id="enroll-student-form" onSubmit={handleEnroll}>
-                        <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-4">
+                        <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-4 no-scrollbar">
                              <div className="flex items-center justify-between gap-4 p-4 border rounded-xl">
                                 <div className="flex items-center gap-4">
                                      <Avatar>
@@ -1688,12 +1699,12 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                     <p className="font-semibold">{enrollBlock || 'N/A'}</p>
                                  </div>
                             </div>
-                            
+
                             {(applicationToEnroll.status === 'Transferee' || applicationToEnroll.status === 'New') && allPrerequisites.length > 0 && (
                                  <div className="space-y-3 mt-4 pt-4 border-t">
                                     <h4 className="font-medium">Credential Override</h4>
                                     <p className="text-xs text-muted-foreground">For transferees or new students, manually credit any prerequisites they have fulfilled.</p>
-                                    <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+                                    <div className="space-y-2 max-h-32 overflow-y-auto pr-2 no-scrollbar">
                                         {allPrerequisites.map(prereq => (
                                             <div key={`prereq-${prereq.id}`} className="flex items-center space-x-2 p-2 border rounded-md">
                                                 <Checkbox
@@ -1738,7 +1749,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                             </Label>
                                         </div>
                                     </div>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 no-scrollbar">
                                         {availableSubjectsForEnrollment.map((subject) => {
                                             const prerequisitesMet = hasMetPrerequisites(subject, completedSubjectsForEnrollment);
                                             return (
@@ -1768,6 +1779,49 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                     </div>
                                 </div>
                             )}
+
+                            <div className="space-y-3 mt-4 pt-4 border-t">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <h4 className="font-medium">Assessment of Fees</h4>
+                                        <p className="text-xs text-muted-foreground">
+                                            Republic Act 10931 (Universal Access to Quality Tertiary Education Act) covers the mandatory fees of qualified students through UniFAST. This preview mirrors the fee table on the registration form.
+                                        </p>
+                                    </div>
+                                    <Badge variant="secondary" className="rounded-full whitespace-nowrap">RA 10931</Badge>
+                                </div>
+                                <div className="border rounded-lg overflow-hidden">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-1/2">Fee</TableHead>
+                                                <TableHead className="text-right">Amount</TableHead>
+                                                <TableHead className="text-right">Paid</TableHead>
+                                                <TableHead className="text-right">Balance</TableHead>
+                                                <TableHead className="text-right">UniFAST</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {UNIFAST_FEE_ITEMS.map((fee) => (
+                                                <TableRow key={fee.description}>
+                                                    <TableCell className="font-medium">{fee.description}</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(fee.amount)}</TableCell>
+                                                    <TableCell className="text-right text-muted-foreground">{formatCurrency(fee.paid)}</TableCell>
+                                                    <TableCell className="text-right text-muted-foreground">{formatCurrency(fee.balance)}</TableCell>
+                                                    <TableCell className="text-right text-muted-foreground">{formatCurrency(fee.unifast)}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                            <TableRow className="bg-muted/40 font-semibold">
+                                                <TableCell>Total</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(UNIFAST_FEE_TOTALS.amount)}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(UNIFAST_FEE_TOTALS.paid)}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(UNIFAST_FEE_TOTALS.balance)}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(UNIFAST_FEE_TOTALS.unifast)}</TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
                         </div>
                     </form>
                     <DialogFooter>

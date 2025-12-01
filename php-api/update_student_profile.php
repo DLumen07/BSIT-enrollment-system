@@ -479,7 +479,7 @@ function fetch_student_profile_data(mysqli $conn, int $userId): array {
                 'semester' => format_output_string($row['semester'] ?? ''),
                 'status' => format_output_string($row['status'] ?? ''),
                 'recordedAt' => format_output_string($row['created_at'] ?? ''),
-                'gpa' => null,
+                'gwa' => null,
                 'notes' => $notesValue !== '' ? $notesValue : null,
             ];
         }

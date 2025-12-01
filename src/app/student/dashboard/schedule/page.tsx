@@ -18,6 +18,7 @@ type Subject = {
     instructor?: string;
     color: string;
     room: string;
+    block?: string | null;
 };
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -39,9 +40,29 @@ const formatTime = (timeStr: string) => {
     return `${formattedHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
 }
 
+const formatSemesterLabel = (value?: string | null) => {
+    if (!value) return 'Semester not set';
+    const normalized = value.trim().toLowerCase();
+    if (normalized.includes('1')) {
+        return '1st Semester';
+    }
+    if (normalized.includes('2')) {
+        return '2nd Semester';
+    }
+    if (normalized.includes('summer')) {
+        return 'Summer Term';
+    }
+    return value;
+};
+
 export default function StudentSchedulePage() {
     const { studentData } = useStudent();
     const scheduleContainerRef = React.useRef<HTMLDivElement>(null);
+    const apiBaseUrl = React.useMemo(() => {
+        return (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+            .replace(/\/$/, '')
+            .trim();
+    }, []);
     if (!studentData) {
         return (
             <div className="flex h-full min-h-[300px] w-full items-center justify-center">
@@ -51,15 +72,30 @@ export default function StudentSchedulePage() {
     }
 
     const studentSchedule = studentData.schedule ?? [];
-    const block = studentData.academic?.block ?? 'N/A';
-    const academicYear = '2024-2025';
-    const semesterLabel = '1st Semester';
+    const block = studentData.academic?.block ?? '';
+    const enrollmentTrack = studentData.academic?.enrollmentTrack ?? 'Regular';
+    const currentTerm = studentData.currentTerm ?? {};
+    const academicYearLabel = currentTerm.academicYear && currentTerm.academicYear.trim() !== ''
+        ? `A.Y. ${currentTerm.academicYear}`
+        : 'A.Y. not set';
+    const semesterLabel = formatSemesterLabel(currentTerm.semester);
 
     const handlePrint = () => {
+        const studentEmail = studentData.contact.email?.trim();
+        if (!studentEmail) {
+            console.warn('Missing student email for schedule printing.');
+            return;
+        }
+
         if (typeof window === 'undefined') {
             return;
         }
-        window.print();
+
+        const printUrl = `${apiBaseUrl}/print_student_schedule.php?email=${encodeURIComponent(studentEmail)}&ts=${Date.now()}`;
+        const popup = window.open(printUrl, '_blank', 'noopener,noreferrer');
+        if (!popup) {
+            window.location.href = printUrl;
+        }
     };
 
     return (
@@ -69,7 +105,9 @@ export default function StudentSchedulePage() {
                 <div className="space-y-0.5">
                     <h1 className="text-2xl font-bold tracking-tight">My Class Schedule</h1>
                     <p className="text-muted-foreground">
-                        A.Y. {academicYear}, {semesterLabel} | Block: {block}
+                        {academicYearLabel} • {semesterLabel}
+                        {enrollmentTrack ? ` • Track: ${enrollmentTrack}` : ''}
+                        {block ? ` • Block: ${block}` : ''}
                     </p>
                 </div>
                 <Button
@@ -86,62 +124,68 @@ export default function StudentSchedulePage() {
             </div>
             <Card className="rounded-xl" id="student-schedule-print" ref={scheduleContainerRef}>
                 <CardContent className="p-4 overflow-x-auto">
-                     <div className="grid grid-cols-[4rem_repeat(6,1fr)] min-w-[800px]">
-                        {/* Top-left empty cell */}
-                        <div></div>
-                        {/* Day Headers */}
-                        {days.map(day => (
-                            <div key={day} className="h-10 text-center font-semibold text-muted-foreground text-sm p-2 sticky top-0 bg-background z-10">{day}</div>
-                        ))}
-
-                        {/* Time Column and Grid */}
-                        <div className="col-start-1 row-start-2 relative">
-                             {timeSlots.map((time) => (
-                                <div key={time} className="h-16 relative">
-                                    <div className="absolute -top-2.5 right-2 text-xs text-muted-foreground">{formatTime(time)}</div>
+                    {studentSchedule.length === 0 ? (
+                        <div className="flex h-64 min-h-[16rem] w-full items-center justify-center text-sm text-muted-foreground">
+                            No schedule has been published for your selected subjects this term.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-[4rem_repeat(6,1fr)] min-w-[800px]">
+                            <div></div>
+                            {days.map(day => (
+                                <div key={day} className="h-10 text-center font-semibold text-muted-foreground text-sm p-2 sticky top-0 bg-background z-10">
+                                    {day}
                                 </div>
                             ))}
-                        </div>
-                        <div className="col-start-2 col-span-6 row-start-2 relative grid grid-cols-6" style={{ height: `${timeSlots.length * HOUR_HEIGHT_REM}rem`}}>
-                             {/* Grid Lines */}
-                            {Array.from({ length: 12 * 6 }).map((_, i) => (
-                                <div key={i} className="h-16 border-t border-r border-dashed"></div>
-                            ))}
-                            
-                            {/* Scheduled Subjects */}
-                            {studentSchedule.map(subject => {
-                                const dayIndex = days.indexOf(subject.day);
-                                if (dayIndex === -1) return null;
 
-                                const startPosition = timeToPosition(subject.startTime);
-                                const endPosition = timeToPosition(subject.endTime);
-                                const blockHeight = Math.max(endPosition - startPosition, 1.5);
-
-                                return (
-                                    <div
-                                        key={subject.id}
-                                        className={cn("absolute rounded-lg p-2 border text-xs overflow-hidden m-px", subject.color)}
-                                        style={{
-                                            top: `${startPosition}rem`,
-                                            height: `${blockHeight}rem`,
-                                            left: `calc(${(100 / 6) * dayIndex}% + 2px)`,
-                                            width: `calc(${(100 / 6)}% - 4px)`
-                                        }}
-                                    >
-                                        <p className="font-bold truncate">{subject.code}</p>
-                                        <p className="truncate">{subject.description}</p>
-                                        <p className="truncate text-muted-foreground">{subject.instructor}</p>
-                                        <p className="truncate font-medium">{subject.room}</p>
-                                        
-                                        <div className="absolute bottom-1 right-1 left-1 text-muted-foreground flex items-center gap-1 bg-background/50 backdrop-blur-sm p-1 rounded-sm text-[10px]">
-                                            <Clock className="h-3 w-3 shrink-0" />
-                                            <span className="truncate">{formatTime(subject.startTime)} - {formatTime(subject.endTime)}</span>
-                                        </div>
+                            <div className="col-start-1 row-start-2 relative">
+                                {timeSlots.map((time) => (
+                                    <div key={time} className="h-16 relative">
+                                        <div className="absolute -top-2.5 right-2 text-xs text-muted-foreground">{formatTime(time)}</div>
                                     </div>
-                                )
-                            })}
+                                ))}
+                            </div>
+                            <div className="col-start-2 col-span-6 row-start-2 relative grid grid-cols-6" style={{ height: `${timeSlots.length * HOUR_HEIGHT_REM}rem` }}>
+                                {Array.from({ length: 12 * 6 }).map((_, i) => (
+                                    <div key={i} className="h-16 border-t border-r border-dashed"></div>
+                                ))}
+
+                                {studentSchedule.map(subject => {
+                                    const dayIndex = days.indexOf(subject.day);
+                                    if (dayIndex === -1) return null;
+
+                                    const startPosition = timeToPosition(subject.startTime);
+                                    const endPosition = timeToPosition(subject.endTime);
+                                    const blockHeight = Math.max(endPosition - startPosition, 1.5);
+
+                                    return (
+                                        <div
+                                            key={subject.id}
+                                            className={cn('absolute rounded-lg p-2 border text-xs overflow-hidden m-px', subject.color)}
+                                            style={{
+                                                top: `${startPosition}rem`,
+                                                height: `${blockHeight}rem`,
+                                                left: `calc(${(100 / 6) * dayIndex}% + 2px)`,
+                                                width: `calc(${100 / 6}% - 4px)`,
+                                            }}
+                                        >
+                                            <p className="font-bold truncate">{subject.code}</p>
+                                            <p className="truncate">{subject.description}</p>
+                                            <p className="truncate text-muted-foreground">{subject.instructor}</p>
+                                            <p className="truncate font-medium">{subject.room}</p>
+                                            {subject.block && (
+                                                <p className="truncate text-[10px] text-muted-foreground">{subject.block}</p>
+                                            )}
+
+                                            <div className="absolute bottom-1 right-1 left-1 text-muted-foreground flex items-center gap-1 bg-background/50 backdrop-blur-sm p-1 rounded-sm text-[10px]">
+                                                <Clock className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{formatTime(subject.startTime)} - {formatTime(subject.endTime)}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
         </main>

@@ -1,9 +1,11 @@
 
 'use client';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { resolveMediaUrl } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { DATA_SYNC_CHANNEL } from '@/lib/live-sync';
 
 export type StudentRegisteredSubject = {
   code: string;
@@ -23,6 +25,7 @@ export type StudentScheduleEntry = {
   instructor: string;
   room: string;
   color: string;
+  block?: string | null;
 };
 
 export type GradeTermKey = 'prelim' | 'midterm' | 'final';
@@ -54,7 +57,7 @@ export type StudentEnrollmentHistoryEntry = {
   semester: string;
   status: string;
   recordedAt: string;
-  gpa: number | null;
+  gwa: number | null;
   notes: string | null;
 };
 
@@ -138,6 +141,10 @@ export type StudentDataType = {
     emergencyContactNumber: string;
     livingWithFamily: string;
     boarding: string;
+    differentlyAbled: string;
+    disability: string;
+    minorityGroup: string;
+    minority: string;
   };
   education: {
     elementarySchool: string;
@@ -381,8 +388,8 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
   const searchParams = useSearchParams();
   const studentEmail = searchParams.get('email');
   const [studentData, setStudentData] = useState<StudentDataType | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [resolvedEmail, setResolvedEmail] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const apiBaseUrl = useMemo(() => {
     return (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
@@ -393,104 +400,133 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
   const buildApiUrl = useMemo(() => buildUrlHelper(apiBaseUrl), [apiBaseUrl]);
 
   useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
-
-    const handleCleanup = () => {
-      isMounted = false;
-      controller.abort();
-    };
-
-    const resolveStudentEmail = (): string | null => {
-      if (studentEmail) {
-        return studentEmail;
-      }
+    const nextEmail = studentEmail && studentEmail.trim() !== '' ? studentEmail.trim() : null;
+    if (nextEmail) {
+      setResolvedEmail(nextEmail);
+      setEmailError(null);
       if (typeof window !== 'undefined') {
-        const cached = window.sessionStorage.getItem('bsit_student_email');
-        return cached && cached.trim() !== '' ? cached : null;
+        window.sessionStorage.setItem('bsit_student_email', nextEmail);
       }
-      return null;
-    };
-
-    const effectiveEmail = resolveStudentEmail();
-
-    if (!effectiveEmail) {
-      setStudentData(null);
-      setError('Missing student email in the URL.');
-      setLoading(false);
-      return handleCleanup;
+      return;
     }
 
     if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem('bsit_student_email', effectiveEmail);
+      const cached = window.sessionStorage.getItem('bsit_student_email');
+      if (cached && cached.trim() !== '') {
+        setResolvedEmail(cached.trim());
+        setEmailError(null);
+        return;
+      }
     }
 
-    const fetchStudentProfile = async () => {
-      setLoading(true);
-      setError(null);
+    setResolvedEmail(null);
+    setEmailError('Missing student email in the URL.');
+  }, [studentEmail]);
 
-      try {
-        const response = await fetch(
-          buildApiUrl(`student_profile.php?email=${encodeURIComponent(effectiveEmail)}`),
-          {
-            method: 'GET',
-            credentials: 'include',
-            signal: controller.signal,
-          },
-        );
+  const fetchStudentProfile = useCallback(async (email: string, signal?: AbortSignal) => {
+    const response = await fetch(
+      buildApiUrl(`student_profile.php?email=${encodeURIComponent(email)}`),
+      {
+        method: 'GET',
+        credentials: 'include',
+        signal,
+      },
+    );
 
-        let payload: unknown = null;
-        try {
-          payload = await response.json();
-        } catch (parseError) {
-          payload = null;
-        }
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch (parseError) {
+      payload = null;
+    }
 
-        if (!response.ok) {
-          const message =
-            payload && typeof payload === 'object' && payload !== null && 'message' in payload && typeof (payload as Record<string, unknown>).message === 'string'
-              ? String((payload as Record<string, unknown>).message)
-              : `Failed to load student profile (status ${response.status}).`;
-          throw new Error(message);
-        }
+    if (!response.ok) {
+      const message =
+        payload && typeof payload === 'object' && payload !== null && 'message' in payload && typeof (payload as Record<string, unknown>).message === 'string'
+          ? String((payload as Record<string, unknown>).message)
+          : `Failed to load student profile (status ${response.status}).`;
+      throw new Error(message);
+    }
 
-        if (!payload || typeof payload !== 'object' || !('status' in payload)) {
-          throw new Error('Unexpected response format from the server.');
-        }
+    if (!payload || typeof payload !== 'object' || !('status' in payload)) {
+      throw new Error('Unexpected response format from the server.');
+    }
 
-        const typedPayload = payload as { status?: string; data?: StudentDataType | null; message?: string };
+    const typedPayload = payload as { status?: string; data?: StudentDataType | null; message?: string };
 
-        if (typedPayload.status !== 'success' || !typedPayload.data) {
-          throw new Error(typedPayload.message ?? 'Student profile not found.');
-        }
+    if (typedPayload.status !== 'success' || !typedPayload.data) {
+      throw new Error(typedPayload.message ?? 'Student profile not found.');
+    }
 
-        if (!isMounted) {
-          return;
-        }
+    return normalizeStudentPayload(typedPayload.data, apiBaseUrl);
+  }, [apiBaseUrl, buildApiUrl]);
 
-        const normalizedData = normalizeStudentPayload(typedPayload.data, apiBaseUrl);
+  const {
+    data: fetchedStudentData,
+    isPending: isStudentDataPending,
+    error: studentQueryError,
+    refetch: refetchStudentProfile,
+  } = useQuery({
+    queryKey: ['student-profile', resolvedEmail],
+    enabled: Boolean(resolvedEmail),
+    queryFn: ({ signal }) => {
+      if (!resolvedEmail) {
+        throw new Error('Missing student email.');
+      }
+      return fetchStudentProfile(resolvedEmail, signal);
+    },
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    retry: 1,
+  });
 
-        setStudentData(normalizedData);
-        setError(null);
-      } catch (fetchError) {
-        if (!isMounted || controller.signal.aborted) {
-          return;
-        }
-        setStudentData(null);
-        setError(fetchError instanceof Error ? fetchError.message : 'Unable to load student profile.');
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+  useEffect(() => {
+    if (fetchedStudentData) {
+      setStudentData(fetchedStudentData);
+    }
+  }, [fetchedStudentData]);
+
+  useEffect(() => {
+    if (!resolvedEmail) {
+      setStudentData(null);
+    }
+  }, [resolvedEmail]);
+
+  useEffect(() => {
+    if (!resolvedEmail || typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') {
+      return;
+    }
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel(DATA_SYNC_CHANNEL);
+    } catch (error) {
+      console.warn('[StudentProvider] Unable to subscribe to data sync channel.', error);
+      return;
+    }
+
+    const handler = (event: MessageEvent<{ topic?: string }>) => {
+      if (event.data?.topic === 'admin-data' || event.data?.topic === 'student-documents') {
+        refetchStudentProfile();
       }
     };
 
-    fetchStudentProfile();
+    channel.addEventListener('message', handler);
 
-    return handleCleanup;
-  }, [studentEmail, buildApiUrl, apiBaseUrl]);
+    return () => {
+      channel?.removeEventListener('message', handler);
+      channel?.close();
+    };
+  }, [refetchStudentProfile, resolvedEmail]);
 
-  if (loading) {
+  const combinedError = emailError
+    ?? (studentQueryError instanceof Error
+      ? studentQueryError.message
+      : studentQueryError
+        ? 'Unexpected error while loading student profile.'
+        : null);
+
+  if ((isStudentDataPending && !studentData) || (!resolvedEmail && !combinedError)) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <LoadingSpinner className="h-8 w-8" />
@@ -498,12 +534,12 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
     );
   }
 
-  if (error) {
+  if (combinedError && !studentData) {
     return (
       <div className="flex h-screen w-full items-center justify-center px-6 text-center">
         <div className="space-y-2">
           <p className="text-lg font-semibold">Unable to load student profile.</p>
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground">{combinedError}</p>
         </div>
       </div>
     );
@@ -521,7 +557,7 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
   }
 
   return (
-    <StudentContext.Provider value={{ studentData, setStudentData, loading: false, error: null }}>
+    <StudentContext.Provider value={{ studentData, setStudentData, loading: isStudentDataPending, error: combinedError }}>
       {children}
     </StudentContext.Provider>
   );
