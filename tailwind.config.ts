@@ -103,13 +103,56 @@ export default {
             transform: 'translateY(0)',
             animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)',
           },
-        }
+        },
+        'grid': {
+          '0%': { transform: 'translateY(-50%)' },
+          '100%': { transform: 'translateY(0)' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { opacity: '1', boxShadow: '0 0 20px 5px hsl(var(--primary) / 0.5)' },
+          '50%': { opacity: '0.8', boxShadow: '0 0 10px 2px hsl(var(--primary) / 0.3)' },
+        },
+        blob: {
+          "0%": {
+            transform: "translate(0px, 0px) scale(1)",
+          },
+          "33%": {
+            transform: "translate(30px, -50px) scale(1.1)",
+          },
+          "66%": {
+            transform: "translate(-20px, 20px) scale(0.9)",
+          },
+          "100%": {
+            transform: "translate(0px, 0px) scale(1)",
+          },
+        },
+        meteor: {
+          "0%": { transform: "rotate(215deg) translateX(0)", opacity: "1" },
+          "70%": { opacity: "1" },
+          "100%": {
+            transform: "rotate(215deg) translateX(-500px)",
+            opacity: "0",
+          },
+        },
+        shimmer: {
+          from: {
+            backgroundPosition: "0 0",
+          },
+          to: {
+            backgroundPosition: "-200% 0",
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'background-pan': 'background-pan 15s ease infinite',
         'bounce': 'bounce 1s infinite',
+        'grid': 'grid 20s linear infinite',
+        'pulse-glow': 'pulse-glow 3s infinite',
+        blob: "blob 7s infinite",
+        meteor: "meteor 5s linear infinite",
+        shimmer: "shimmer 2s linear infinite",
       },
     },
   },

@@ -1,11 +1,10 @@
 'use client';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+
+import { ArrowLeft, Eye, EyeOff, User, Mail, Lock, IdCard, UserPlus, Copyright } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 import { FormEvent, useMemo, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -18,6 +17,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { BSITBackground } from '@/components/bsit-background';
+import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 
 export default function StudentSignupPage() {
     const [showPassword, setShowPassword] = useState(false);
@@ -38,6 +39,17 @@ export default function StudentSignupPage() {
     const { toast } = useToast();
     const router = useRouter();
     const { refreshAdminData } = useAdmin();
+    const [isClient, setIsClient] = useState(false);
+
+    // 3D Tilt Logic
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+
+    const handleMouseMove = ({ currentTarget, clientX, clientY }: React.MouseEvent) => {
+      const { left, top } = currentTarget.getBoundingClientRect();
+      mouseX.set(clientX - left);
+      mouseY.set(clientY - top);
+    };
 
     const apiBaseUrl = useMemo(() => {
         return (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
@@ -62,6 +74,7 @@ export default function StudentSignupPage() {
     };
 
     useEffect(() => {
+        setIsClient(true);
         setShowReturningDialog(true);
     }, []);
 
@@ -215,117 +228,156 @@ export default function StudentSignupPage() {
     };
 
     return (
-        <div className={cn(
-            "dark",
-            "flex flex-col min-h-screen bg-background",
-            "bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.3),hsl(var(--background)))]",
-        )}>
-            <main className="flex-1 flex flex-col items-center justify-center p-4">
-                <div className="w-full max-w-md relative">
-                    <Button asChild variant="ghost" size="icon" className="absolute top-4 left-4">
-                        <Link href="/student-login">
-                            <ArrowLeft />
-                            <span className="sr-only">Back to Login</span>
+        <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center font-sans selection:bg-orange-500/30">
+            <BSITBackground />
+
+            <main className="container relative z-10 px-4 flex flex-col items-center justify-center py-10">
+                <motion.div 
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="relative group perspective-[1000px] w-full max-w-md"
+                    onMouseMove={handleMouseMove}
+                >
+                    {/* Gradient Border */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-br from-blue-500 via-orange-500 to-blue-600 rounded-[2rem] blur opacity-30 group-hover:opacity-60 transition duration-500" />
+                    
+                    <div className="relative w-full bg-[#0B1121]/90 backdrop-blur-xl rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl p-8 md:p-10">
+                        
+                        {/* Back Button (Inside Card) */}
+                        <Link 
+                            href="/student-login" 
+                            className="absolute top-6 left-6 z-20 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs font-medium group/back"
+                        >
+                            <div className="p-2 rounded-full bg-white/5 border border-white/10 group-hover/back:bg-white/10 transition-all">
+                                <ArrowLeft className="w-4 h-4" />
+                            </div>
                         </Link>
-                    </Button>
-                    <Card className="shadow-[0_8px_16px_-4px_hsl(var(--primary)/0.3),0_-8px_16px_-4px_hsl(var(--accent)/0.3)] rounded-2xl">
-                        <CardHeader className="text-center">
-                            <CardTitle className="text-2xl">Create Student Account</CardTitle>
-                            <CardDescription>
-                                Fill out the form below to create your account.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form className="space-y-4" onSubmit={handleSubmit}>
-                                {isReturningStudentFlow && returningStudentName && (
-                                    <p className="text-xs text-muted-foreground text-left">Welcome back, {returningStudentName}. Confirm your details below to reactivate your account.</p>
-                                )}
-                                <div className="space-y-2 text-left">
-                                    <Label htmlFor="fullName">Full Name</Label>
-                                    <Input
-                                        id="fullName"
-                                        type="text"
-                                        placeholder="Juan Dela Cruz"
-                                        required
-                                        className="rounded-xl"
-                                        value={fullName}
-                                        onChange={(event) => setFullName(event.target.value)}
-                                        readOnly={isReturningStudentFlow}
-                                        aria-readonly={isReturningStudentFlow}
-                                    />
-                                </div>
-                                <div className="space-y-2 text-left">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="student@example.com"
-                                        required
-                                        className="rounded-xl"
-                                        value={email}
-                                        onChange={(event) => setEmail(event.target.value)}
-                                    />
-                                </div>
-                                {isReturningStudentFlow && (
-                                    <input type="hidden" name="studentIdNumber" value={studentIdNumber} />
-                                )}
-                                <div className="space-y-2 text-left">
-                                    <Label htmlFor="password">Password</Label>
-                                    <div className="relative group">
-                                        <Input
-                                            id="password"
-                                            type={showPassword ? 'text' : 'password'}
-                                            required
-                                            className="rounded-xl pr-10"
-                                            value={password}
-                                            onChange={(event) => setPassword(event.target.value)}
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
-                                            onClick={() => setShowPassword((prev) => !prev)}
-                                        >
-                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </Button>
+
+                        {/* Spotlight */}
+                        <motion.div
+                            className="pointer-events-none absolute -inset-px rounded-[2rem] opacity-0 transition duration-500 group-hover:opacity-100"
+                            style={{
+                                background: useMotionTemplate`
+                                radial-gradient(
+                                    500px circle at ${mouseX}px ${mouseY}px,
+                                    rgba(255,255,255,0.06),
+                                    transparent 80%
+                                )
+                                `,
+                            }}
+                        />
+
+                        <div className="relative z-10 flex flex-col items-center text-center pt-4">
+                            <h1 className="text-3xl font-black tracking-tighter text-white mb-8">
+                                Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-orange-600">Account</span>
+                            </h1>
+                            
+                            {isClient && (
+                                <form className="space-y-4 w-full text-left" onSubmit={handleSubmit}>
+                                    {isReturningStudentFlow && returningStudentName && (
+                                        <p className="text-xs text-blue-400 text-left bg-blue-500/10 p-3 rounded-lg border border-blue-500/20">
+                                            Welcome back, <span className="font-bold">{returningStudentName}</span>. Confirm your details below to reactivate your account.
+                                        </p>
+                                    )}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="fullName" className="text-slate-300">Full Name</Label>
+                                        <div className="relative">
+                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                            <Input
+                                                id="fullName"
+                                                type="text"
+                                                placeholder="Juan Dela Cruz"
+                                                required
+                                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
+                                                value={fullName}
+                                                onChange={(event) => setFullName(event.target.value)}
+                                                readOnly={isReturningStudentFlow}
+                                                aria-readonly={isReturningStudentFlow}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-2 text-left">
-                                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                                    <div className="relative group">
-                                        <Input
-                                            id="confirmPassword"
-                                            type={showConfirmPassword ? 'text' : 'password'}
-                                            required
-                                            className="rounded-xl pr-10"
-                                            value={confirmPassword}
-                                            onChange={(event) => setConfirmPassword(event.target.value)}
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
-                                            onClick={() => setShowConfirmPassword((prev) => !prev)}
-                                        >
-                                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </Button>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email" className="text-slate-300">Email</Label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                placeholder="student@example.com"
+                                                required
+                                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
+                                                value={email}
+                                                onChange={(event) => setEmail(event.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                                <Button type="submit" className="w-full rounded-xl" disabled={isSubmitting}>
-                                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
-                                </Button>
-                            </form>
-                        </CardContent>
-                    </Card>
-                </div>
+                                    {isReturningStudentFlow && (
+                                        <input type="hidden" name="studentIdNumber" value={studentIdNumber} />
+                                    )}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password" className="text-slate-300">Password</Label>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                            <Input
+                                                id="password"
+                                                type={showPassword ? 'text' : 'password'}
+                                                required
+                                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 pr-10 h-12"
+                                                value={password}
+                                                onChange={(event) => setPassword(event.target.value)}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white hover:bg-transparent"
+                                                onClick={() => setShowPassword((prev) => !prev)}
+                                            >
+                                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirmPassword" className="text-slate-300">Confirm Password</Label>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                            <Input
+                                                id="confirmPassword"
+                                                type={showConfirmPassword ? 'text' : 'password'}
+                                                required
+                                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 pr-10 h-12"
+                                                value={confirmPassword}
+                                                onChange={(event) => setConfirmPassword(event.target.value)}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white hover:bg-transparent"
+                                                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                            >
+                                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] mt-2" disabled={isSubmitting}>
+                                        {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                                    </Button>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                </motion.div>
             </main>
-            <footer className="py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-                <p className="text-xs text-muted-foreground text-center">
-                    &copy; BUMBBLEBITTECH | All rights reserved.
-                </p>
+
+            <footer className="absolute bottom-6 w-full text-center flex items-center justify-center gap-2 text-[10px] text-slate-600 font-medium uppercase tracking-wider">
+                <Copyright className="w-3 h-3" />
+                <span>DarenDL7</span>
+                <span className="w-px h-3 bg-slate-700/50 mx-1" />
+                <span>All Rights Reserved</span>
             </footer>
+
             <Dialog open={showReturningDialog} onOpenChange={(open) => {
                 if (!open) {
                     closeReturningDialog();
@@ -333,53 +385,90 @@ export default function StudentSignupPage() {
                     setShowReturningDialog(true);
                 }
             }}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md bg-[#0B1121]/95 backdrop-blur-xl border-white/10 text-white shadow-2xl">
                     {returningDialogStep === 'prompt' ? (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Are you an existing student?</DialogTitle>
-                                <DialogDescription>Answering this helps us locate your records and speed up the signup process.</DialogDescription>
+                                <DialogTitle className="text-xl font-bold text-white">Are you an existing student?</DialogTitle>
+                                <DialogDescription className="text-slate-400">
+                                    Answering this helps us locate your records and speed up the signup process.
+                                </DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-3 pt-2">
-                                <Button onClick={() => {
-                                    setReturningDialogStep('lookup');
-                                    setLookupStudentId('');
-                                    setLookupError(null);
-                                }}>
-                                    Yes, I have a Student ID
+                            <div className="grid gap-4 pt-4">
+                                <Button 
+                                    className="h-16 bg-blue-600 hover:bg-blue-500 text-white border-none rounded-xl shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02]"
+                                    onClick={() => {
+                                        setReturningDialogStep('lookup');
+                                        setLookupStudentId('');
+                                        setLookupError(null);
+                                    }}
+                                >
+                                    <div className="flex items-center gap-4 w-full px-2">
+                                        <div className="p-2 bg-white/10 rounded-lg">
+                                            <IdCard className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex flex-col items-start text-left">
+                                            <span className="text-sm font-bold">Yes, I have a Student ID</span>
+                                            <span className="text-[10px] font-normal opacity-80">I'm a returning student</span>
+                                        </div>
+                                    </div>
                                 </Button>
-                                <Button variant="outline" onClick={() => {
-                                    setIsReturningStudentFlow(false);
-                                    closeReturningDialog();
-                                }}>
-                                    No, I&apos;m a new student
+                                <Button 
+                                    variant="outline" 
+                                    className="h-16 border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-all hover:scale-[1.02]"
+                                    onClick={() => {
+                                        setIsReturningStudentFlow(false);
+                                        closeReturningDialog();
+                                    }}
+                                >
+                                    <div className="flex items-center gap-4 w-full px-2">
+                                        <div className="p-2 bg-white/5 border border-white/10 rounded-lg">
+                                            <UserPlus className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex flex-col items-start text-left">
+                                            <span className="text-sm font-bold">No, I&apos;m a new student</span>
+                                            <span className="text-[10px] font-normal opacity-80">Create a new record</span>
+                                        </div>
+                                    </div>
                                 </Button>
                             </div>
                         </>
                     ) : (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Enter your Student ID</DialogTitle>
-                                <DialogDescription>We&apos;ll check if your ID already exists in our system.</DialogDescription>
+                                <DialogTitle className="text-xl font-bold text-white">Enter your Student ID</DialogTitle>
+                                <DialogDescription className="text-slate-400">
+                                    We&apos;ll check if your ID already exists in our system.
+                                </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-2">
-                                <Label htmlFor="lookupStudentId">Student ID</Label>
-                                <Input
-                                    id="lookupStudentId"
-                                    type="text"
-                                    placeholder="24-00-0001"
-                                    value={lookupStudentId}
-                                    onChange={(event) => setLookupStudentId(event.target.value)}
-                                    autoComplete="off"
-                                />
-                                {lookupError && (
-                                    <p className="text-sm text-destructive">{lookupError}</p>
-                                )}
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="lookupStudentId" className="text-slate-300">Student ID Number</Label>
+                                    <div className="relative">
+                                        <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <Input
+                                            id="lookupStudentId"
+                                            type="text"
+                                            placeholder="e.g. 24-00-0001"
+                                            value={lookupStudentId}
+                                            onChange={(event) => setLookupStudentId(event.target.value)}
+                                            autoComplete="off"
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
+                                        />
+                                    </div>
+                                    {lookupError && (
+                                        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded-lg flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                            {lookupError}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                            <DialogFooter className="gap-2 sm:gap-0">
+                            <DialogFooter className="gap-3 sm:gap-0">
                                 <Button
                                     variant="outline"
                                     type="button"
+                                    className="h-11 border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl"
                                     onClick={() => {
                                         setReturningDialogStep('prompt');
                                         setLookupStudentId('');
@@ -388,7 +477,12 @@ export default function StudentSignupPage() {
                                 >
                                     Back
                                 </Button>
-                                <Button type="button" onClick={handleLookupSubmit} disabled={isCheckingStudentId}>
+                                <Button 
+                                    type="button" 
+                                    className="h-11 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02]"
+                                    onClick={handleLookupSubmit} 
+                                    disabled={isCheckingStudentId}
+                                >
                                     {isCheckingStudentId ? 'Checking...' : 'Continue'}
                                 </Button>
                             </DialogFooter>
