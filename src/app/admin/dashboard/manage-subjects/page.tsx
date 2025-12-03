@@ -142,13 +142,13 @@ const PrerequisiteMultiSelect = ({
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <Label htmlFor={fieldId}>Prerequisites</Label>
+                <Label htmlFor={fieldId} className="text-slate-300">Prerequisites</Label>
                 {hasSelection && (
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2 text-xs text-muted-foreground"
+                        className="h-8 px-2 text-xs text-slate-400 hover:text-slate-200 hover:bg-white/5"
                         onClick={onClear}
                     >
                         Clear
@@ -161,22 +161,22 @@ const PrerequisiteMultiSelect = ({
                         id={fieldId}
                         type="button"
                         variant="outline"
-                        className="w-full justify-between rounded-xl"
+                        className="w-full justify-between rounded-xl bg-transparent border-white/10 text-white hover:bg-white/10 hover:text-white"
                         disabled={options.length === 0}
                     >
                         <span className="truncate text-left">{options.length === 0 ? emptyMessage : triggerLabel}</span>
                         <ChevronDown className="ml-2 h-4 w-4 flex-shrink-0" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[min(360px,90vw)] max-h-48 overflow-y-auto rounded-xl">
+                <DropdownMenuContent className="w-[min(360px,90vw)] max-h-48 overflow-y-auto rounded-xl bg-slate-900 border-white/10 text-slate-200">
                     {options.length === 0 ? (
-                        <DropdownMenuItem disabled className="text-sm text-muted-foreground">
+                        <DropdownMenuItem disabled className="text-sm text-slate-500">
                             {emptyMessage}
                         </DropdownMenuItem>
                     ) : (
                         <>
-                            <DropdownMenuLabel>Select prerequisites</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-slate-400">Select prerequisites</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/10" />
                             {options.map((subjectOption) => {
                                 const isChecked = selectedCodes.includes(subjectOption.code);
                                 return (
@@ -185,10 +185,11 @@ const PrerequisiteMultiSelect = ({
                                         checked={isChecked}
                                         onCheckedChange={(checked) => onToggle(subjectOption.code, checked === true)}
                                         onSelect={(event) => event.preventDefault()}
+                                        className="focus:bg-white/10 focus:text-white"
                                     >
                                         <div className="flex flex-col">
                                             <span className="font-medium leading-tight">{subjectOption.code}</span>
-                                            <span className="text-xs text-muted-foreground">{subjectOption.description}</span>
+                                            <span className="text-xs text-slate-400">{subjectOption.description}</span>
                                         </div>
                                     </DropdownMenuCheckboxItem>
                                 );
@@ -708,41 +709,45 @@ export default function ManageSubjectsPage() {
 
     return (
         <>
-            <main className="flex-1 space-y-6 p-4 sm:p-6">
+            <main className="flex-1 space-y-6 p-4 sm:p-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="space-y-0.5">
-                        <h1 className="text-2xl font-bold tracking-tight">Manage Subjects</h1>
-                        <p className="text-muted-foreground">Add, edit, or remove subjects for each year level.</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-200">Manage Subjects</h1>
+                        <p className="text-slate-400">Add, edit, or remove subjects for each year level.</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="semester-filter" className="hidden text-sm font-medium text-muted-foreground sm:block">Semester</Label>
+                            <Label htmlFor="semester-filter" className="hidden text-sm font-medium text-slate-400 sm:block">Semester</Label>
                             <Select value={activeSemester} onValueChange={handleSemesterFilterChange}>
-                                <SelectTrigger id="semester-filter" className="w-[170px] rounded-full">
+                                <SelectTrigger id="semester-filter" className="w-[170px] rounded-full bg-transparent border-white/10 text-white focus:ring-blue-500/20">
                                     <SelectValue placeholder="Select semester" />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-xl">
+                                <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
                                     {normalizedSemesterOptions.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
+                                        <SelectItem key={option.value} value={option.value} className="focus:bg-white/10 focus:text-white">
                                             {option.label}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button onClick={openAddDialog} className="rounded-full" disabled={isBusy('create-subject')}>
+                        <Button onClick={openAddDialog} className="rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 border-0" disabled={isBusy('create-subject')}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Add Subject
                         </Button>
                     </div>
                 </div>
 
-                <Card className="rounded-xl">
+                <Card className="rounded-xl bg-transparent border-white/10">
                     <CardContent className="p-6">
                         <Tabs value={activeTab} onValueChange={setActiveTab}>
-                            <TabsList className="grid w-full grid-cols-4 rounded-xl">
+                            <TabsList className="grid w-full grid-cols-4 rounded-xl bg-slate-800/50 border border-white/10 p-1">
                                 {yearLevels.map((yl) => (
-                                    <TabsTrigger key={yl.value} value={yl.value} className="rounded-lg">
+                                    <TabsTrigger 
+                                        key={yl.value} 
+                                        value={yl.value} 
+                                        className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 hover:text-slate-200 transition-all"
+                                    >
                                         {yl.label}
                                     </TabsTrigger>
                                 ))}
@@ -752,44 +757,47 @@ export default function ManageSubjectsPage() {
                                 const subjectsForYear = (subjectsByYear[yl.value] ?? []).filter((subject) => subject.semester === activeSemester);
                                 return (
                                     <TabsContent key={yl.value} value={yl.value}>
-                                        <div className="mt-4 rounded-lg border">
+                                        <div className="mt-4 rounded-lg border border-white/10 overflow-hidden">
                                             <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Subject Code</TableHead>
-                                                        <TableHead>Description</TableHead>
-                                                        <TableHead>Units</TableHead>
-                                                        <TableHead>Semester</TableHead>
-                                                        <TableHead>Prerequisites</TableHead>
-                                                        <TableHead className="text-right">Actions</TableHead>
+                                                <TableHeader className="bg-transparent">
+                                                    <TableRow className="border-white/10 hover:bg-transparent">
+                                                        <TableHead className="text-slate-400">Subject Code</TableHead>
+                                                        <TableHead className="text-slate-400">Description</TableHead>
+                                                        <TableHead className="text-slate-400">Units</TableHead>
+                                                        <TableHead className="text-slate-400">Semester</TableHead>
+                                                        <TableHead className="text-slate-400">Prerequisites</TableHead>
+                                                        <TableHead className="text-right text-slate-400">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {subjectsForYear.length > 0 ? (
                                                         subjectsForYear.map((subject) => (
-                                                            <TableRow key={subject.id}>
-                                                                <TableCell className="font-medium">{subject.code}</TableCell>
-                                                                <TableCell>{subject.description}</TableCell>
-                                                                <TableCell>{subject.units}</TableCell>
-                                                                <TableCell>{semesterLabelMap[subject.semester]}</TableCell>
-                                                                <TableCell>{subject.prerequisites?.length ? subject.prerequisites.join(', ') : 'None'}</TableCell>
+                                                            <TableRow key={subject.id} className="border-white/10 hover:bg-white/5 transition-colors">
+                                                                <TableCell className="font-medium text-slate-200">{subject.code}</TableCell>
+                                                                <TableCell className="text-slate-300">{subject.description}</TableCell>
+                                                                <TableCell className="text-slate-300">{subject.units}</TableCell>
+                                                                <TableCell className="text-slate-300">{semesterLabelMap[subject.semester]}</TableCell>
+                                                                <TableCell className="text-slate-300">{subject.prerequisites?.length ? subject.prerequisites.join(', ') : 'None'}</TableCell>
                                                                 <TableCell className="text-right">
                                                                     <DropdownMenu>
                                                                         <DropdownMenuTrigger asChild>
                                                                             <Button
                                                                                 variant="ghost"
-                                                                                className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                                                className="h-8 w-8 p-0 text-slate-400 hover:bg-white/10 hover:text-white focus-visible:ring-0 focus-visible:ring-offset-0"
                                                                             >
                                                                                 <span className="sr-only">Open menu</span>
                                                                                 <MoreHorizontal className="h-4 w-4" />
                                                                             </Button>
                                                                         </DropdownMenuTrigger>
-                                                                        <DropdownMenuContent align="end" className="rounded-xl">
-                                                                            <DropdownMenuItem onSelect={(event) => { event.preventDefault(); openEditDialog(subject); }}>
+                                                                        <DropdownMenuContent align="end" className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                                                            <DropdownMenuItem 
+                                                                                onSelect={(event) => { event.preventDefault(); openEditDialog(subject); }}
+                                                                                className="focus:bg-white/10 focus:text-white"
+                                                                            >
                                                                                 <Pencil className="mr-2 h-4 w-4" /> Edit
                                                                             </DropdownMenuItem>
                                                                             <DropdownMenuItem
-                                                                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                                                                                className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
                                                                                 onSelect={(event) => { event.preventDefault(); openDeleteDialog(subject); }}
                                                                             >
                                                                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -800,8 +808,8 @@ export default function ManageSubjectsPage() {
                                                             </TableRow>
                                                         ))
                                                     ) : (
-                                                        <TableRow>
-                                                            <TableCell colSpan={6} className="h-24 text-center">
+                                                        <TableRow className="border-white/10 hover:bg-transparent">
+                                                            <TableCell colSpan={6} className="h-24 text-center text-slate-400">
                                                                 No subjects created for this year level.
                                                             </TableCell>
                                                         </TableRow>
@@ -829,10 +837,10 @@ export default function ManageSubjectsPage() {
                     }
                 }}
             >
-                <DialogContent className="rounded-xl">
+                <DialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>Add New Subject</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-white">Add New Subject</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             Enter details for the new subject for {yearLevels.find((yl) => yl.value === activeTab)?.label}.
                         </DialogDescription>
                     </DialogHeader>
@@ -845,44 +853,44 @@ export default function ManageSubjectsPage() {
                     >
                         <div className="space-y-4 py-2">
                             <div className="space-y-2">
-                                <Label htmlFor="code">Subject Code</Label>
+                                <Label htmlFor="code" className="text-slate-300">Subject Code</Label>
                                 <Input
                                     id="code"
                                     name="code"
                                     placeholder="e.g., IT 102"
                                     required
-                                    className="rounded-xl"
+                                    className="rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                                     value={addForm.code}
                                     onChange={(event) => setAddForm((prev) => ({ ...prev, code: event.target.value }))}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
+                                <Label htmlFor="description" className="text-slate-300">Description</Label>
                                 <Input
                                     id="description"
                                     name="description"
                                     placeholder="e.g., Computer Programming 1"
                                     required
-                                    className="rounded-xl"
+                                    className="rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                                     value={addForm.description}
                                     onChange={(event) => setAddForm((prev) => ({ ...prev, description: event.target.value }))}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="units">Units</Label>
+                                <Label htmlFor="units" className="text-slate-300">Units</Label>
                                 <Input
                                     id="units"
                                     name="units"
                                     type="number"
                                     placeholder="e.g., 3"
                                     required
-                                    className="rounded-xl"
+                                    className="rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                                     value={addForm.units}
                                     onChange={(event) => setAddForm((prev) => ({ ...prev, units: event.target.value }))}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="semester">Semester</Label>
+                                <Label htmlFor="semester" className="text-slate-300">Semester</Label>
                                 <Select
                                     value={addForm.semester}
                                     onValueChange={(value) => setAddForm((prev) => ({
@@ -890,12 +898,12 @@ export default function ManageSubjectsPage() {
                                         semester: coerceSemesterValue(value),
                                     }))}
                                 >
-                                    <SelectTrigger id="semester" className="rounded-xl">
+                                    <SelectTrigger id="semester" className="rounded-xl bg-transparent border-white/10 text-white focus:ring-blue-500/20">
                                         <SelectValue placeholder="Select semester" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl">
+                                    <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
                                         {normalizedSemesterOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
+                                            <SelectItem key={option.value} value={option.value} className="focus:bg-white/10 focus:text-white">
                                                 {option.label}
                                             </SelectItem>
                                         ))}
@@ -915,7 +923,7 @@ export default function ManageSubjectsPage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsAddDialogOpen(false)}
-                            className="rounded-xl"
+                            className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
                             disabled={isBusy('create-subject')}
                         >
                             Cancel
@@ -923,7 +931,7 @@ export default function ManageSubjectsPage() {
                         <Button
                             type="submit"
                             form="add-subject-form"
-                            className="rounded-xl"
+                            className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
                             disabled={isBusy('create-subject')}
                         >
                             {isBusy('create-subject') ? 'Creating...' : 'Create Subject'}
@@ -946,10 +954,10 @@ export default function ManageSubjectsPage() {
                     }
                 }}
             >
-                <DialogContent className="rounded-xl">
+                <DialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>Edit Subject</DialogTitle>
-                        <DialogDescription>Update the details for {currentSubject?.code}.</DialogDescription>
+                        <DialogTitle className="text-white">Edit Subject</DialogTitle>
+                        <DialogDescription className="text-slate-400">Update the details for {currentSubject?.code}.</DialogDescription>
                     </DialogHeader>
                     <form
                         id="edit-subject-form"
@@ -960,41 +968,41 @@ export default function ManageSubjectsPage() {
                     >
                         <div className="space-y-4 py-2">
                             <div className="space-y-2">
-                                <Label htmlFor="edit-code">Subject Code</Label>
+                                <Label htmlFor="edit-code" className="text-slate-300">Subject Code</Label>
                                 <Input
                                     id="edit-code"
                                     name="code"
                                     required
-                                    className="rounded-xl"
+                                    className="rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                                     value={editForm.code}
                                     onChange={(event) => setEditForm((prev) => ({ ...prev, code: event.target.value }))}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-description">Description</Label>
+                                <Label htmlFor="edit-description" className="text-slate-300">Description</Label>
                                 <Input
                                     id="edit-description"
                                     name="description"
                                     required
-                                    className="rounded-xl"
+                                    className="rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                                     value={editForm.description}
                                     onChange={(event) => setEditForm((prev) => ({ ...prev, description: event.target.value }))}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-units">Units</Label>
+                                <Label htmlFor="edit-units" className="text-slate-300">Units</Label>
                                 <Input
                                     id="edit-units"
                                     name="units"
                                     type="number"
                                     required
-                                    className="rounded-xl"
+                                    className="rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                                     value={editForm.units}
                                     onChange={(event) => setEditForm((prev) => ({ ...prev, units: event.target.value }))}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-semester">Semester</Label>
+                                <Label htmlFor="edit-semester" className="text-slate-300">Semester</Label>
                                 <Select
                                     value={editForm.semester}
                                     onValueChange={(value) => setEditForm((prev) => ({
@@ -1002,12 +1010,12 @@ export default function ManageSubjectsPage() {
                                         semester: coerceSemesterValue(value),
                                     }))}
                                 >
-                                    <SelectTrigger id="edit-semester" className="rounded-xl">
+                                    <SelectTrigger id="edit-semester" className="rounded-xl bg-transparent border-white/10 text-white focus:ring-blue-500/20">
                                         <SelectValue placeholder="Select semester" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl">
+                                    <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
                                         {normalizedSemesterOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
+                                            <SelectItem key={option.value} value={option.value} className="focus:bg-white/10 focus:text-white">
                                                 {option.label}
                                             </SelectItem>
                                         ))}
@@ -1027,7 +1035,7 @@ export default function ManageSubjectsPage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsEditDialogOpen(false)}
-                            className="rounded-xl"
+                            className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
                             disabled={isBusy(currentSubject ? `update-subject-${currentSubject.id}` : '')}
                         >
                             Cancel
@@ -1035,7 +1043,7 @@ export default function ManageSubjectsPage() {
                         <Button
                             type="submit"
                             form="edit-subject-form"
-                            className="rounded-xl"
+                            className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
                             disabled={isBusy(currentSubject ? `update-subject-${currentSubject.id}` : '')}
                         >
                             {isBusy(currentSubject ? `update-subject-${currentSubject.id}` : '') ? 'Saving...' : 'Save Changes'}
@@ -1054,12 +1062,12 @@ export default function ManageSubjectsPage() {
                     }
                 }}
             >
-                <AlertDialogContent className="rounded-xl">
+                <AlertDialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-white">Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
                             This action cannot be undone. This will permanently delete the subject{' '}
-                            <span className="font-semibold">{currentSubject?.code}</span>.
+                            <span className="font-semibold text-white">{currentSubject?.code}</span>.
                             <br />
                             <br />
                             To confirm, please type "delete" below.
@@ -1069,12 +1077,12 @@ export default function ManageSubjectsPage() {
                             name="delete-confirm"
                             value={deleteInput}
                             onChange={(event) => setDeleteInput(event.target.value)}
-                            className="mt-4 rounded-xl"
+                            className="mt-4 rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
-                            className="rounded-xl"
+                            className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
                             onClick={() => {
                                 setDeleteInput('');
                                 setIsDeleteDialogOpen(false);
@@ -1088,7 +1096,7 @@ export default function ManageSubjectsPage() {
                                 deleteInput !== 'delete' || isBusy(currentSubject ? `delete-subject-${currentSubject.id}` : '')
                             }
                             onClick={handleDeleteSubject}
-                            className="rounded-xl bg-destructive hover:bg-destructive/90"
+                            className="rounded-xl bg-red-600 hover:bg-red-500 text-white border-0"
                         >
                             {isBusy(currentSubject ? `delete-subject-${currentSubject.id}` : '') ? 'Deleting...' : 'Delete'}
                         </AlertDialogAction>

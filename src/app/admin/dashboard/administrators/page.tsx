@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MoreHorizontal, PlusCircle, Trash2, Pencil, Eye, EyeOff } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Pencil, Eye, EyeOff, Shield } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -355,46 +355,37 @@ export default function AdministratorsPage() {
     };
 
     const getRoleBadgeVariant = (role: AdminUser['role']) => {
-        switch (role) {
-            case 'Super Admin':
-                return 'default';
-            case 'Admin':
-                return 'secondary';
-            case 'Moderator':
-                return 'outline';
-            default:
-                return 'outline';
-        }
+        return 'outline';
     };
 
     return (
         <>
-            <main className="flex-1 p-4 sm:p-6 space-y-6">
+            <div className="flex-1 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                        <h1 className="text-2xl font-bold tracking-tight">Administrators</h1>
-                        <p className="text-muted-foreground">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-100 tracking-tight">Administrators</h1>
+                        <p className="text-slate-400 mt-1">
                             Manage user accounts, roles, and permissions.
                         </p>
                     </div>
                      <Dialog open={isAddDialogOpen} onOpenChange={handleAddDialogChange}>
                         <DialogTrigger asChild>
-                                <Button className="rounded-full" onClick={openAddDialog} disabled={isBusy('create-admin')}>
+                                <Button className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20" onClick={openAddDialog} disabled={isBusy('create-admin')}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add Admin
                             </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200 sm:max-w-[425px]">
                             <DialogHeader>
-                                <DialogTitle>Add New Administrator</DialogTitle>
-                                <DialogDescription>
+                                <DialogTitle className="text-white">Add New Administrator</DialogTitle>
+                                <DialogDescription className="text-slate-400">
                                     Enter the details for the new admin user.
                                 </DialogDescription>
                             </DialogHeader>
                             <form id="add-user-form" onSubmit={handleAddUser}>
                                 <div className="space-y-4 py-2">
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">Full Name</Label>
+                                        <Label htmlFor="name" className="text-slate-200">Full Name</Label>
                                         <Input
                                             id="name"
                                             name="name"
@@ -402,10 +393,11 @@ export default function AdministratorsPage() {
                                             onChange={(event) => setAddName(event.target.value)}
                                             required
                                             disabled={isBusy('create-admin')}
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-xl"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="email">Email Address</Label>
+                                        <Label htmlFor="email" className="text-slate-200">Email Address</Label>
                                         <Input
                                             id="email"
                                             name="email"
@@ -414,10 +406,11 @@ export default function AdministratorsPage() {
                                             onChange={(event) => setAddEmail(event.target.value)}
                                             required
                                             disabled={isBusy('create-admin')}
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-xl"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="role">Role</Label>
+                                        <Label htmlFor="role" className="text-slate-200">Role</Label>
                                         <Select
                                             name="role"
                                             value={addRole}
@@ -425,18 +418,18 @@ export default function AdministratorsPage() {
                                             required
                                             disabled={isBusy('create-admin')}
                                         >
-                                            <SelectTrigger id="role">
+                                            <SelectTrigger id="role" className="bg-white/5 border-white/10 text-white focus:ring-blue-500/20 rounded-xl">
                                                 <SelectValue placeholder="Select a role" />
                                             </SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
                                                 {availableRoles.map((role) => (
-                                                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                                                    <SelectItem key={role} value={role} className="focus:bg-white/10 focus:text-white">{role}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="password">Password</Label>
+                                        <Label htmlFor="password" className="text-slate-200">Password</Label>
                                         <div className="relative">
                                             <Input
                                                 id="password"
@@ -446,13 +439,13 @@ export default function AdministratorsPage() {
                                                 onChange={(event) => setAddPassword(event.target.value)}
                                                 required
                                                 disabled={isBusy('create-admin')}
-                                                className="pr-10"
+                                                className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-xl"
                                             />
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
-                                                className="absolute right-1 top-1/2 -translate-y-1/2"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white hover:bg-white/10"
                                                 onClick={() => setShowAddPassword((prev) => !prev)}
                                                 disabled={isBusy('create-admin')}
                                             >
@@ -462,7 +455,7 @@ export default function AdministratorsPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                                        <Label htmlFor="confirmPassword" className="text-slate-200">Confirm Password</Label>
                                         <div className="relative">
                                             <Input
                                                 id="confirmPassword"
@@ -472,13 +465,13 @@ export default function AdministratorsPage() {
                                                 onChange={(event) => setAddConfirmPassword(event.target.value)}
                                                 required
                                                 disabled={isBusy('create-admin')}
-                                                className="pr-10"
+                                                className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-xl"
                                             />
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
-                                                className="absolute right-1 top-1/2 -translate-y-1/2"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white hover:bg-white/10"
                                                 onClick={() => setShowAddConfirmPassword((prev) => !prev)}
                                                 disabled={isBusy('create-admin')}
                                             >
@@ -494,6 +487,7 @@ export default function AdministratorsPage() {
                                     variant="outline"
                                     onClick={() => handleAddDialogChange(false)}
                                     disabled={isBusy('create-admin')}
+                                    className="border-white/10 text-slate-300 hover:bg-white/5 hover:text-white rounded-xl"
                                 >
                                     Cancel
                                 </Button>
@@ -501,6 +495,7 @@ export default function AdministratorsPage() {
                                     type="submit"
                                     form="add-user-form"
                                     disabled={isBusy('create-admin')}
+                                    className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl"
                                 >
                                     {isBusy('create-admin') ? 'Saving...' : 'Add User'}
                                 </Button>
@@ -509,85 +504,103 @@ export default function AdministratorsPage() {
                     </Dialog>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>User List</CardTitle>
-                        <CardDescription>
-                            A list of all administrator accounts in the system.
-                        </CardDescription>
+                <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <CardHeader className="border-b border-white/5 pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                                <Shield className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg font-semibold text-white">User List</CardTitle>
+                                <CardDescription className="text-slate-400">
+                                    A list of all administrator accounts in the system.
+                                </CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {adminUsers.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-4">
-                                                <Avatar>
-                                                    <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person avatar"/>
-                                                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="grid gap-1">
-                                                    <p className="font-medium">{user.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                                        <span className="sr-only">Open menu</span>
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => openEditDialog(user)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit User
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                                        onSelect={() => openDeleteDialog(user)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete User
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
+                    <CardContent className="p-6">
+                        <div className="rounded-xl border border-white/10 overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-white/5">
+                                    <TableRow className="hover:bg-white/5 border-white/10">
+                                        <TableHead className="text-slate-400 font-medium">User</TableHead>
+                                        <TableHead className="text-slate-400 font-medium">Role</TableHead>
+                                        <TableHead className="text-right text-slate-400 font-medium">Actions</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {adminUsers.map((user) => (
+                                        <TableRow key={user.id} className="hover:bg-white/5 border-white/5">
+                                            <TableCell className="text-slate-300">
+                                                <div className="flex items-center gap-4">
+                                                    <Avatar className="border border-white/10">
+                                                        <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person avatar"/>
+                                                        <AvatarFallback className="bg-slate-800 text-slate-200">{user.name.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="grid gap-1">
+                                                        <p className="font-medium text-slate-200">{user.name}</p>
+                                                        <p className="text-sm text-slate-500">{user.email}</p>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge 
+                                                    variant="outline"
+                                                    className={
+                                                        user.role === 'Super Admin' ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
+                                                        user.role === 'Admin' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                        "bg-slate-800 text-slate-300 border-white/10"
+                                                    }
+                                                >
+                                                    {user.role}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-white/10">
+                                                            <span className="sr-only">Open menu</span>
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="bg-slate-900 border-white/10 text-slate-200">
+                                                        <DropdownMenuItem onSelect={() => openEditDialog(user)} className="focus:bg-white/10 focus:text-white">
+                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                            Edit User
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator className="bg-white/10" />
+                                                        <DropdownMenuItem
+                                                            className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                                                            onSelect={() => openDeleteDialog(user)}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete User
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
-            </main>
+            </div>
 
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogChange}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Edit Administrator</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-white">Edit Administrator</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             Update the details for {selectedUser?.name}.
                         </DialogDescription>
                     </DialogHeader>
                     <form id="edit-user-form" onSubmit={handleEditUser}>
                         <div className="space-y-4 py-2">
                              <div className="space-y-2">
-                                <Label htmlFor="edit-name">Full Name</Label>
+                                <Label htmlFor="edit-name" className="text-slate-200">Full Name</Label>
                                 <Input
                                     id="edit-name"
                                     name="name"
@@ -595,10 +608,11 @@ export default function AdministratorsPage() {
                                     onChange={(event) => setEditName(event.target.value)}
                                     required
                                     disabled={isBusy('update-admin')}
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-xl"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-email">Email Address</Label>
+                                <Label htmlFor="edit-email" className="text-slate-200">Email Address</Label>
                                 <Input
                                     id="edit-email"
                                     name="email"
@@ -607,10 +621,11 @@ export default function AdministratorsPage() {
                                     onChange={(event) => setEditEmail(event.target.value)}
                                     required
                                     disabled={isBusy('update-admin')}
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-xl"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-role">Role</Label>
+                                <Label htmlFor="edit-role" className="text-slate-200">Role</Label>
                                 <Select
                                     name="role"
                                     value={editRole}
@@ -618,18 +633,18 @@ export default function AdministratorsPage() {
                                     required
                                     disabled={isBusy('update-admin')}
                                 >
-                                    <SelectTrigger id="edit-role">
+                                    <SelectTrigger id="edit-role" className="bg-white/5 border-white/10 text-white focus:ring-blue-500/20 rounded-xl">
                                         <SelectValue placeholder="Select a role" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
                                         {availableRoles.map((role) => (
-                                            <SelectItem key={role} value={role}>{role}</SelectItem>
+                                            <SelectItem key={role} value={role} className="focus:bg-white/10 focus:text-white">{role}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-password">New Password <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                                <Label htmlFor="edit-password" className="text-slate-200">New Password <span className="text-xs text-slate-500">(optional)</span></Label>
                                 <div className="relative">
                                     <Input
                                         id="edit-password"
@@ -638,13 +653,13 @@ export default function AdministratorsPage() {
                                         value={editPassword}
                                         onChange={(event) => setEditPassword(event.target.value)}
                                         disabled={isBusy('update-admin')}
-                                        className="pr-10"
+                                        className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-xl"
                                     />
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="absolute right-1 top-1/2 -translate-y-1/2"
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white hover:bg-white/10"
                                         onClick={() => setShowEditPassword((prev) => !prev)}
                                         disabled={isBusy('update-admin')}
                                     >
@@ -654,7 +669,7 @@ export default function AdministratorsPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-confirm-password">Confirm Password</Label>
+                                <Label htmlFor="edit-confirm-password" className="text-slate-200">Confirm Password</Label>
                                 <div className="relative">
                                     <Input
                                         id="edit-confirm-password"
@@ -663,13 +678,13 @@ export default function AdministratorsPage() {
                                         value={editConfirmPassword}
                                         onChange={(event) => setEditConfirmPassword(event.target.value)}
                                         disabled={isBusy('update-admin')}
-                                        className="pr-10"
+                                        className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-xl"
                                     />
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="absolute right-1 top-1/2 -translate-y-1/2"
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white hover:bg-white/10"
                                         onClick={() => setShowEditConfirmPassword((prev) => !prev)}
                                         disabled={isBusy('update-admin')}
                                     >
@@ -685,6 +700,7 @@ export default function AdministratorsPage() {
                             variant="outline"
                             onClick={() => handleEditDialogChange(false)}
                             disabled={isBusy('update-admin')}
+                            className="border-white/10 text-slate-300 hover:bg-white/5 hover:text-white rounded-xl"
                         >
                             Cancel
                         </Button>
@@ -692,6 +708,7 @@ export default function AdministratorsPage() {
                             type="submit"
                             form="edit-user-form"
                             disabled={isBusy('update-admin')}
+                            className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl"
                         >
                             {isBusy('update-admin') ? 'Saving...' : 'Save Changes'}
                         </Button>
@@ -701,11 +718,11 @@ export default function AdministratorsPage() {
 
             {/* Delete Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the account for <span className="font-semibold">{selectedUser?.name}</span>.
+                        <AlertDialogTitle className="text-white">Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                            This action cannot be undone. This will permanently delete the account for <span className="font-semibold text-white">{selectedUser?.name}</span>.
                             <br/><br/>
                             To confirm, please type "delete" below.
                         </AlertDialogDescription>
@@ -714,16 +731,16 @@ export default function AdministratorsPage() {
                             name="delete-confirm"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
-                            className="mt-4"
+                            className="mt-4 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20 rounded-xl"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteInput('')} disabled={isBusy('delete-admin')}>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')} disabled={isBusy('delete-admin')} className="border-white/10 text-slate-300 hover:bg-white/5 hover:text-white rounded-xl">
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
                             disabled={deleteInput !== 'delete' || isBusy('delete-admin')}
-                            className="bg-destructive hover:bg-destructive/90"
+                            className="bg-red-600 hover:bg-red-500 text-white rounded-xl"
                             onClick={handleDeleteUser}
                         >
                             {isBusy('delete-admin') ? 'Deleting...' : 'Delete'}

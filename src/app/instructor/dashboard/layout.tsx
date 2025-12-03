@@ -8,9 +8,11 @@ import {
   CalendarCheck2,
   ChevronRight,
   History,
+  Code2, Terminal, Cpu, Database, Globe, Zap, Wifi, Lock, Monitor, Server
 } from 'lucide-react';
 import Image from 'next/image';
-import React, { Suspense } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import React, { Suspense, useState, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { InstructorProvider, useInstructor } from '@/app/instructor/context/instructor-context';
 import {
@@ -34,12 +36,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import PageTransition from '@/components/page-transition';
 import NotificationBell from '@/components/notification-bell';
 import { useNotificationCenter } from '@/hooks/use-notification-center';
 import type { NotificationSeed } from '@/types/notifications';
+import { cn } from '@/lib/utils';
 
 const Breadcrumb = () => {
     const pathname = usePathname();
@@ -93,6 +95,34 @@ const Breadcrumb = () => {
         </div>
     );
 };
+
+const SidebarClock = () => {
+    const [date, setDate] = React.useState(new Date());
+
+    React.useEffect(() => {
+        const timer = setInterval(() => {
+            setDate(new Date());
+        }, 1000);
+        return () => {
+            clearInterval(timer);
+        };
+    }, []);
+
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const fullDate = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
+    return (
+        <div className="px-2 group-data-[collapsible=icon]:hidden">
+            <p className="text-3xl font-light tracking-tighter text-white">{time}</p>
+            <p className="text-xs font-medium text-blue-200/50 uppercase tracking-widest">{fullDate}</p>
+        </div>
+    );
+};
+
+
+
+
+
 
 
 const weekdayOrder: Record<string, number> = {
@@ -185,6 +215,12 @@ function Header() {
 
     if (!instructorData) return null;
 
+    // Generate initials from instructor name (e.g., "John Doe" -> "JD")
+    const nameParts = (instructorData.personal.name ?? '').trim().split(/\s+/);
+    const avatarInitials = nameParts.length >= 2
+        ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}`.toUpperCase()
+        : (nameParts[0]?.substring(0, 2) ?? 'IN').toUpperCase();
+
     return (
          <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
             <SidebarTrigger className="md:hidden"/>
@@ -192,7 +228,6 @@ function Header() {
               <Breadcrumb />
             </div>
             <div className="flex items-center gap-4">
-              <ThemeToggle />
               <NotificationBell
                 notifications={notifications}
                 unreadCount={unreadCount}
@@ -202,20 +237,22 @@ function Header() {
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Image
-                      src={instructorData.personal.avatar}
-                      width={32}
-                      height={32}
-                      alt="Instructor Avatar"
-                      className="rounded-full"
-                      data-ai-hint="person avatar"
-                    />
+                  <Button variant="ghost" size="icon" className="rounded-full p-0">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={instructorData.personal.avatar || undefined}
+                        alt={`${instructorData.personal.name} avatar`}
+                        data-ai-hint="person avatar"
+                      />
+                      <AvatarFallback className="bg-blue-600 text-white text-sm font-medium">
+                        {avatarInitials}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="sr-only">Toggle user menu</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel>{instructorData.personal.name}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href={`/instructor/dashboard/settings?${queryString}`}>Settings</Link>
@@ -242,72 +279,85 @@ function InstructorLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2">
+      <Sidebar className="border-r border-white/10 bg-[#020617] text-white overflow-hidden" variant="sidebar">
+
+        <SidebarHeader className="border-b border-white/10 bg-white/5 backdrop-blur-sm py-4 relative z-10">
+          <div className="flex items-center gap-3 px-2">
             {schoolLogo && (
-                <Image
-                src={schoolLogo.imageUrl}
-                alt={schoolLogo.description}
-                width={48}
-                height={48}
-                data-ai-hint={schoolLogo.imageHint}
-                className="rounded-full"
-                />
+                <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full shadow-lg shadow-blue-500/20">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-orange-500 to-blue-600" />
+                    <div className="absolute inset-[2px] rounded-full bg-slate-900">
+                        <Image
+                        src={schoolLogo.imageUrl}
+                        alt={schoolLogo.description}
+                        fill
+                        className="object-cover rounded-full"
+                        data-ai-hint={schoolLogo.imageHint}
+                        />
+                    </div>
+                </div>
             )}
-            <span className="font-semibold text-lg">Instructor Portal</span>
+            <div className="flex flex-col">
+                <span className="font-bold text-lg tracking-tight text-white">Instructor Portal</span>
+                <span className="text-xs text-blue-200/70 font-medium">BSIT Enrollment</span>
+            </div>
           </div>
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent className="px-2 py-4 relative z-10">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/instructor/dashboard'}>
+              <SidebarMenuButton asChild isActive={pathname === '/instructor/dashboard'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/instructor/dashboard?${emailQuery}`}>
-                  <Home />
-                  Dashboard
+                  <Home className="h-4 w-4" />
+                  <span className="font-medium">Dashboard</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/instructor/dashboard/schedule')}>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/instructor/dashboard/schedule')} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/instructor/dashboard/schedule?${emailQuery}`}>
-                  <CalendarCheck2 />
-                  My Schedule
+                  <CalendarCheck2 className="h-4 w-4" />
+                  <span className="font-medium">My Schedule</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isClassesPath}>
+              <SidebarMenuButton asChild isActive={isClassesPath} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/instructor/dashboard/classes?${emailQuery}`}>
-                  <BookCopy />
-                  My Classes
+                  <BookCopy className="h-4 w-4" />
+                  <span className="font-medium">My Classes</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isClassesHistoryPath}>
+              <SidebarMenuButton asChild isActive={isClassesHistoryPath} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/instructor/dashboard/classes/history?${emailQuery}`}>
-                  <History />
-                  Classes History
+                  <History className="h-4 w-4" />
+                  <span className="font-medium">Classes History</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/instructor/dashboard/settings'}>
+              <SidebarMenuButton asChild isActive={pathname === '/instructor/dashboard/settings'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/instructor/dashboard/settings?${emailQuery}`}>
-                  <Settings />
-                  Settings
+                  <Settings className="h-4 w-4" />
+                  <span className="font-medium">Settings</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="border-t border-white/5 p-4 relative z-10">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+                <div className="mb-6 mt-2">
+                    <SidebarClock />
+                </div>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="text-white/60 hover:bg-white/5 hover:text-white transition-all duration-200">
                 <Link href="/">
-                  <LogOut />
+                  <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </Link>
               </SidebarMenuButton>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, Edit } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Edit, History, Search, Filter, FileText, GraduationCap, Calendar, Hash } from 'lucide-react';
 import {
   useAdmin,
   type AdminReportMasterListEntry,
@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 type GradeDisplayValue = number | 'INC' | null;
 type StudentTermGrades = Partial<Record<GradeTermKey, { grade: GradeDisplayValue }>>;
@@ -228,11 +229,32 @@ const InstructorClassesHistoryPage = () => {
       };
     }
 
+    // Get current academic year/semester from system settings to identify historical vs current
+    const currentAcademicYear = adminData.systemSettings?.academicYear ?? '';
+    const currentSemester = adminData.systemSettings?.semester ?? '';
+
     const matches = (adminData.teachingAssignments ?? []).filter((assignment) => {
       const assignmentInstructorId =
         typeof assignment.instructorId === 'number' && Number.isFinite(assignment.instructorId)
           ? assignment.instructorId
           : null;
+      
+      // Determine if this is a historical record (from teaching_assignment_history)
+      const isHistoricalRecord = typeof assignment.id === 'string' && assignment.id.startsWith('history|');
+      
+      // For historical records, we MUST match by instructor user ID to ensure
+      // we don't show records from previous instructors who happened to have the same email.
+      // This prevents newly created instructors from seeing phantom history.
+      if (isHistoricalRecord) {
+        // Historical records must match by user ID
+        if (assignmentInstructorId !== null && instructorId !== null) {
+          return assignmentInstructorId === instructorId;
+        }
+        // If we can't match by ID, skip this historical record
+        return false;
+      }
+      
+      // For current-term assignments, use the existing matching logic
       if (assignmentInstructorId !== null && instructorId !== null) {
         return assignmentInstructorId === instructorId;
       }
@@ -487,7 +509,14 @@ const InstructorClassesHistoryPage = () => {
       return candidates[0];
     };
 
-    const taughtSubjectCodes = persistedSubjectCodes.size > 0 ? persistedSubjectCodes : scheduleSubjectCodes;
+    // History should ONLY show persisted teaching assignments (past terms).
+    // If the instructor has no historical assignments, return empty—do NOT
+    // fall back to current-schedule subjects.
+    if (persistedAssignments.length === 0) {
+      return EMPTY_HISTORY_RESULT;
+    }
+
+    const taughtSubjectCodes = persistedSubjectCodes;
 
     if (taughtSubjectCodes.size === 0) {
       return buildHistoryCollections(historyMap);
@@ -718,34 +747,54 @@ const InstructorClassesHistoryPage = () => {
 
   return (
     <>
-      <main className="flex-1 p-4 sm:p-6 space-y-6">
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-bold tracking-tight">Classes History</h1>
-          <p className="text-muted-foreground">
-            Review previous classes you handled, drill down by block, and update retroactive term grades when needed.
-          </p>
+      <main className="flex-1 p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-500/10 rounded-xl">
+                        <History className="h-6 w-6 text-blue-400" />
+                    </div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-200">Classes History</h1>
+                </div>
+                <p className="text-slate-400 pl-12">
+                    Review previous classes you handled, drill down by block, and update retroactive term grades.
+                </p>
+            </div>
         </div>
 
-        <Card className="rounded-2xl border border-border/50 shadow-sm">
-          <CardHeader>
-            <CardTitle>Archived Classes</CardTitle>
-            <CardDescription>Filter by subject, term, block, or search for a specific student.</CardDescription>
+        <Card className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+          <CardHeader className="border-b border-white/10 pb-4">
+            <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                    <CardTitle className="text-slate-200 flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-blue-400" />
+                        Archived Classes
+                    </CardTitle>
+                    <CardDescription className="text-slate-400">Filter by subject, term, block, or search for a specific student.</CardDescription>
+                </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <Input
-                placeholder="Search subject, block, or student"
-                className="w-full lg:max-w-sm rounded-xl"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                aria-label="Search history"
-              />
-              <div className="flex flex-col gap-3 sm:flex-row">
+          <CardContent className="space-y-6 pt-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="relative w-full lg:max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Input
+                    placeholder="Search subject, block, or student..."
+                    className="pl-9 rounded-xl bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    aria-label="Search history"
+                />
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row w-full lg:w-auto">
                 <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-                  <SelectTrigger className="w-full sm:w-48 rounded-xl">
-                    <SelectValue placeholder="Subject" />
+                  <SelectTrigger className="w-full sm:w-48 rounded-xl bg-white/5 border-white/10 text-slate-200">
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-3.5 w-3.5 text-slate-500" />
+                        <SelectValue placeholder="Subject" />
+                    </div>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#0f172a] border-white/10 text-slate-200">
                     <SelectItem value="all">All subjects</SelectItem>
                     {subjectOptions.map((option) => (
                       <SelectItem key={option.code} value={option.code}>
@@ -755,10 +804,13 @@ const InstructorClassesHistoryPage = () => {
                   </SelectContent>
                 </Select>
                 <Select value={termFilter} onValueChange={setTermFilter}>
-                  <SelectTrigger className="w-full sm:w-48 rounded-xl">
-                    <SelectValue placeholder="Term" />
+                  <SelectTrigger className="w-full sm:w-48 rounded-xl bg-white/5 border-white/10 text-slate-200">
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                        <SelectValue placeholder="Term" />
+                    </div>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#0f172a] border-white/10 text-slate-200">
                     <SelectItem value="all">All terms</SelectItem>
                     {termOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
@@ -768,10 +820,13 @@ const InstructorClassesHistoryPage = () => {
                   </SelectContent>
                 </Select>
                 <Select value={blockFilter} onValueChange={setBlockFilter}>
-                  <SelectTrigger className="w-full sm:w-48 rounded-xl">
-                    <SelectValue placeholder="Block" />
+                  <SelectTrigger className="w-full sm:w-48 rounded-xl bg-white/5 border-white/10 text-slate-200">
+                    <div className="flex items-center gap-2">
+                        <Hash className="h-3.5 w-3.5 text-slate-500" />
+                        <SelectValue placeholder="Block" />
+                    </div>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#0f172a] border-white/10 text-slate-200">
                     <SelectItem value="all">All blocks</SelectItem>
                     {blockOptions.map((block) => (
                       <SelectItem key={block} value={block}>
@@ -784,38 +839,55 @@ const InstructorClassesHistoryPage = () => {
             </div>
 
             {filteredEntries.length === 0 ? (
-              <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                No historical classes matched your filters yet.
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-12 text-center">
+                <div className="flex justify-center mb-4">
+                    <div className="p-3 bg-slate-800/50 rounded-full">
+                        <History className="h-6 w-6 text-slate-500" />
+                    </div>
+                </div>
+                <h3 className="text-slate-200 font-medium mb-1">No history found</h3>
+                <p className="text-sm text-slate-400">No historical classes matched your filters yet.</p>
               </div>
             ) : (
-              <div className="border rounded-2xl overflow-hidden shadow-sm">
+              <div className="border border-white/10 rounded-2xl overflow-hidden shadow-inner bg-transparent">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Block</TableHead>
-                      <TableHead>Academic Year</TableHead>
-                      <TableHead>Semester</TableHead>
-                      <TableHead>Students</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                  <TableHeader className="bg-white/5">
+                    <TableRow className="border-white/10 hover:bg-transparent">
+                      <TableHead className="text-slate-400 font-medium">Subject</TableHead>
+                      <TableHead className="text-slate-400 font-medium">Block</TableHead>
+                      <TableHead className="text-slate-400 font-medium">Academic Year</TableHead>
+                      <TableHead className="text-slate-400 font-medium">Semester</TableHead>
+                      <TableHead className="text-slate-400 font-medium">Students</TableHead>
+                      <TableHead className="text-right text-slate-400 font-medium">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredEntries.map((entry) => (
-                      <TableRow key={entry.id}>
+                      <TableRow key={entry.id} className="border-white/10 hover:bg-white/5 transition-colors">
                         <TableCell>
-                          <div className="font-semibold">{entry.subjectCode}</div>
-                          <div className="text-sm text-muted-foreground">{entry.subjectDescription}</div>
+                          <div className="font-semibold text-slate-200 flex items-center gap-2">
+                            <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded text-xs font-mono border border-blue-500/20">
+                                {entry.subjectCode}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1">{entry.subjectDescription}</div>
                         </TableCell>
-                        <TableCell>{entry.blockName}</TableCell>
-                        <TableCell>{entry.academicYear}</TableCell>
-                        <TableCell>{entry.semester}</TableCell>
-                        <TableCell>{entry.studentCount}</TableCell>
+                        <TableCell>
+                            <span className="text-slate-300 font-mono text-sm">{entry.blockName}</span>
+                        </TableCell>
+                        <TableCell className="text-slate-300">{entry.academicYear}</TableCell>
+                        <TableCell className="text-slate-300">{entry.semester}</TableCell>
+                        <TableCell>
+                            <div className="flex items-center gap-1.5 text-slate-300">
+                                <GraduationCap className="h-4 w-4 text-slate-500" />
+                                {entry.studentCount}
+                            </div>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="rounded-full"
+                            className="rounded-full text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
                             onClick={() => handleOpenRoster(entry.id)}
                           >
                             View Roster
@@ -833,62 +905,68 @@ const InstructorClassesHistoryPage = () => {
       </main>
 
       <Dialog open={isRosterOpen} onOpenChange={handleDialogChange}>
-        <DialogContent className="max-w-3xl rounded-3xl border border-border/50">
+        <DialogContent className="max-w-4xl rounded-3xl border border-white/10 bg-[#0f172a] text-slate-200 shadow-2xl">
           <DialogHeader>
-            <DialogTitle>
-              {activeHistory ? `${activeHistory.subjectCode} • ${activeHistory.academicYear}` : 'Class Roster'}
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-400" />
+                </div>
+                {activeHistory ? `${activeHistory.subjectCode} • ${activeHistory.academicYear}` : 'Class Roster'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-slate-400 ml-11">
               {activeHistory ? `${activeHistory.subjectDescription} (${activeHistory.semester} • ${activeHistory.blockName})` : null}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 mt-2">
             {activeHistory ? (
               <>
-                <Input
-                  placeholder="Search student name, ID, or block"
-                  className="rounded-xl"
-                  value={rosterSearchQuery}
-                  onChange={(event) => setRosterSearchQuery(event.target.value)}
-                  aria-label="Search roster"
-                />
-                <div className="max-h-[60vh] overflow-y-auto rounded-2xl border shadow-sm">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <Input
+                    placeholder="Search student name, ID, or block..."
+                    className="pl-9 rounded-xl bg-[#020617] border-white/10 text-slate-200 placeholder:text-slate-500 focus-visible:ring-blue-500/50"
+                    value={rosterSearchQuery}
+                    onChange={(event) => setRosterSearchQuery(event.target.value)}
+                    aria-label="Search roster"
+                    />
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#020617] shadow-inner">
                   {filteredRosterStudents.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-muted-foreground">
+                    <div className="p-12 text-center text-sm text-slate-400">
                       No students matched your search.
                     </div>
                   ) : (
                     <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Student</TableHead>
-                          <TableHead>Student ID</TableHead>
-                          <TableHead>Block</TableHead>
+                      <TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-sm">
+                        <TableRow className="border-white/5 hover:bg-transparent">
+                          <TableHead className="text-slate-400">Student</TableHead>
+                          <TableHead className="text-slate-400">Student ID</TableHead>
+                          <TableHead className="text-slate-400">Block</TableHead>
                           {TERM_ORDER.map((term) => (
-                            <TableHead key={`history-term-${term}`} className="text-right">
+                            <TableHead key={`history-term-${term}`} className="text-right text-slate-400">
                               {TERM_LABELS[term]}
                             </TableHead>
                           ))}
-                          <TableHead className="text-right">Final Grade</TableHead>
-                          <TableHead className="text-right">Remarks</TableHead>
+                          <TableHead className="text-right text-slate-400">Final Grade</TableHead>
+                          <TableHead className="text-right text-slate-400">Remarks</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredRosterStudents.map((student) => (
-                          <TableRow key={student.id}>
+                          <TableRow key={student.id} className="border-white/5 hover:bg-white/5 transition-colors">
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
+                            <Avatar className="h-8 w-8 border border-white/10">
                               <AvatarImage src={student.avatar} alt={student.name} data-ai-hint="person avatar" />
-                              <AvatarFallback>
+                              <AvatarFallback className="bg-slate-800 text-slate-300">
                                 {(student.name || student.studentId || '?').charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">{student.name}</span>
+                            <span className="font-medium text-slate-200">{student.name}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{student.studentId}</TableCell>
-                        <TableCell>{student.block}</TableCell>
+                        <TableCell className="text-slate-400 font-mono text-xs">{student.studentId}</TableCell>
+                        <TableCell className="text-slate-400">{student.block}</TableCell>
                         {TERM_ORDER.map((termKey) => {
                           const termEntry = student.grades.terms?.[termKey];
                           const termValue = termEntry?.grade ?? null;
@@ -899,19 +977,19 @@ const InstructorClassesHistoryPage = () => {
                           return (
                             <TableCell key={`${student.id}-${termKey}`} className="text-right align-middle">
                               {isEditing ? (
-                                <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end sm:items-center">
+                                <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end sm:items-center bg-slate-800/50 p-1 rounded-lg -mr-2">
                                   <div className="flex items-center gap-1">
                                     <Input
                                       type="text"
                                       inputMode="decimal"
-                                      placeholder="1.0-5.0 or INC"
+                                      placeholder="1.0-5.0"
                                       value={gradeEdit?.grade ?? ''}
                                       onChange={(event) =>
                                         setGradeEdit((current) =>
                                           current ? { ...current, grade: event.target.value } : current,
                                         )
                                       }
-                                      className="h-8 w-28 rounded-md"
+                                      className="h-8 w-20 rounded-md bg-slate-900 border-white/20 text-slate-200 text-center"
                                       autoFocus
                                       onKeyDown={(event) => {
                                         if (event.key === 'Enter') {
@@ -928,12 +1006,12 @@ const InstructorClassesHistoryPage = () => {
                                         }
                                       }}
                                     />
-                                    <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-0.5">
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="h-4 w-6"
+                                        className="h-3.5 w-5 rounded-sm hover:bg-slate-700 text-slate-400"
                                         onClick={() => handleStepGrade(1)}
                                         disabled={isSaving}
                                         aria-label="Increase grade"
@@ -944,7 +1022,7 @@ const InstructorClassesHistoryPage = () => {
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="h-4 w-6"
+                                        className="h-3.5 w-5 rounded-sm hover:bg-slate-700 text-slate-400"
                                         onClick={() => handleStepGrade(-1)}
                                         disabled={isSaving}
                                         aria-label="Decrease grade"
@@ -953,14 +1031,15 @@ const InstructorClassesHistoryPage = () => {
                                       </Button>
                                     </div>
                                   </div>
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => { void handleSaveGrade(); }} disabled={isSaving}>
-                                      {isSaving ? 'Saving…' : 'Save'}
+                                  <div className="flex gap-1">
+                                    <Button size="sm" className="h-8 px-2 bg-blue-600 hover:bg-blue-500 text-white" onClick={() => { void handleSaveGrade(); }} disabled={isSaving}>
+                                      {isSaving ? '...' : 'Save'}
                                     </Button>
                                     <Button
                                       type="button"
-                                      variant="outline"
+                                      variant="ghost"
                                       size="sm"
+                                      className="h-8 px-2 text-slate-400 hover:text-slate-200"
                                       onClick={handleCancelEdit}
                                       disabled={isSaving}
                                     >
@@ -969,12 +1048,15 @@ const InstructorClassesHistoryPage = () => {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex justify-end items-center gap-2 group">
-                                  <span className="font-semibold">{formatGrade(termValue)}</span>
+                                <div className="flex justify-end items-center gap-2 group min-h-[2rem]">
+                                  <span className={cn(
+                                      "font-semibold font-mono",
+                                      termValue ? "text-slate-200" : "text-slate-600"
+                                  )}>{formatGrade(termValue)}</span>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
                                     onClick={() =>
                                       handleStartEdit(
                                         student.studentId,
@@ -985,15 +1067,15 @@ const InstructorClassesHistoryPage = () => {
                                     }
                                     aria-label={`Edit ${TERM_LABELS[termKey]} grade for ${student.name}`}
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Edit className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               )}
                             </TableCell>
                           );
                         })}
-                        <TableCell className="text-right font-semibold">{formatGrade(student.grades.finalGrade)}</TableCell>
-                        <TableCell className="text-right text-sm text-muted-foreground">
+                        <TableCell className="text-right font-bold text-slate-200 font-mono">{formatGrade(student.grades.finalGrade)}</TableCell>
+                        <TableCell className="text-right text-sm text-slate-400">
                           {student.grades.remark ?? '—'}
                         </TableCell>
                       </TableRow>
@@ -1004,11 +1086,11 @@ const InstructorClassesHistoryPage = () => {
                 </div>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">Select a class to view its roster.</p>
+              <p className="text-sm text-slate-400">Select a class to view its roster.</p>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" className="rounded-full" onClick={() => handleDialogChange(false)}>
+          <DialogFooter className="border-t border-white/5 pt-4">
+            <Button variant="outline" className="rounded-full border-white/10 text-slate-300 hover:bg-white/5 hover:text-white" onClick={() => handleDialogChange(false)}>
               Close
             </Button>
           </DialogFooter>

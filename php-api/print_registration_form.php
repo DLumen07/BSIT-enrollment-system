@@ -398,7 +398,15 @@ try {
     $schoolYearDisplay = trim($academicYear !== '' ? $academicYear . '/' . $semesterShort : '');
     $courseMajor = $course !== '' ? $course : 'N/A';
     if ($specialization !== '') {
-        $specializationProper = ucwords(strtolower($specialization));
+        $specializationUpper = strtoupper($specialization);
+        if ($specializationUpper === 'AP') {
+            $specializationProper = 'Application Programming';
+        } elseif ($specializationUpper === 'DD') {
+            $specializationProper = 'Digital Design';
+        } else {
+            $specializationProper = ucwords(strtolower($specialization));
+        }
+
         $courseDisciplineMap = [
             'bsit' => 'Information Technology',
             'bsis' => 'Information Systems',

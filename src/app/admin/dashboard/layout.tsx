@@ -19,12 +19,13 @@ import {
   BookUser,
   Users,
   Clock,
+  Monitor, Database, Zap, Cpu, Server, Globe, Code2, Terminal, Wifi, Lock
 } from 'lucide-react';
 import Image from 'next/image';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-
+import { motion } from 'framer-motion';
 import {
   SidebarProvider,
   Sidebar,
@@ -50,7 +51,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -183,12 +183,18 @@ const SidebarClock = () => {
     const fullDate = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
     return (
-        <div className="text-center px-2 group-data-[collapsible=icon]:hidden">
-            <p className="text-2xl font-bold font-mono text-sidebar-foreground">{time}</p>
-            <p className="text-xs text-sidebar-foreground/80">{fullDate}</p>
+        <div className="px-2 group-data-[collapsible=icon]:hidden">
+            <p className="text-3xl font-light tracking-tighter text-white">{time}</p>
+            <p className="text-xs font-medium text-blue-200/50 uppercase tracking-widest">{fullDate}</p>
         </div>
     );
 };
+
+
+
+
+
+
 
 
 export default function AdminDashboardLayout({
@@ -324,29 +330,37 @@ export default function AdminDashboardLayout({
 
   return (
       <SidebarProvider>
-        <Sidebar>
-          <SidebarHeader>
-            <div className="flex items-center gap-2">
+        <Sidebar className="border-r border-white/10 bg-[#020617] text-white overflow-hidden" variant="sidebar">
+          
+          <SidebarHeader className="border-b border-white/10 bg-white/5 backdrop-blur-sm py-4 relative z-10">
+            <div className="flex items-center gap-3 px-2">
               {schoolLogo && (
-                  <Image
-                  src={schoolLogo.imageUrl}
-                  alt={schoolLogo.description}
-                  width={48}
-                  height={48}
-                  data-ai-hint={schoolLogo.imageHint}
-                  className="rounded-full"
-                  />
+                  <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full shadow-lg shadow-blue-500/20">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-orange-500 to-blue-600" />
+                    <div className="absolute inset-[2px] rounded-full bg-slate-900">
+                        <Image
+                        src={schoolLogo.imageUrl}
+                        alt={schoolLogo.description}
+                        fill
+                        className="object-cover rounded-full"
+                        data-ai-hint={schoolLogo.imageHint}
+                        />
+                    </div>
+                  </div>
               )}
-              <span className="font-semibold text-lg">BSIT Enrollment</span>
+              <div className="flex flex-col">
+                <span className="font-bold text-lg tracking-tight text-white">BSIT Enrollment</span>
+                <span className="text-xs text-blue-200/70 font-medium">Admin Portal</span>
+              </div>
             </div>
           </SidebarHeader>
-          <SidebarContent>
+          <SidebarContent className="px-2 py-4 relative z-10">
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard'}>
+                <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                   <Link href="/admin/dashboard">
-                    <Home />
-                    Dashboard
+                    <Home className="h-4 w-4" />
+                    <span className="font-medium">Dashboard</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -354,41 +368,41 @@ export default function AdminDashboardLayout({
                   <Collapsible open={isEnrollmentOpen} onOpenChange={setIsEnrollmentOpen}>
                       <CollapsibleTrigger asChild>
                           <SidebarMenuButton
-                              className="justify-between"
+                              className="justify-between hover:bg-white/10 hover:text-white data-[active=true]:bg-white/10 data-[active=true]:text-white transition-all duration-200"
                               isActive={isEnrollmentPath}
                           >
                               <div className="flex items-center gap-2">
                                   <ClipboardList className="h-4 w-4" />
-                                  Manage Enrollment
+                                  <span className="font-medium">Manage Enrollment</span>
                               </div>
-                              <ChevronDown className="h-4 w-4 data-[state=open]:rotate-180" />
+                              <ChevronDown className="h-4 w-4 text-white/50 data-[state=open]:rotate-180 transition-transform duration-200" />
                           </SidebarMenuButton>
                       </CollapsibleTrigger>
-                      <CollapsibleContent>
+                      <CollapsibleContent className="pl-4 space-y-1 pt-1">
                           <SidebarMenuSub>
                               <SidebarMenuSubItem>
-                                  <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/manage-applications'}>
+                                  <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/manage-applications'} className="hover:bg-white/10 hover:text-white data-[active=true]:text-blue-300 data-[active=true]:font-semibold transition-colors">
                                       <Link href="/admin/dashboard/manage-applications">
-                                          <FileSignature />
-                                          <span>Manage Applications</span>
+                                          <FileSignature className="h-4 w-4" />
+                                          <span>Applications</span>
                                       </Link>
                                   </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
                               {!isModerator && (
                                 <>
                                   <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton asChild isActive={pathname.startsWith('/admin/dashboard/manage-blocks') || pathname.startsWith('/admin/dashboard/schedule')}>
+                                    <SidebarMenuSubButton asChild isActive={pathname.startsWith('/admin/dashboard/manage-blocks') || pathname.startsWith('/admin/dashboard/schedule')} className="hover:bg-white/10 hover:text-white data-[active=true]:text-blue-300 data-[active=true]:font-semibold transition-colors">
                                       <Link href="/admin/dashboard/manage-blocks">
-                                        <LayoutGrid />
-                                        <span>Manage Blocks</span>
+                                        <LayoutGrid className="h-4 w-4" />
+                                        <span>Blocks</span>
                                       </Link>
                                     </SidebarMenuSubButton>
                                   </SidebarMenuSubItem>
                                   <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/manage-subjects'}>
+                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/manage-subjects'} className="hover:bg-white/10 hover:text-white data-[active=true]:text-blue-300 data-[active=true]:font-semibold transition-colors">
                                       <Link href="/admin/dashboard/manage-subjects">
-                                        <BookCopy />
-                                        <span>Manage Subjects</span>
+                                        <BookCopy className="h-4 w-4" />
+                                        <span>Subjects</span>
                                       </Link>
                                     </SidebarMenuSubButton>
                                   </SidebarMenuSubItem>
@@ -397,17 +411,17 @@ export default function AdminDashboardLayout({
                               {isModerator && (
                                 <>
                                   <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/view-blocks'}>
+                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/view-blocks'} className="hover:bg-white/10 hover:text-white data-[active=true]:text-blue-300 data-[active=true]:font-semibold transition-colors">
                                       <Link href="/admin/dashboard/view-blocks">
-                                        <LayoutGrid />
-                                        <span>View Blocks &amp; Schedules</span>
+                                        <LayoutGrid className="h-4 w-4" />
+                                        <span>View Blocks</span>
                                       </Link>
                                     </SidebarMenuSubButton>
                                   </SidebarMenuSubItem>
                                   <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/view-subjects'}>
+                                    <SidebarMenuSubButton asChild isActive={pathname === '/admin/dashboard/view-subjects'} className="hover:bg-white/10 hover:text-white data-[active=true]:text-blue-300 data-[active=true]:font-semibold transition-colors">
                                       <Link href="/admin/dashboard/view-subjects">
-                                        <BookCopy />
+                                        <BookCopy className="h-4 w-4" />
                                         <span>View Subjects</span>
                                       </Link>
                                     </SidebarMenuSubButton>
@@ -419,82 +433,73 @@ export default function AdminDashboardLayout({
                   </Collapsible>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                           <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/students'}>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/students'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                       <Link href="/admin/dashboard/students">
-                          <Users2 />
-                          Students
+                          <Users2 className="h-4 w-4" />
+                          <span className="font-medium">Students</span>
                       </Link>
                   </SidebarMenuButton>
               </SidebarMenuItem>
               {!isModerator && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/dashboard/instructors')}>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/dashboard/instructors')} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                     <Link href="/admin/dashboard/instructors">
-                      <BookUser />
-                      Instructors
+                      <BookUser className="h-4 w-4" />
+                      <span className="font-medium">Instructors</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
               {!isModerator && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/users'}>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/users'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                     <Link href="/admin/dashboard/users">
-                      <Users />
-                      Users
+                      <Users className="h-4 w-4" />
+                      <span className="font-medium">Users</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
               {currentUser.role === 'Super Admin' && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/administrators'}>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/administrators'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                     <Link href="/admin/dashboard/administrators">
-                      <Shield />
-                      Administrators
+                      <Shield className="h-4 w-4" />
+                      <span className="font-medium">Administrators</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {isModerator ? (
+              {!isModerator && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/view-reports'}>
-                    <Link href="/admin/dashboard/view-reports">
-                      <BarChart3 />
-                      Reports (Read-Only)
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ) : (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/reports'}>
+                  <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/reports'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                     <Link href="/admin/dashboard/reports">
-                      <BarChart3 />
-                      Reports
+                      <BarChart3 className="h-4 w-4" />
+                      <span className="font-medium">Reports</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
                <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/settings'}>
+                <SidebarMenuButton asChild isActive={pathname === '/admin/dashboard/settings'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                   <Link href="/admin/dashboard/settings">
-                    <Settings />
-                    Settings
+                    <Settings className="h-4 w-4" />
+                    <span className="font-medium">Settings</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter>
-            <SidebarSeparator />
+          <SidebarFooter className="border-t border-white/5 p-4 relative z-10">
             <SidebarMenu>
                 <SidebarMenuItem>
-                     <SidebarClock />
+                     <div className="mb-6 mt-2">
+                        <SidebarClock />
+                     </div>
                 </SidebarMenuItem>
-                <SidebarSeparator />
                 <SidebarMenuItem>
-                    <SidebarMenuButton onClick={handleLogout}>
-                    <LogOut />
+                    <SidebarMenuButton onClick={handleLogout} className="text-white/60 hover:bg-white/5 hover:text-white transition-all duration-200">
+                    <LogOut className="mr-2 h-4 w-4" />
                     Logout
                     </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -507,18 +512,7 @@ export default function AdminDashboardLayout({
             <div className="flex-1">
                <Breadcrumb />
             </div>
-             {pathname === '/admin/dashboard' && (
-               <div className="relative hidden md:block">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search..."
-                    className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px] rounded-full"
-                  />
-                </div>
-              )}
             <div className="flex items-center gap-4">
-              <ThemeToggle />
               <NotificationBell
                 notifications={notifications}
                 unreadCount={unreadCount}

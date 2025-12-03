@@ -8,6 +8,63 @@ import {
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
+
+const ScannerLogos = () => {
+  return (
+    <div className="absolute inset-0 pointer-events-none flex flex-col justify-end pb-8 pr-8 items-end overflow-hidden z-0">
+       <div className="relative flex gap-6 items-center">
+          {/* Left Logo (ASCOT) */}
+          <div className="relative w-20 h-20 opacity-20 grayscale transition-all duration-500">
+             <Image src="/image/ascot-logo.png" fill alt="ASCOT" className="object-contain" />
+             {/* Highlight Version - Synced with Scanline */}
+             <motion.div 
+               className="absolute inset-0"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: [0, 1, 0] }}
+               transition={{ 
+                 duration: 8, 
+                 repeat: Infinity, 
+                 times: [0.75, 0.85, 0.95], // Highlights when scanline is near bottom
+                 ease: "easeInOut" 
+               }}
+             >
+                <Image 
+                  src="/image/ascot-logo.png" 
+                  fill 
+                  alt="ASCOT" 
+                  className="object-contain drop-shadow-[0_0_25px_rgba(59,130,246,0.6)]" 
+                />
+             </motion.div>
+          </div>
+
+          {/* Right Logo (Dept) - Same size as ASCOT */}
+          <div className="relative w-20 h-20 opacity-20 grayscale transition-all duration-500">
+             <Image src="/image/dept-logo.png" fill alt="DEPT" className="object-contain" />
+             {/* Highlight Version - Synced with Scanline */}
+             <motion.div 
+               className="absolute inset-0"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: [0, 1, 0] }}
+               transition={{ 
+                 duration: 8, 
+                 repeat: Infinity, 
+                 times: [0.75, 0.85, 0.95], // Highlights when scanline is near bottom
+                 ease: "easeInOut" 
+               }}
+             >
+                <Image 
+                  src="/image/dept-logo.png" 
+                  fill 
+                  alt="DEPT" 
+                  className="object-contain drop-shadow-[0_0_25px_rgba(249,115,22,0.6)]" 
+                />
+             </motion.div>
+          </div>
+       </div>
+    </div>
+  );
+};
 
 const FiberOpticLines = () => {
   return (
@@ -107,56 +164,47 @@ const HollowOctagons = () => {
   );
 };
 
-const FloatingTechIcons = () => {
-  const icons = [
-    { Icon: Code2, color: "text-blue-500" },
-    { Icon: Terminal, color: "text-orange-500" },
-    { Icon: Cpu, color: "text-blue-400" },
-    { Icon: Database, color: "text-orange-400" },
-    { Icon: Globe, color: "text-white" },
-    { Icon: Zap, color: "text-blue-300" },
-    { Icon: Wifi, color: "text-orange-300" },
-    { Icon: Lock, color: "text-slate-400" },
-    { Icon: Monitor, color: "text-blue-600" },
-    { Icon: Server, color: "text-orange-600" },
-  ];
-
-  const [items, setItems] = useState<{Icon: any, color: string, x: number, y: number, size: number, duration: number}[]>([]);
-
-  useEffect(() => {
-    setItems(Array.from({ length: 15 }).map(() => ({
-      ...icons[Math.floor(Math.random() * icons.length)],
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 20 + 20,
-      duration: Math.random() * 20 + 10,
-    })));
-  }, []);
-
+const DigitalGrid = () => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {items.map((item, i) => (
+      {/* Base Grid */}
+      <div 
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, #3b82f6 1px, transparent 1px),
+            linear-gradient(to bottom, #3b82f6 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
+      
+      {/* Moving Horizontal Scanline */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent h-[200px] w-full"
+        animate={{ top: ['-20%', '120%'] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      />
+
+      {/* Random Glowing Dots */}
+      {Array.from({ length: 20 }).map((_, i) => (
         <motion.div
           key={i}
-          className={cn("absolute opacity-20", item.color)}
+          className="absolute w-1 h-1 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]"
           style={{
-            left: `${item.x}%`,
-            top: `${item.y}%`,
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
           }}
           animate={{
-            y: [0, -100, 0],
-            x: [0, 50, 0],
-            rotate: [0, 360],
-            opacity: [0.1, 0.3, 0.1],
+            opacity: [0, 1, 0],
+            scale: [0, 1.5, 0],
           }}
           transition={{
-            duration: item.duration,
+            duration: Math.random() * 3 + 2,
             repeat: Infinity,
-            ease: "linear",
+            delay: Math.random() * 5,
           }}
-        >
-          <item.Icon size={item.size} />
-        </motion.div>
+        />
       ))}
     </div>
   );
@@ -226,9 +274,10 @@ export const BSITBackground = () => {
   return (
     <>
       <div className="fixed inset-0 bg-[#020617] -z-50" />
+      <DigitalGrid />
+      <ScannerLogos />
       <FiberOpticLines />
       <HollowOctagons />
-      <FloatingTechIcons />
       {/* Deep Vignette */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#020617_100%)] pointer-events-none" />
     </>

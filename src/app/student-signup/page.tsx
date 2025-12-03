@@ -240,7 +240,7 @@ export default function StudentSignupPage() {
                     onMouseMove={handleMouseMove}
                 >
                     {/* Gradient Border */}
-                    <div className="absolute -inset-0.5 bg-gradient-to-br from-blue-500 via-orange-500 to-blue-600 rounded-[2rem] blur opacity-30 group-hover:opacity-60 transition duration-500" />
+                    <div className="absolute -inset-0.5 bg-gradient-to-br from-blue-900 via-orange-500 to-white rounded-[2rem] blur opacity-30 group-hover:opacity-50 transition duration-500" />
                     
                     <div className="relative w-full bg-[#0B1121]/90 backdrop-blur-xl rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl p-8 md:p-10">
                         
@@ -254,14 +254,26 @@ export default function StudentSignupPage() {
                             </div>
                         </Link>
 
+                        {/* Tech Grid Pattern Reveal */}
+                        <motion.div
+                            className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-40"
+                            style={{
+                                backgroundImage: 'radial-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px)',
+                                backgroundSize: '24px 24px',
+                                maskImage: useMotionTemplate`radial-gradient(350px circle at ${mouseX}px ${mouseY}px, black, transparent)`,
+                                WebkitMaskImage: useMotionTemplate`radial-gradient(350px circle at ${mouseX}px ${mouseY}px, black, transparent)`,
+                            }}
+                        />
+
                         {/* Spotlight */}
                         <motion.div
                             className="pointer-events-none absolute -inset-px rounded-[2rem] opacity-0 transition duration-500 group-hover:opacity-100"
                             style={{
                                 background: useMotionTemplate`
                                 radial-gradient(
-                                    500px circle at ${mouseX}px ${mouseY}px,
-                                    rgba(255,255,255,0.06),
+                                    650px circle at ${mouseX}px ${mouseY}px,
+                                    rgba(59, 130, 246, 0.05),
+                                    rgba(30, 58, 138, 0.1),
                                     transparent 80%
                                 )
                                 `,

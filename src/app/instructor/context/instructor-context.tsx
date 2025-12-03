@@ -7,7 +7,7 @@ import type { AdminAnnouncement, Student, Subject } from '@/app/admin/context/ad
 import { useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { resolveMediaUrl } from '@/lib/utils';
-import { notifyDataChanged } from '@/lib/live-sync';
+import { notifyDataChanged, DATA_SYNC_CHANNEL } from '@/lib/live-sync';
 
 type InstructorPersonal = {
     id: number;
@@ -165,13 +165,16 @@ interface InstructorContextType {
   instructorData: InstructorDataType | null;
   setInstructorData: React.Dispatch<React.SetStateAction<InstructorDataType | null>>;
   updateStudentGrade: (studentId: string, subjectCode: string, term: GradeTermKey, grade: GradeValue) => Promise<void>;
+  refreshData: () => Promise<void>;
+  isRefreshing: boolean;
 }
 
 const InstructorContext = createContext<InstructorContextType | undefined>(undefined);
 
 export const InstructorProvider = ({ children }: { children: React.ReactNode }) => {
-  const { adminData, setAdminData } = useAdmin();
+  const { adminData, setAdminData, refreshAdminData } = useAdmin();
   const [instructorData, setInstructorData] = useState<InstructorDataType | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const searchParams = useSearchParams();
   const instructorEmail = searchParams.get('email');
 
@@ -360,6 +363,46 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
     notifyDataChanged();
   }, [adminData, buildApiUrl, instructorData, setAdminData]);
 
+  // Refresh data function that triggers admin data refresh
+  const refreshData = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await refreshAdminData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refreshAdminData]);
+
+  // Listen for broadcast channel updates from other tabs
+  useEffect(() => {
+    if (!instructorEmail || typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') {
+      return;
+    }
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel(DATA_SYNC_CHANNEL);
+    } catch (error) {
+      console.warn('[InstructorProvider] Unable to subscribe to data sync channel.', error);
+      return;
+    }
+
+    const handler = (event: MessageEvent<{ topic?: string }>) => {
+      if (event.data?.topic === 'admin-data') {
+        // Admin data will be refreshed by AdminProvider, instructor data will update via useEffect
+        console.log('[InstructorProvider] Received data sync notification');
+      }
+    };
+
+    channel.addEventListener('message', handler);
+
+    return () => {
+      channel?.removeEventListener('message', handler);
+      channel?.close();
+    };
+  }, [instructorEmail]);
+
   if (!instructorData) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
@@ -369,7 +412,7 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <InstructorContext.Provider value={{ instructorData, setInstructorData, updateStudentGrade }}>
+    <InstructorContext.Provider value={{ instructorData, setInstructorData, updateStudentGrade, refreshData, isRefreshing }}>
       {children}
     </InstructorContext.Provider>
   );

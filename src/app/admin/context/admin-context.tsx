@@ -322,6 +322,10 @@ type Grade = {
 type StudentGrades = {
     [studentId: string]: Grade[];
 };
+
+const GRADE_TERM_KEYS: GradeTermKey[] = ['prelim', 'midterm', 'final'];
+const isGradeTermKey = (value: string): value is GradeTermKey =>
+    GRADE_TERM_KEYS.includes(value as GradeTermKey);
 const initialGrades: StudentGrades = {
     '21-00-0123': [
         { subjectCode: 'IT 101', grade: 1.5, terms: {} },
@@ -584,6 +588,103 @@ const normalizeSubjects = (subjects?: Record<string, Array<Partial<Subject> & { 
     return normalized;
 };
 
+const normalizeGradeValue = (value: unknown, remark?: string | null): GradeValue => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed === '') {
+            // fall through to remark check
+        } else if (!Number.isNaN(Number(trimmed))) {
+            return Number(trimmed);
+        } else if (trimmed.toUpperCase() === 'INC') {
+            return 'INC';
+        }
+    }
+
+    const normalizedRemark = typeof remark === 'string' ? remark.trim().toUpperCase() : null;
+    if (normalizedRemark === 'INC') {
+        return 'INC';
+    }
+
+    return null;
+};
+
+const normalizeGradeTermsPayload = (terms: unknown, remark?: string | null): GradeTermMap => {
+    const normalized: GradeTermMap = {};
+    const normalizedRemark = typeof remark === 'string' ? remark.trim().toUpperCase() : null;
+
+    type TermEntry = { key?: string; value: unknown };
+    const termEntries: TermEntry[] = [];
+
+    if (Array.isArray(terms)) {
+        terms.forEach((value) => termEntries.push({ value }));
+    } else if (terms && typeof terms === 'object') {
+        Object.entries(terms as Record<string, unknown>).forEach(([key, value]) => {
+            termEntries.push({ key, value });
+        });
+    }
+
+    termEntries.forEach(({ key: fallbackKey, value }) => {
+        if (!value || typeof value !== 'object') {
+            return;
+        }
+        const record = value as Record<string, unknown>;
+        const termRaw = typeof record.term === 'string' ? record.term : fallbackKey;
+        if (typeof termRaw !== 'string') {
+            return;
+        }
+        const termCandidate = termRaw.trim().toLowerCase();
+        if (!isGradeTermKey(termCandidate)) {
+            return;
+        }
+        const termKey = termCandidate;
+
+        const weightValue = (() => {
+            if (typeof record.weight === 'number' && Number.isFinite(record.weight)) {
+                return record.weight;
+            }
+            if (typeof record.weight === 'string') {
+                const parsed = Number(record.weight.trim());
+                if (!Number.isNaN(parsed)) {
+                    return parsed;
+                }
+            }
+            return null;
+        })();
+
+        normalized[termKey] = {
+            term: termKey,
+            grade: normalizeGradeValue(record.grade, remark),
+            weight: weightValue,
+            encodedAt:
+                typeof record.encodedAt === 'string' && record.encodedAt.trim() !== ''
+                    ? record.encodedAt.trim()
+                    : null,
+        };
+    });
+
+    if (normalizedRemark === 'INC') {
+        GRADE_TERM_KEYS.forEach((key) => {
+            const existing = normalized[key];
+            if (!existing) {
+                normalized[key] = {
+                    term: key,
+                    grade: 'INC',
+                    weight: null,
+                    encodedAt: null,
+                };
+            } else if (existing.grade === null) {
+                normalized[key] = { ...existing, grade: 'INC' };
+            }
+        });
+    }
+
+    return normalized;
+};
+
 const normalizeGrades = (grades?: StudentGrades): StudentGrades => {
     if (!grades) {
         return {};
@@ -592,11 +693,20 @@ const normalizeGrades = (grades?: StudentGrades): StudentGrades => {
     const normalized: StudentGrades = {};
 
     for (const [studentId, entries] of Object.entries(grades)) {
-        normalized[studentId] = entries.map((entry) => ({
-            ...entry,
-            grade: typeof entry.grade === 'number' ? entry.grade : null,
-            terms: entry.terms ?? {},
-        }));
+        if (!Array.isArray(entries)) {
+            normalized[studentId] = [];
+            continue;
+        }
+
+        normalized[studentId] = entries.map((entry) => {
+            const remark = typeof entry.remark === 'string' ? entry.remark : null;
+            const normalizedEntry: Grade = {
+                ...entry,
+                grade: normalizeGradeValue(entry.grade, remark),
+                terms: normalizeGradeTermsPayload(entry.terms, remark),
+            };
+            return normalizedEntry;
+        });
     }
 
     return normalized;

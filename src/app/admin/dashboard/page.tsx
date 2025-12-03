@@ -8,6 +8,11 @@ import {
   AlertTriangle,
   UserX,
   Users,
+  GraduationCap,
+  Layers,
+  FileText,
+  UserCheck,
+  Calendar
 } from 'lucide-react';
 import React from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell, Legend } from "recharts"
@@ -40,7 +45,7 @@ import { useAdmin } from '../context/admin-context';
 const yearLevelChartConfig = {
   students: {
     label: "Students",
-    color: "hsl(var(--accent))",
+    color: "hsl(var(--primary))",
   },
 } satisfies ChartConfig
 
@@ -54,9 +59,9 @@ type SchedulingIssue = {
 };
 
 const STUDENT_STATUS_COLORS: Record<string, string> = {
-  New: 'hsl(var(--chart-1))',
-  Old: 'hsl(var(--chart-2))',
-  Transferee: 'hsl(var(--chart-3))',
+  New: 'hsl(217.2 91.2% 59.8%)', // Blue
+  Old: 'hsl(24 95% 53%)', // Orange
+  Transferee: 'hsl(210 40% 96.1%)', // Muted/Whiteish
   Unknown: 'hsl(var(--muted-foreground))',
 };
 
@@ -241,56 +246,100 @@ export default function AdminDashboardPage() {
   const shouldScrollSchedulingHealth = schedulingIssues.length > 5;
 
   const totalUsersCard = (
-    <Card className="rounded-xl transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2">
-      <CardHeader>
-        <CardTitle>Total Users</CardTitle>
-        <CardDescription>All system users</CardDescription>
+    <Card className="group relative overflow-hidden rounded-xl border-white/10 bg-gradient-to-br from-blue-500/5 to-purple-500/5 hover:from-blue-500/10 hover:to-purple-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+      <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+      <CardHeader className="relative z-10 border-b border-white/5 pb-4">
+        <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                <Users className="h-5 w-5" />
+            </div>
+            <div>
+                <CardTitle className="text-lg font-semibold text-white">Total Users</CardTitle>
+                <CardDescription className="text-slate-400">All system users</CardDescription>
+            </div>
+        </div>
       </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-bold">{totalUsers}</p>
+      <CardContent className="relative z-10 p-6">
+        <div className="text-3xl font-bold text-slate-100">{totalUsers}</div>
       </CardContent>
     </Card>
   );
 
   return (
-    <>
-      <main className="flex-1 p-4 sm:p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/admin/dashboard/students" className="focus:outline-none">
-            <Card className="rounded-xl transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2">
-              <CardHeader>
-                <CardTitle>Total Students</CardTitle>
-                <CardDescription>All active students</CardDescription>
+    <div className="flex-1 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="flex items-center justify-between">
+            <div>
+                <h1 className="text-3xl font-bold text-slate-100 tracking-tight">Dashboard</h1>
+                <p className="text-slate-400 mt-1">
+                    Overview of system performance and enrollment statistics.
+                </p>
+            </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Link href="/admin/dashboard/students" className="focus:outline-none block">
+            <Card className="group relative overflow-hidden rounded-xl border-white/10 bg-gradient-to-br from-blue-500/5 to-purple-500/5 hover:from-blue-500/10 hover:to-purple-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+              <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+              <CardHeader className="relative z-10 border-b border-white/5 pb-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400">
+                        <GraduationCap className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-semibold text-white">Total Students</CardTitle>
+                        <CardDescription className="text-slate-400">Active enrolled</CardDescription>
+                    </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{totalStudents}</p>
+              <CardContent className="relative z-10 p-6">
+                <div className="text-3xl font-bold text-slate-100">{totalStudents}</div>
               </CardContent>
             </Card>
           </Link>
-          <Link href="/admin/dashboard/manage-blocks" className="focus:outline-none">
-            <Card className="rounded-xl transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2">
-              <CardHeader>
-                <CardTitle>Total Blocks</CardTitle>
-                <CardDescription>Available block sections</CardDescription>
+
+          <Link href="/admin/dashboard/manage-blocks" className="focus:outline-none block">
+            <Card className="group relative overflow-hidden rounded-xl border-white/10 bg-gradient-to-br from-blue-500/5 to-purple-500/5 hover:from-blue-500/10 hover:to-purple-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+              <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+              <CardHeader className="relative z-10 border-b border-white/5 pb-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                        <Layers className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-semibold text-white">Total Blocks</CardTitle>
+                        <CardDescription className="text-slate-400">Active sections</CardDescription>
+                    </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{totalBlocks}</p>
+              <CardContent className="relative z-10 p-6">
+                <div className="text-3xl font-bold text-slate-100">{totalBlocks}</div>
               </CardContent>
             </Card>
           </Link>
-          <Link href="/admin/dashboard/manage-applications" className="focus:outline-none">
-            <Card className="rounded-xl transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2">
-              <CardHeader>
-                <CardTitle>Pending Applications</CardTitle>
-                <CardDescription>Awaiting review</CardDescription>
+
+          <Link href="/admin/dashboard/manage-applications" className="focus:outline-none block">
+            <Card className="group relative overflow-hidden rounded-xl border-white/10 bg-gradient-to-br from-blue-500/5 to-purple-500/5 hover:from-blue-500/10 hover:to-purple-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+              <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+              <CardHeader className="relative z-10 border-b border-white/5 pb-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                        <FileText className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-semibold text-white">Applications</CardTitle>
+                        <CardDescription className="text-slate-400">Pending review</CardDescription>
+                    </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{pendingApplications.length}</p>
+              <CardContent className="relative z-10 p-6">
+                <div className="text-3xl font-bold text-slate-100">{pendingApplications.length}</div>
               </CardContent>
             </Card>
           </Link>
+
           {canAccessTotalUsers ? (
-            <Link href="/admin/dashboard/users" className="focus:outline-none">
+            <Link href="/admin/dashboard/users" className="focus:outline-none block">
               {totalUsersCard}
             </Link>
           ) : (
@@ -303,42 +352,99 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="flex flex-col lg:col-span-2 rounded-xl">
-            <CardHeader>
-              <CardTitle>Student Population by Year Level</CardTitle>
-              <CardDescription>Distribution of students across all year levels.</CardDescription>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Bar Chart */}
+          <Card className="flex flex-col lg:col-span-2 rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-white/5 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-semibold text-white">Student Population</CardTitle>
+                  <CardDescription className="text-slate-400">Distribution by year level</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="flex-1">
+            <CardContent className="flex-1 p-6">
               {yearLevelData.length > 0 ? (
-                <ChartContainer config={yearLevelChartConfig} className="min-h-[200px] w-full">
-                  <BarChart accessibilityLayer data={yearLevelData}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis dataKey="level" tickLine={false} tickMargin={10} axisLine={false} />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="students" fill="var(--color-students)" radius={4} />
+                <ChartContainer config={yearLevelChartConfig} className="min-h-[250px] w-full">
+                  <BarChart accessibilityLayer data={yearLevelData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis 
+                      dataKey="level" 
+                      tickLine={false} 
+                      tickMargin={10} 
+                      axisLine={false}
+                      tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    />
+                    <YAxis 
+                      tickLine={false} 
+                      axisLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    />
+                    <ChartTooltip 
+                      cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                      content={<ChartTooltipContent className="bg-slate-900 border-white/10 text-slate-200" />} 
+                    />
+                    <Bar 
+                      dataKey="students" 
+                      fill="url(#colorStudents)" 
+                      radius={[8, 8, 0, 0]} 
+                      maxBarSize={50}
+                      animationDuration={2000}
+                      animationEasing="ease-out"
+                    />
                   </BarChart>
                 </ChartContainer>
               ) : (
-                <p className="text-sm text-muted-foreground">No student enrollment data available yet.</p>
+                <div className="flex h-[250px] items-center justify-center text-sm text-slate-500">
+                  No student enrollment data available yet.
+                </div>
               )}
             </CardContent>
-            <CardFooter className="flex-col items-start gap-2 text-sm">
-              <div className="leading-none text-muted-foreground">Showing student counts for the current academic year.</div>
-            </CardFooter>
           </Card>
-          <Card className="flex flex-col rounded-xl">
-            <CardHeader>
-              <CardTitle>Student Demographics</CardTitle>
-              <CardDescription>Breakdown by student status.</CardDescription>
+
+          {/* Pie Chart */}
+          <Card className="flex flex-col rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-white/5 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400">
+                  <UserCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-semibold text-white">Demographics</CardTitle>
+                  <CardDescription className="text-slate-400">Student status breakdown</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="flex-1 flex items-center justify-center">
+            <CardContent className="flex-1 flex items-center justify-center p-6">
               {studentStatusData.length > 0 ? (
-                <ChartContainer config={studentStatusConfig} className="min-h-[200px] w-full max-w-[250px]">
+                <ChartContainer config={studentStatusConfig} className="min-h-[250px] w-full">
                   <PieChart accessibilityLayer>
-                    <ChartTooltip content={<ChartTooltipContent nameKey="value" hideLabel />} />
-                    <Pie data={studentStatusData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} strokeWidth={2}>
+                    <ChartTooltip content={<ChartTooltipContent nameKey="value" hideLabel className="bg-slate-900 border-white/10 text-slate-200" />} />
+                    <Pie 
+                      data={studentStatusData} 
+                      dataKey="value" 
+                      nameKey="name" 
+                      innerRadius={65} 
+                      outerRadius={100}
+                      paddingAngle={4}
+                      cornerRadius={6} 
+                      strokeWidth={2}
+                      stroke="#0f172a"
+                      animationDuration={2000}
+                      animationEasing="ease-out"
+                    >
                       {studentStatusData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
@@ -349,80 +455,106 @@ export default function AdminDashboardPage() {
                           return null;
                         }
                         return (
-                          <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                          <div className="flex flex-wrap justify-center gap-4 mt-4">
                             {payload.map((entry, index) => (
-                              <li key={`item-${index}`} className="flex items-center gap-1.5">
+                              <div key={`item-${index}`} className="flex items-center gap-2 text-xs text-slate-400">
                                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
                                 <span>{entry.value}</span>
-                              </li>
+                              </div>
                             ))}
-                          </ul>
+                          </div>
                         );
                       }}
                       verticalAlign="bottom"
-                      align="left"
-                      wrapperStyle={{ paddingTop: '1rem', boxSizing: 'content-box' }}
+                      align="center"
                     />
                   </PieChart>
                 </ChartContainer>
               ) : (
-                <p className="text-sm text-muted-foreground">No student status data available yet.</p>
+                <div className="flex h-[250px] items-center justify-center text-sm text-slate-500">
+                  No student status data available yet.
+                </div>
               )}
             </CardContent>
           </Card>
-          <Card className="lg:col-span-3 rounded-xl">
-            <CardHeader>
-              <CardTitle>Scheduling Health</CardTitle>
-              <CardDescription>A summary of current scheduling issues that need attention.</CardDescription>
+
+          {/* Scheduling Health */}
+          <Card className="lg:col-span-3 rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-white/5 pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-red-500/10 text-red-400">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-white">Scheduling Health</CardTitle>
+                    <CardDescription className="text-slate-400">Current scheduling conflicts and issues</CardDescription>
+                  </div>
+                </div>
+                {schedulingIssues.length > 0 && (
+                  <Badge variant="outline" className="border-red-500/20 text-red-500 bg-red-500/5">
+                    {schedulingIssues.length} Issues Found
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className={shouldScrollSchedulingHealth ? 'max-h-[360px] overflow-y-auto pr-2' : undefined}>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Block</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Issue Type</TableHead>
-                    <TableHead>Details</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {schedulingIssues.length > 0 ? (
-                    schedulingIssues.map((issue) => (
-                      <TableRow key={issue.id} className={issue.priority === 'high' ? 'bg-destructive/10 hover:bg-destructive/20' : ''}>
-                        <TableCell className="font-medium">{issue.block}</TableCell>
-                        <TableCell>{issue.subject}</TableCell>
-                        <TableCell>
-                          <Badge variant={issue.type === 'Conflict' ? 'destructive' : 'secondary'}>
-                            {issue.type === 'Conflict' ? <AlertTriangle className="mr-1 h-3 w-3" /> : <UserX className="mr-1 h-3 w-3" />}
-                            {issue.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{issue.details}</TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild variant="outline" size="sm" className="rounded-full hover:border-accent">
-                            <Link href={`/admin/dashboard/schedule/${encodeURIComponent(issue.block)}`}>
-                              View Schedule
-                            </Link>
-                          </Button>
+            <CardContent className="p-6">
+              <div className={`rounded-xl border border-white/10 overflow-hidden ${shouldScrollSchedulingHealth ? 'max-h-[360px] overflow-y-auto' : ''}`}>
+                <Table>
+                  <TableHeader className="bg-white/5">
+                    <TableRow className="hover:bg-white/5 border-white/10">
+                      <TableHead className="w-[100px] text-slate-400 font-medium">Block</TableHead>
+                      <TableHead className="text-slate-400 font-medium">Subject</TableHead>
+                      <TableHead className="text-slate-400 font-medium">Issue Type</TableHead>
+                      <TableHead className="text-slate-400 font-medium">Details</TableHead>
+                      <TableHead className="text-right text-slate-400 font-medium">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {schedulingIssues.length > 0 ? (
+                      schedulingIssues.map((issue) => (
+                        <TableRow key={issue.id} className={`border-white/5 ${issue.priority === 'high' ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-white/5'}`}>
+                          <TableCell className="font-medium text-slate-200">{issue.block}</TableCell>
+                          <TableCell className="text-slate-400">{issue.subject}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`${
+                              issue.type === 'Conflict' 
+                                ? 'border-red-500/20 text-red-500 bg-red-500/5' 
+                                : 'border-orange-500/20 text-orange-500 bg-orange-500/5'
+                            }`}>
+                              {issue.type === 'Conflict' ? <AlertTriangle className="mr-1 h-3 w-3" /> : <UserX className="mr-1 h-3 w-3" />}
+                              {issue.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-400">{issue.details}</TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild variant="ghost" size="sm" className="hover:bg-blue-500/10 hover:text-blue-500 text-slate-400">
+                              <Link href={`/admin/dashboard/schedule/${encodeURIComponent(issue.block)}`}>
+                                View Schedule <ArrowUpRight className="ml-2 h-3 w-3" />
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-32 text-center">
+                          <div className="flex flex-col items-center justify-center text-slate-500">
+                            <div className="p-3 rounded-full bg-emerald-500/10 mb-2">
+                              <Calendar className="h-6 w-6 text-emerald-500" />
+                            </div>
+                            <p className="font-medium text-slate-300">All Clear!</p>
+                            <p className="text-sm">No scheduling issues detected.</p>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                        All schedules look good. No issues detected.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
         </div>
-      </main>
-    </>
+    </div>
   );
 }

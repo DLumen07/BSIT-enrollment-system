@@ -11,11 +11,14 @@ import {
   ClipboardList,
   Settings,
   ChevronRight,
+  Monitor, Database, Zap, Cpu, Server, Globe, Code2, Terminal, Wifi, Lock
 } from 'lucide-react';
 import Image from 'next/image';
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { StudentProvider, useStudent } from '@/app/student/context/student-context';
+import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 import {
   SidebarProvider,
@@ -38,7 +41,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/page-transition';
@@ -46,6 +48,12 @@ import NotificationBell from '@/components/notification-bell';
 import { useNotificationCenter } from '@/hooks/use-notification-center';
 import type { NotificationSeed } from '@/types/notifications';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+
+
+
+
+
 
 const Breadcrumb = () => {
     const pathname = usePathname();
@@ -185,7 +193,6 @@ function Header() {
               <Breadcrumb />
             </div>
             <div className="flex items-center gap-4">
-              <ThemeToggle />
               <NotificationBell
                 notifications={notifications}
                 unreadCount={unreadCount}
@@ -234,89 +241,96 @@ function StudentLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <div className="flex items-center gap-2">
+      <Sidebar className="border-r border-white/10 bg-[#020617] text-white overflow-hidden" variant="sidebar">
+        <SidebarHeader className="border-b border-white/10 bg-white/5 backdrop-blur-sm py-4 relative z-10">
+          <div className="flex items-center gap-3 px-2">
             {schoolLogo && (
-                <Image
-                src={schoolLogo.imageUrl}
-                alt={schoolLogo.description}
-              width={48}
-              height={48}
-                data-ai-hint={schoolLogo.imageHint}
-                className="rounded-full"
-                />
+                <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full shadow-lg shadow-blue-500/20">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-orange-500 to-blue-600" />
+                  <div className="absolute inset-[2px] rounded-full bg-slate-900">
+                      <Image
+                      src={schoolLogo.imageUrl}
+                      alt={schoolLogo.description}
+                      fill
+                      className="object-cover rounded-full"
+                      data-ai-hint={schoolLogo.imageHint}
+                      />
+                  </div>
+                </div>
             )}
-            <span className="font-semibold text-lg">Student Portal</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-lg tracking-tight text-white">BSIT Enrollment</span>
+              <span className="text-xs text-blue-200/70 font-medium">Student Portal</span>
+            </div>
           </div>
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent className="relative z-10 px-2 py-4">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard'}>
+              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/student/dashboard?${emailQuery}`}>
                   <Home />
-                  Dashboard
+                  <span className="font-medium">Dashboard</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/profile'}>
+              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/profile'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/student/dashboard/profile?${emailQuery}`}>
                   <User />
-                  Profile
+                  <span className="font-medium">Profile</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/student/dashboard/enrollment')}>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/student/dashboard/enrollment')} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/student/dashboard/enrollment?${emailQuery}`}>
                   <FileSignature />
-                  Enrollment
+                  <span className="font-medium">Enrollment</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/schedule'}>
+              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/schedule'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/student/dashboard/schedule?${emailQuery}`}>
                   <CalendarCheck2 />
-                  Schedule
+                  <span className="font-medium">Schedule</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/grades'}>
+              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/grades'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/student/dashboard/grades?${emailQuery}`}>
                   <GraduationCap />
-                  Grades
+                  <span className="font-medium">Grades</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/records'}>
+              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/records'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/student/dashboard/records?${emailQuery}`}>
                   <ClipboardList />
-                  Records
+                  <span className="font-medium">Records</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/settings'}>
+              <SidebarMenuButton asChild isActive={pathname === '/student/dashboard/settings'} className="hover:bg-white/10 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200">
                 <Link href={`/student/dashboard/settings?${emailQuery}`}>
                   <Settings />
-                  Settings
+                  <span className="font-medium">Settings</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="relative z-10">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild className="hover:bg-white/10 hover:text-white transition-all duration-200">
                 <Link href="/">
                   <LogOut />
-                  Logout
+                  <span className="font-medium">Logout</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

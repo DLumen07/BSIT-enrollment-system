@@ -224,3 +224,20 @@ A temporary table to hold pending enrollment applications for admin review.
 | `submitted_at`   | Timestamp   | When the application was submitted.                  |                                                           |
 | `rejection_reason` | String      | Reason for rejection, if applicable. Nullable.     |                                                           |
 | `form_data`      | JSON/Text   | A snapshot of all the data from the enrollment form. | Useful for review and record-keeping.                     |
+
+---
+
+### 15. `program_events` Table
+Stores institutional events that power the Program Calendar on the admin dashboard.
+
+| Column        | Type      | Description                                              | Notes                                                    |
+|---------------|-----------|----------------------------------------------------------|----------------------------------------------------------|
+| `id`          | Integer   | Primary Key.                                             | Auto-increment.                                          |
+| `event_date`  | Date      | Date the institutional activity takes place.             | Indexed for filtering and sorting.                       |
+| `title`       | String    | Short name of the event.                                 | Maximum length 255 characters.                           |
+| `description` | Text      | Optional supporting details.                             | Nullable.                                                |
+| `created_by`  | Integer   | FK to `users.id` referencing the admin who added it.     | Null when seeded/system generated.                       |
+| `created_at`  | Timestamp | Automatically set when the event is created.             | Defaults to `CURRENT_TIMESTAMP`.                         |
+| `updated_at`  | Timestamp | Automatically refreshed whenever the record is modified. | Maintained via `ON UPDATE CURRENT_TIMESTAMP`.            |
+
+Persist events here to keep the Program Calendar consistent across sessions and devices.

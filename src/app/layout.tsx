@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AdminProvider } from './admin/context/admin-context';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { cn } from '@/lib/utils';
+import { ScrollReveal } from '@/components/ui/scroll-reveal';
 
 export const metadata: Metadata = {
   title: 'BSIT Enrollment System',
@@ -39,13 +40,15 @@ export default function RootLayout({
       <body className={cn("font-body antialiased transition-colors duration-300")}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          forcedTheme="dark"
           disableTransitionOnChange
         >
           <QueryProvider>
             <AdminProvider>
-              {children}
+              <ScrollReveal className="min-h-screen">
+                {children}
+              </ScrollReveal>
             </AdminProvider>
           </QueryProvider>
           <Toaster />

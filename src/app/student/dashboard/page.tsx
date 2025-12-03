@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, Users, Clock, BookOpen, UserCheck } from 'lucide-react';
+import { Info, Users, Clock, BookOpen, UserCheck, FileText, Layers, GraduationCap, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -189,249 +189,307 @@ export default function StudentDashboardPage() {
             : semesterDisplay;
 
   return (
-    <main className="flex-1 p-4 sm:p-6">
-        <div className="space-y-4">
-            <h1 className="text-2xl font-bold tracking-tight">Welcome, {studentData.personal.firstName}!</h1>
-            {isEnrolled && (
-                 <p className="text-muted-foreground">
-                    Here's a summary of your current academic status.
-                </p>
-            )}
-            {!isEnrolled && (
-                 <p className="text-muted-foreground">
-                    It looks like you haven't enrolled yet. Please complete your enrollment to access all features.
-                </p>
-            )}
+    <main className="flex-1 p-4 sm:p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight">Welcome back, {studentData.personal.firstName}!</h1>
+            <p className="text-muted-foreground">
+                {isEnrolled 
+                    ? `You are currently enrolled for ${enrollmentTermSummary ?? 'the current term'}.`
+                    : "You are not officially enrolled yet. Please complete your enrollment."}
+            </p>
         </div>
 
         {!isEnrolled && (
-            <Alert className="mt-6 border-primary rounded-xl">
+            <Alert className="border-primary/50 bg-primary/5 text-primary rounded-xl">
                 <Info className="h-4 w-4" />
-                <AlertTitle>Important Notice</AlertTitle>
+                <AlertTitle>Enrollment Pending</AlertTitle>
                 <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    You are not yet officially enrolled for the current academic year. Please proceed to the enrollment page to complete the process.
-                    <Button asChild variant="default" className="mt-2 sm:mt-0 rounded-xl">
-                        <Link href="/student/dashboard/enrollment">Go to Enrollment</Link>
+                    Please proceed to the enrollment page to complete your registration.
+                    <Button asChild variant="default" size="sm" className="mt-2 sm:mt-0 rounded-lg">
+                        <Link href="/student/dashboard/enrollment">Enroll Now</Link>
                     </Button>
                 </AlertDescription>
             </Alert>
         )}
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mt-6">
-            <Card className="rounded-xl lg:col-span-2">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="group relative overflow-hidden rounded-xl border-white/10 bg-gradient-to-br from-blue-500/5 to-orange-500/5 hover:from-blue-500/10 hover:to-orange-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+                <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+                <CardHeader className="relative z-10 flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Enrollment Status</CardTitle>
+                    <UserCheck className={`h-4 w-4 ${isEnrolled ? 'text-green-500' : 'text-red-500'}`} />
+                </CardHeader>
+                <CardContent className="relative z-10">
+                    <div className="text-2xl font-bold text-foreground">{isEnrolled ? 'Enrolled' : 'Not Enrolled'}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{studentData.academic.statusDisplay || 'Status unknown'}</p>
+                </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden rounded-xl border-white/10 bg-gradient-to-br from-blue-500/5 to-orange-500/5 hover:from-blue-500/10 hover:to-orange-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+                <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+                <CardHeader className="relative z-10 flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Current Block</CardTitle>
+                    <Layers className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent className="relative z-10">
+                    <div className="text-2xl font-bold text-foreground">{block || 'N/A'}</div>
+                    <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-muted-foreground">Section</p>
+                        {isEnrolled && (
+                            <Dialog open={isClassmatesDialogOpen} onOpenChange={setIsClassmatesDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <button className="text-xs text-blue-400 hover:text-blue-300 hover:underline focus:outline-none">
+                                        View Classmates
+                                    </button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md border-white/10 bg-[#020617]">
+                                    <DialogHeader>
+                                        <DialogTitle>Classmates in {block}</DialogTitle>
+                                        <DialogDescription>
+                                            List of all students enrolled in this block.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="max-h-[60vh] overflow-y-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="border-white/10 hover:bg-white/5">
+                                                    <TableHead>Student Name</TableHead>
+                                                    <TableHead>Student ID</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {classmates.length > 0 ? (
+                                                    classmates.map((student) => (
+                                                        <TableRow key={`${student.studentId}-${student.email ?? 'email'}`} className="border-white/10 hover:bg-white/5">
+                                                            <TableCell>
+                                                                <div className="flex items-center gap-3">
+                                                                    <Avatar className="h-8 w-8">
+                                                                        <AvatarImage src={student.avatarUrl ?? undefined} alt={student.name} data-ai-hint="person avatar" />
+                                                                        <AvatarFallback>
+                                                                            {(student.name || student.studentId || '?').charAt(0).toUpperCase()}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-medium">{student.name || 'Unnamed student'}</span>
+                                                                        {student.email && (
+                                                                            <span className="text-xs text-muted-foreground">{student.email}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell>{student.studentId || '—'}</TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                ) : (
+                                                    <TableRow className="border-white/10 hover:bg-white/5">
+                                                        <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
+                                                            No classmates are listed for this block yet.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsClassmatesDialogOpen(false)} className="border-white/10 hover:bg-white/5">Close</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden rounded-xl border-white/10 bg-gradient-to-br from-blue-500/5 to-orange-500/5 hover:from-blue-500/10 hover:to-orange-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+                <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+                <CardHeader className="relative z-10 flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Enrolled Subjects</CardTitle>
+                    <BookOpen className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent className="relative z-10">
+                    <div className="text-2xl font-bold text-foreground">{allStudentSchedule.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Total subjects this term</p>
+                </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden rounded-xl border-white/10 bg-gradient-to-br from-blue-500/5 to-orange-500/5 hover:from-blue-500/10 hover:to-orange-500/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/5">
+                <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+                <CardHeader className="relative z-10 flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Profile Completion</CardTitle>
+                    <FileText className="h-4 w-4 text-blue-400" />
+                </CardHeader>
+                <CardContent className="relative z-10">
+                    <div className="text-2xl font-bold text-foreground">{profileCompletionPercent}%</div>
+                    <div className="w-full bg-white/10 rounded-full h-1.5 mt-2">
+                        <div 
+                            className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" 
+                            style={{ width: `${profileCompletionPercent}%` }}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Today's Schedule */}
+            <Card className="lg:col-span-2 rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm">
                 <CardHeader>
-                    <CardTitle>Today's Schedule</CardTitle>
-                    <CardDescription>Your classes for today.</CardDescription>
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-blue-500/10">
+                            <Calendar className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-lg">Today's Schedule</CardTitle>
+                            <CardDescription>Your classes for today.</CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {todaysSchedule.length > 0 ? (
                         <div className="space-y-4">
                             {todaysSchedule.map(subject => (
-                                <div key={subject.id} className="flex items-start gap-4">
-                                    <div className="flex-shrink-0 w-16 text-right">
-                                        <p className="font-semibold text-sm">{formatTime(subject.startTime)}</p>
+                                <div key={subject.id} className="flex items-start gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/5">
+                                    <div className="flex-shrink-0 w-20 text-right">
+                                        <p className="font-semibold text-sm text-foreground">{formatTime(subject.startTime)}</p>
                                         <p className="text-xs text-muted-foreground">{formatTime(subject.endTime)}</p>
                                     </div>
-                                    <div className="relative w-full pl-4">
-                                         <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary rounded-full"></div>
-                                         <p className="font-semibold">{subject.code}</p>
+                                    <div className="relative w-full pl-4 border-l-2 border-blue-500/50">
+                                         <p className="font-semibold text-foreground">{subject.code}</p>
                                          <p className="text-sm text-muted-foreground">{subject.description}</p>
-                                         <p className="text-xs text-muted-foreground">{subject.instructor}</p>
+                                         <div className="flex items-center gap-2 mt-1">
+                                            <Badge variant="outline" className="text-[10px] border-white/10 bg-white/5 text-muted-foreground">
+                                                {subject.room || 'TBA'}
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground">• {subject.instructor}</span>
+                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-xl h-full">
-                            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-                            <p className="font-semibold">No classes today!</p>
-                            <p className="text-sm text-muted-foreground">Enjoy your day off.</p>
+                        <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
+                            <div className="p-4 rounded-full bg-white/5 mb-4">
+                                <BookOpen className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                            <p className="font-semibold text-lg">No classes today!</p>
+                            <p className="text-sm text-muted-foreground">Enjoy your free time.</p>
                         </div>
                     )}
                 </CardContent>
                  {todaysSchedule.length > 0 && (
                     <CardFooter>
-                        <Button asChild variant="outline" className="w-full">
-                            <Link href="/student/dashboard/schedule">View Full Schedule</Link>
+                        <Button asChild variant="ghost" className="w-full hover:bg-white/5 hover:text-blue-400">
+                            <Link href="/student/dashboard/schedule">View Full Schedule <Clock className="ml-2 h-4 w-4" /></Link>
                         </Button>
                     </CardFooter>
                  )}
             </Card>
-            <div className="space-y-6 lg:col-span-2">
-                <div className="grid gap-6 sm:grid-cols-2">
-                    <Card className="rounded-xl">
-                        <CardHeader>
-                            <CardTitle>Enrollment Status</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {isEnrolled ? (
-                                <>
-                                    <p className="font-semibold text-green-500">Enrolled</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {enrollmentTermSummary ?? 'Academic term details unavailable'}
-                                    </p>
-                                </>
-                            ) : (
-                                <p className="font-semibold text-destructive">Not Enrolled</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                    <Card className="rounded-xl flex flex-col">
-                        <CardHeader>
-                            <CardTitle>Current Block</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-grow">
-                            {isEnrolled ? (
-                                <p className="font-semibold">{block}</p>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">N/A</p>
-                            )}
-                        </CardContent>
-                        {isEnrolled && (
-                             <CardFooter>
-                                <Dialog open={isClassmatesDialogOpen} onOpenChange={setIsClassmatesDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button variant="outline" className="w-full">
-                                            <Users className="mr-2 h-4 w-4" />
-                                            View Classmates
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-md">
-                                        <DialogHeader>
-                                            <DialogTitle>Classmates in {block}</DialogTitle>
-                                            <DialogDescription>
-                                                List of all students enrolled in this block.
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="max-h-[60vh] overflow-y-auto">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Student Name</TableHead>
-                                                        <TableHead>Student ID</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {classmates.length > 0 ? (
-                                                        classmates.map((student) => (
-                                                            <TableRow key={`${student.studentId}-${student.email ?? 'email'}`}>
-                                                                <TableCell>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Avatar className="h-8 w-8">
-                                                                            <AvatarImage src={student.avatarUrl ?? undefined} alt={student.name} data-ai-hint="person avatar" />
-                                                                            <AvatarFallback>
-                                                                                {(student.name || student.studentId || '?').charAt(0).toUpperCase()}
-                                                                            </AvatarFallback>
-                                                                        </Avatar>
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-medium">{student.name || 'Unnamed student'}</span>
-                                                                            {student.email && (
-                                                                                <span className="text-xs text-muted-foreground">{student.email}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell>{student.studentId || '—'}</TableCell>
-                                                            </TableRow>
-                                                        ))
-                                                    ) : (
-                                                        <TableRow>
-                                                            <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
-                                                                No classmates are listed for this block yet.
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button variant="outline" onClick={() => setIsClassmatesDialogOpen(false)}>Close</Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-                            </CardFooter>
-                        )}
-                    </Card>
-                    <Card className="rounded-xl sm:col-span-2">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div className="space-y-1.5">
-                                <CardTitle>Profile Completion</CardTitle>
-                                <CardDescription>Keep your information up to date.</CardDescription>
-                            </div>
-                            <Button asChild size="sm" variant="ghost">
-                                <Link href="/student/dashboard/profile">
-                                    <UserCheck className="mr-2 h-4 w-4" /> Go to Profile
-                                </Link>
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="flex items-center justify-center">
-                            <ChartContainer
-                                config={profileCompletionConfig}
-                                className="mx-auto aspect-square w-full max-w-[200px]"
-                            >
-                                <PieChart>
-                                    <ChartTooltip
-                                        cursor={false}
-                                        content={<ChartTooltipContent hideLabel />}
-                                    />
-                                    <Pie
-                                        data={profileCompletionChartData}
-                                        dataKey="value"
-                                        nameKey="name"
-                                        innerRadius={60}
-                                        strokeWidth={5}
-                                        cornerRadius={40}
-                                    >
-                                        {profileCompletionChartData.map((entry) => (
-                                            <Cell key={entry.name} fill={entry.fill} />
-                                        ))}
-                                    </Pie>
-                                     <text
-                                        x="50%"
-                                        y="50%"
-                                        textAnchor="middle"
-                                        dominantBaseline="middle"
-                                        className="fill-foreground text-2xl font-bold"
-                                    >
-                                        {profileCompletionPercent}%
-                                    </text>
-                                </PieChart>
-                            </ChartContainer>
-                        </CardContent>
-                    </Card>
-                </div>
-                 <Card className="rounded-xl sm:col-span-2">
+
+            {/* Announcements & Profile Chart */}
+            <div className="space-y-6">
+                 <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm">
                     <CardHeader>
-                        <CardTitle>Announcements</CardTitle>
-                        <CardDescription>Latest news and updates.</CardDescription>
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-lg bg-orange-500/10">
+                                <Info className="h-4 w-4 text-orange-500" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg">Announcements</CardTitle>
+                                <CardDescription>Latest updates</CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {displayedAnnouncements.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">No announcements are available right now. Check back soon for updates.</p>
+                            <p className="text-sm text-muted-foreground text-center py-8">No announcements available.</p>
                         ) : (
                             <div className="space-y-3">
                                 {displayedAnnouncements.map((announcement) => {
                                     const authorName = announcement.createdBy.name?.trim() ?? '';
                                     return (
-                                        <div key={announcement.id} className="rounded-lg border p-3">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div>
-                                                    <p className="font-semibold leading-tight">{announcement.title}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {formatAnnouncementTimestamp(announcement.createdAt)}{authorName !== '' ? ` • ${authorName}` : ''}
-                                                    </p>
-                                                </div>
-                                                <Badge variant="secondary">{announcement.audience}</Badge>
+                                        <div key={announcement.id} className="rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors">
+                                            <div className="flex items-start justify-between gap-2 mb-1">
+                                                <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-0 text-[10px] px-1.5 py-0 h-5">
+                                                    {announcement.audience}
+                                                </Badge>
+                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                                    {formatAnnouncementTimestamp(announcement.createdAt)}
+                                                </span>
                                             </div>
-                                            <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">{announcement.message}</p>
+                                            <p className="font-medium text-sm leading-tight mb-1">{announcement.title}</p>
+                                            <p className="text-xs text-muted-foreground line-clamp-2">{announcement.message}</p>
                                         </div>
                                     );
                                 })}
                             </div>
                         )}
-                        {studentData.announcements.length > displayedAnnouncements.length && (
-                            <p className="mt-3 text-xs text-muted-foreground">Showing the latest {displayedAnnouncements.length} announcements.</p>
-                        )}
+                    </CardContent>
+                    {studentData.announcements.length > 0 && (
+                        <CardFooter>
+                             <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-foreground">
+                                View All Announcements
+                             </Button>
+                        </CardFooter>
+                    )}
+                </Card>
+
+                <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <CardHeader className="relative z-10 pb-2">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Profile Status</CardTitle>
+                            <UserCheck className="h-4 w-4 text-blue-400" />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="relative z-10 flex flex-col gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="h-20 w-20 relative flex-shrink-0">
+                                <ChartContainer
+                                    config={profileCompletionConfig}
+                                    className="aspect-square w-full"
+                                >
+                                    <PieChart>
+                                        <defs>
+                                            <linearGradient id="profileGradient" x1="0" y1="0" x2="1" y2="1">
+                                                <stop offset="0%" stopColor="#3b82f6" />
+                                                <stop offset="100%" stopColor="#8b5cf6" />
+                                            </linearGradient>
+                                        </defs>
+                                        <Pie
+                                            data={profileCompletionChartData}
+                                            dataKey="value"
+                                            nameKey="name"
+                                            innerRadius={28}
+                                            outerRadius={38}
+                                            strokeWidth={0}
+                                            cornerRadius={4}
+                                            startAngle={90}
+                                            endAngle={-270}
+                                        >
+                                            {profileCompletionChartData.map((entry, index) => (
+                                                <Cell 
+                                                    key={`cell-${index}`} 
+                                                    fill={entry.name === 'Completed' ? 'url(#profileGradient)' : 'rgba(255,255,255,0.05)'} 
+                                                />
+                                            ))}
+                                        </Pie>
+                                    </PieChart>
+                                </ChartContainer>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className="text-xl font-bold text-foreground">{profileCompletionPercent}%</span>
+                                </div>
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {profileCompletionPercent === 100 
+                                        ? "Great job! Your profile is fully updated." 
+                                        : "Complete your profile to ensure accurate records."}
+                                </p>
+                                <Button asChild variant="outline" size="sm" className="h-7 text-xs w-full border-blue-500/20 hover:bg-blue-500/10 hover:text-blue-400">
+                                    <Link href="/student/dashboard/profile">Update Profile</Link>
+                                </Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

@@ -1,13 +1,15 @@
 
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAdmin } from '../../context/admin-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type UnifiedUser = {
     id: string;
@@ -20,6 +22,9 @@ type UnifiedUser = {
 export default function UsersPage() {
     const { adminData } = useAdmin();
     const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState('All');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 15;
 
     const allUsers = useMemo(() => {
         if (!adminData) return [];
@@ -52,12 +57,24 @@ export default function UsersPage() {
     }, [adminData]);
 
     const filteredUsers = useMemo(() => {
-        return allUsers.filter(user =>
-            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.role.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [allUsers, searchTerm]);
+        return allUsers.filter(user => {
+            const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.role.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            if (roleFilter === 'All') return matchesSearch;
+            if (roleFilter === 'Admin') return matchesSearch && (user.role.includes('Admin') || user.role === 'Moderator');
+            return matchesSearch && user.role === roleFilter;
+        });
+    }, [allUsers, searchTerm, roleFilter]);
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, roleFilter]);
+
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const getRoleBadgeVariant = (role: string) => {
         if (role.includes('Admin')) return 'default';
@@ -67,69 +84,97 @@ export default function UsersPage() {
     };
 
     return (
-        <main className="flex-1 p-4 sm:p-6 space-y-6">
+        <div className="flex-1 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                    <h1 className="text-2xl font-bold tracking-tight">System Users</h1>
-                    <p className="text-muted-foreground">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-100 tracking-tight">System Users</h1>
+                    <p className="text-slate-400 mt-1">
                         A unified list of all users in the system.
                     </p>
                 </div>
             </div>
 
-            <Card className="rounded-xl">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>All Users</CardTitle>
-                            <CardDescription>
-                                Total users found: {filteredUsers.length}
-                            </CardDescription>
+            <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                <CardHeader className="border-b border-white/5 pb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+                                <Users className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg font-semibold text-white">All Users</CardTitle>
+                                <CardDescription className="text-slate-400">
+                                    Total users found: {filteredUsers.length}
+                                </CardDescription>
+                            </div>
                         </div>
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="search"
-                                placeholder="Search users..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px] rounded-xl"
-                            />
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                                <Input
+                                    type="search"
+                                    placeholder="Search users..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9 sm:w-[300px] rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
+                                />
+                            </div>
+                            <Select value={roleFilter} onValueChange={setRoleFilter}>
+                                <SelectTrigger className="w-[140px] rounded-xl bg-white/5 border-white/10 text-white">
+                                    <SelectValue placeholder="Filter by role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">All Roles</SelectItem>
+                                    <SelectItem value="Student">Student</SelectItem>
+                                    <SelectItem value="Instructor">Instructor</SelectItem>
+                                    <SelectItem value="Admin">Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="border rounded-lg">
+                <CardContent className="p-6">
+                    <div className="rounded-xl border border-white/10 overflow-hidden">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Role</TableHead>
+                            <TableHeader className="bg-white/5">
+                                <TableRow className="hover:bg-white/5 border-white/10">
+                                    <TableHead className="text-slate-400 font-medium">User</TableHead>
+                                    <TableHead className="text-slate-400 font-medium">Role</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredUsers.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell>
+                                {paginatedUsers.map((user) => (
+                                    <TableRow key={user.id} className="hover:bg-white/5 border-white/5">
+                                        <TableCell className="text-slate-300">
                                             <div className="flex items-center gap-4">
-                                                <Avatar>
+                                                <Avatar className="border border-white/10">
                                                     <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="person avatar" />
-                                                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                                    <AvatarFallback className="bg-slate-800 text-slate-200">{user.name.charAt(0)}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="grid gap-1">
-                                                    <p className="font-medium">{user.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                                    <p className="font-medium text-slate-200">{user.name}</p>
+                                                    <p className="text-sm text-slate-500">{user.email}</p>
                                                 </div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
+                                            <Badge 
+                                                variant="outline"
+                                                className={
+                                                    user.role.includes('Admin') ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
+                                                    user.role === 'Instructor' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                    user.role === 'Student' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                                    "bg-slate-800 text-slate-300 border-white/10"
+                                                }
+                                            >
+                                                {user.role}
+                                            </Badge>
                                         </TableCell>
                                     </TableRow>
                                 ))}
                                  {filteredUsers.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={2} className="h-24 text-center">
+                                        <TableCell colSpan={2} className="h-24 text-center text-slate-500">
                                             No users found.
                                         </TableCell>
                                     </TableRow>
@@ -137,8 +182,37 @@ export default function UsersPage() {
                             </TableBody>
                         </Table>
                     </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-end space-x-2 py-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                                Previous
+                            </Button>
+                            <div className="text-sm text-slate-400">
+                                Page {currentPage} of {totalPages}
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                            >
+                                Next
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
-        </main>
+        </div>
     );
 }

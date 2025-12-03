@@ -12,34 +12,56 @@ const hasValidDate = (value?: string | null): boolean => {
     return !Number.isNaN(parsed.getTime());
 };
 
-export const isStudentProfileComplete = (student: StudentDataType): boolean => {
-    const requiredStrings: Array<string | null | undefined> = [
-        student.personal.firstName,
-        student.personal.lastName,
-        student.personal.middleName,
-        student.personal.sex,
-        student.personal.civilStatus,
-        student.personal.nationality,
-        student.personal.religion,
-        student.personal.dialect,
-        student.contact.email,
-        student.contact.phoneNumber,
-        student.address.currentAddress,
-        student.address.permanentAddress,
-        student.family.fathersName,
-        student.family.fathersOccupation,
-        student.family.mothersName,
-        student.family.mothersOccupation,
-        student.additional.emergencyContactName,
-        student.additional.emergencyContactAddress,
-        student.additional.emergencyContactNumber,
-        student.education.elementarySchool,
-        student.education.elemYearGraduated,
-        student.education.secondarySchool,
-        student.education.secondaryYearGraduated,
-    ];
+type RequiredFieldCheck = {
+    label: string;
+    value: string | null | undefined;
+};
 
-    if (!requiredStrings.every(isNonEmptyString)) {
+const getRequiredFields = (student: StudentDataType): RequiredFieldCheck[] => [
+    { label: 'First Name', value: student.personal.firstName },
+    { label: 'Last Name', value: student.personal.lastName },
+    { label: 'Sex', value: student.personal.sex },
+    { label: 'Civil Status', value: student.personal.civilStatus },
+    { label: 'Nationality', value: student.personal.nationality },
+    { label: 'Religion', value: student.personal.religion },
+    { label: 'Dialect', value: student.personal.dialect },
+    { label: 'Email', value: student.contact.email },
+    { label: 'Phone Number', value: student.contact.phoneNumber },
+    { label: 'Current Address', value: student.address.currentAddress },
+    { label: 'Permanent Address', value: student.address.permanentAddress },
+    { label: "Father's Name", value: student.family.fathersName },
+    { label: "Father's Occupation", value: student.family.fathersOccupation },
+    { label: "Mother's Name", value: student.family.mothersName },
+    { label: "Mother's Occupation", value: student.family.mothersOccupation },
+    { label: 'Emergency Contact Name', value: student.additional.emergencyContactName },
+    { label: 'Emergency Contact Address', value: student.additional.emergencyContactAddress },
+    { label: 'Emergency Contact Number', value: student.additional.emergencyContactNumber },
+    { label: 'Elementary School', value: student.education.elementarySchool },
+    { label: 'Elementary Year Graduated', value: student.education.elemYearGraduated },
+    { label: 'Secondary School', value: student.education.secondarySchool },
+    { label: 'Secondary Year Graduated', value: student.education.secondaryYearGraduated },
+];
+
+export const getMissingProfileFields = (student: StudentDataType): string[] => {
+    const missingFields: string[] = [];
+    
+    for (const field of getRequiredFields(student)) {
+        if (!isNonEmptyString(field.value)) {
+            missingFields.push(field.label);
+        }
+    }
+    
+    if (!hasValidDate(student.personal.birthdate)) {
+        missingFields.push('Birthdate');
+    }
+    
+    return missingFields;
+};
+
+export const isStudentProfileComplete = (student: StudentDataType): boolean => {
+    const requiredFields = getRequiredFields(student);
+    
+    if (!requiredFields.every(field => isNonEmptyString(field.value))) {
         return false;
     }
 

@@ -1,12 +1,13 @@
 
 'use client';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { MoreHorizontal, Search, Filter, FilterX, Trash2, PlusCircle, Loader2, FileText } from 'lucide-react';
+import { MoreHorizontal, Search, Filter, FilterX, Trash2, PlusCircle, Loader2, FileText, GraduationCap, User, Mail, Phone, Layers, BookOpen } from 'lucide-react';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card';
 import {
   Table,
@@ -51,6 +52,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAdmin, Student, Subject, SemesterValue, ApplicationDocument } from '../../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 import { notifyDataChanged } from '@/lib/live-sync';
+import { cn } from '@/lib/utils';
 
 const normalizeSubjectCode = (code?: string | null): string => {
     if (typeof code !== 'string') {
@@ -126,14 +128,18 @@ const getDocumentStatusVariant = (status?: ApplicationDocument['status']) => {
     }
 };
 
-const InfoField = ({ label, value }: { label: string; value?: string | number | null }) => (
-    value ? (
-        <div className="flex justify-between text-sm py-1">
-            <span className="text-muted-foreground">{label}</span>
-            <span className="font-medium text-right">{value}</span>
+const InfoRow = ({ icon: Icon, label, value }: { icon?: React.ElementType, label: string, value?: string | number | null }) => {
+    if (!value) return null;
+    return (
+        <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+            <div className="flex items-center gap-3 text-slate-400">
+                {Icon && <div className="p-1.5 rounded-md bg-white/5"><Icon className="h-3.5 w-3.5" /></div>}
+                <span className="text-sm font-medium">{label}</span>
+            </div>
+            <span className="text-sm font-semibold text-slate-200">{value}</span>
         </div>
-    ) : null
-);
+    );
+};
 
 type ModifySubjectResponse = {
     status: 'success' | 'error';
@@ -185,6 +191,7 @@ const persistOrfReleases = (map: OrfReleaseMap) => {
 export default function StudentsPage() {
     const { adminData, setAdminData } = useAdmin();
     const { students } = adminData;
+    const isModerator = adminData.currentUser?.role === 'Moderator';
     const { toast } = useToast();
     const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api').replace(/\/$/, '');
     
@@ -765,146 +772,163 @@ export default function StudentsPage() {
 
     return (
         <>
-            <main className="flex-1 p-4 sm:p-6 space-y-6">
+            <div className="flex-1 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                        <h1 className="text-2xl font-bold tracking-tight">Student Directory</h1>
-                        <p className="text-muted-foreground">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-100 tracking-tight">Student Directory</h1>
+                        <p className="text-slate-400 mt-1">
                             Manage and view all enrolled students in the system.
                         </p>
                     </div>
                 </div>
 
-                <Card className="rounded-xl">
-                    <CardHeader>
-                       <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center">
-                         <div className="relative flex-1 md:grow-0">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="search"
-                                placeholder="Search by name, ID, or email..."
-                                className="w-full rounded-xl bg-background pl-8 md:w-[250px] lg:w-[300px]"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex flex-wrap items-center gap-4">
-                           <div className="text-sm text-muted-foreground">
-                                {isFiltered ? `${filteredStudents.length} of ${enrolledStudents.length} students shown` : `Total Enrolled Students: ${filteredStudents.length}`}
+                <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <CardHeader className="border-b border-white/5 pb-4">
+                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400">
+                                    <GraduationCap className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-semibold text-white">Enrolled Students</CardTitle>
+                                    <CardDescription className="text-slate-400">
+                                        {isFiltered ? `${filteredStudents.length} of ${enrolledStudents.length} students shown` : `Total Enrolled: ${filteredStudents.length}`}
+                                    </CardDescription>
+                                </div>
                             </div>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-accent rounded-xl">
-                                        <Filter className="h-4 w-4" />
-                                        Filter
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-4 rounded-xl" align="end">
-                                    <div className="grid grid-cols-1 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>Course</Label>
-                                            <Select value={filters.course} onValueChange={(value) => handleFilterChange('course', value)}>
-                                                <SelectTrigger className="rounded-xl focus:ring-0 focus:ring-offset-0">
-                                                    <SelectValue placeholder="All Courses" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {courses.map(course => <SelectItem key={course} value={course}>{course === 'all' ? 'All Courses' : course}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
+                            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                                <div className="relative flex-1 sm:min-w-[250px]">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                                    <Input
+                                        type="search"
+                                        placeholder="Search by name, ID, or email..."
+                                        className="w-full rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 pl-9"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" className="gap-2 text-slate-300 hover:bg-white/5 hover:text-white rounded-xl">
+                                            <Filter className="h-4 w-4" />
+                                            Filter
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-4 rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200" align="end">
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-slate-300">Course</Label>
+                                                <Select value={filters.course} onValueChange={(value) => handleFilterChange('course', value)}>
+                                                    <SelectTrigger className="rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                                                        <SelectValue placeholder="All Courses" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+                                                        {courses.map(course => <SelectItem key={course} value={course} className="focus:bg-white/10 focus:text-white">{course === 'all' ? 'All Courses' : course}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                             <div className="space-y-2">
+                                                <Label className="text-slate-300">Year</Label>
+                                                <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
+                                                    <SelectTrigger className="rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                                                        <SelectValue placeholder="All Years" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+                                                        {years.map(year => <SelectItem key={year} value={year} className="focus:bg-white/10 focus:text-white">{year === 'all' ? 'All Years' : `${year}${year === '1' ? 'st' : year === '2' ? 'nd' : year === '3' ? 'rd' : 'th'} Year`}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            {isFiltered && (
+                                                <Button variant="ghost" onClick={clearFilters} className="h-10 justify-center rounded-xl text-slate-300 hover:bg-white/5 hover:text-white">
+                                                    <FilterX className="mr-2 h-4 w-4" />
+                                                    Clear Filters
+                                                </Button>
+                                            )}
                                         </div>
-                                         <div className="space-y-2">
-                                            <Label>Year</Label>
-                                            <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
-                                                <SelectTrigger className="rounded-xl focus:ring-0 focus:ring-offset-0">
-                                                    <SelectValue placeholder="All Years" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {years.map(year => <SelectItem key={year} value={year}>{year === 'all' ? 'All Years' : `${year}${year === '1' ? 'st' : year === '2' ? 'nd' : year === '3' ? 'rd' : 'th'} Year`}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        {isFiltered && (
-                                            <Button variant="ghost" onClick={clearFilters} className="h-10 justify-center rounded-xl">
-                                                <FilterX className="mr-2 h-4 w-4" />
-                                                Clear Filters
-                                            </Button>
-                                        )}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="border rounded-lg">
+                    <CardContent className="p-6">
+                        <div className="border border-white/10 rounded-xl overflow-hidden">
                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Student</TableHead>
-                                        <TableHead>Student ID</TableHead>
-                                        <TableHead>Course & Year</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                <TableHeader className="bg-white/5">
+                                    <TableRow className="hover:bg-white/5 border-white/10">
+                                        <TableHead className="text-slate-400 font-medium">Student</TableHead>
+                                        <TableHead className="text-slate-400 font-medium">Student ID</TableHead>
+                                        <TableHead className="text-slate-400 font-medium">Course & Year</TableHead>
+                                        <TableHead className="text-slate-400 font-medium">Status</TableHead>
+                                        <TableHead className="text-right text-slate-400 font-medium">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredStudents.length > 0 ? filteredStudents.map((student) => (
-                                        <TableRow key={student.id}>
-                                            <TableCell>
+                                        <TableRow key={student.id} className="hover:bg-white/5 border-white/5">
+                                            <TableCell className="text-slate-300">
                                                 <div className="flex items-center gap-4">
-                                                    <Avatar>
+                                                    <Avatar className="border border-white/10">
                                                         <AvatarImage src={student.avatar} alt={student.name} data-ai-hint="person avatar"/>
-                                                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                                                        <AvatarFallback className="bg-slate-800 text-slate-200">{student.name.charAt(0)}</AvatarFallback>
                                                     </Avatar>
                                                     <div className="grid gap-1">
-                                                        <p className="font-medium">{student.name}</p>
-                                                        <p className="text-sm text-muted-foreground">{student.email}</p>
+                                                        <p className="font-medium text-slate-200">{student.name}</p>
+                                                        <p className="text-sm text-slate-500">{student.email}</p>
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>{student.studentId}</TableCell>
-                                            <TableCell>{student.course} - {student.year}</TableCell>
+                                            <TableCell className="text-slate-300">{student.studentId}</TableCell>
+                                            <TableCell className="text-slate-300">{student.course} - {student.year}</TableCell>
                                             <TableCell>
-                                                <Badge variant={getStatusBadgeVariant(student.status)}>{student.status}</Badge>
+                                                <Badge variant={getStatusBadgeVariant(student.status)} className={cn(
+                                                    student.status === 'Enrolled' && "bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 border-emerald-500/50",
+                                                    student.status === 'Not Enrolled' && "bg-red-500/20 text-red-200 hover:bg-red-500/30 border-red-500/50",
+                                                    student.status === 'Graduated' && "bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 border-blue-500/50",
+                                                )}>{student.status}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                                        <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-white/10">
                                                             <span className="sr-only">Open menu</span>
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => openProfileDialog(student)}>View Profile</DropdownMenuItem>
-                                                        {isOrfReleased(student) ? (
-                                                            <DropdownMenuItem disabled className="uppercase tracking-wide font-semibold text-muted-foreground">
-                                                                ORF RELEASED
-                                                            </DropdownMenuItem>
-                                                        ) : (
-                                                            <DropdownMenuItem
-                                                                onSelect={(event) => {
-                                                                    event.preventDefault();
-                                                                    handleClaimOrf(student);
-                                                                }}
-                                                            >
-                                                                Claim ORF
-                                                            </DropdownMenuItem>
+                                                    <DropdownMenuContent align="end" className="bg-slate-900 border-white/10 text-slate-200">
+                                                        <DropdownMenuItem onSelect={() => openProfileDialog(student)} className="focus:bg-white/10 focus:text-white">View Profile</DropdownMenuItem>
+                                                        {!isModerator && (
+                                                            <>
+                                                                {isOrfReleased(student) ? (
+                                                                    <DropdownMenuItem disabled className="uppercase tracking-wide font-semibold text-slate-500">
+                                                                        ORF RELEASED
+                                                                    </DropdownMenuItem>
+                                                                ) : (
+                                                                    <DropdownMenuItem
+                                                                        className="focus:bg-white/10 focus:text-white"
+                                                                        onSelect={(event) => {
+                                                                            event.preventDefault();
+                                                                            handleClaimOrf(student);
+                                                                        }}
+                                                                    >
+                                                                        Claim ORF
+                                                                    </DropdownMenuItem>
+                                                                )}
+                                                                <DropdownMenuSeparator className="bg-white/10" />
+                                                                <DropdownMenuItem
+                                                                    className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                                                                    onSelect={() => openDeleteDialog(student)}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                </DropdownMenuItem>
+                                                            </>
                                                         )}
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                                            onSelect={() => openDeleteDialog(student)}
-                                                        >
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                        </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="h-24 text-center">
+                                            <TableCell colSpan={5} className="h-24 text-center text-slate-500">
                                                 No students found.
                                             </TableCell>
                                         </TableRow>
@@ -914,50 +938,77 @@ export default function StudentsPage() {
                         </div>
                     </CardContent>
                 </Card>
-            </main>
+            </div>
 
             {/* Profile Dialog */}
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
                 {selectedStudent && (
-                    <DialogContent className="sm:max-w-4xl lg:max-w-5xl w-full rounded-xl">
-                        <DialogHeader>
-                            <div className="flex items-start gap-4">
-                                <Avatar className="h-16 w-16">
-                                    <AvatarImage src={selectedStudent.avatar} alt={selectedStudent.name} data-ai-hint="person avatar" />
-                                    <AvatarFallback>{selectedStudent.name.charAt(0)}</AvatarFallback>
+                    <DialogContent className="sm:max-w-4xl lg:max-w-5xl w-full p-0 gap-0 overflow-hidden rounded-3xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
+                        <DialogHeader className="p-6 border-b border-white/10 bg-white/5">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                                <Avatar className="h-20 w-20 border-2 border-white/10 shadow-lg">
+                                    <AvatarImage src={selectedStudent.avatar} alt={selectedStudent.name} className="object-cover" />
+                                    <AvatarFallback className="bg-blue-600 text-xl font-bold text-white">{selectedStudent.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <div>
-                                    <DialogTitle className="text-xl">{selectedStudent.name}</DialogTitle>
-                                    <DialogDescription>
-                                        {selectedStudent.studentId}
-                                    </DialogDescription>
+                                <div className="space-y-1">
+                                    <DialogTitle className="text-2xl font-bold text-white tracking-tight">{selectedStudent.name}</DialogTitle>
+                                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+                                        <Badge variant="outline" className="border-white/10 bg-white/5 text-slate-300">
+                                            {selectedStudent.studentId}
+                                        </Badge>
+                                        <span>•</span>
+                                        <span className="font-medium text-blue-400">{selectedStudent.course}</span>
+                                        <span>•</span>
+                                        <span>{selectedStudent.year}{selectedStudent.year === 1 ? 'st' : selectedStudent.year === 2 ? 'nd' : selectedStudent.year === 3 ? 'rd' : 'th'} Year</span>
+                                    </div>
+                                </div>
+                                <div className="sm:ml-auto">
+                                     <Badge variant={getStatusBadgeVariant(selectedStudent.status)} className={cn(
+                                        "px-3 py-1 text-sm font-medium",
+                                        selectedStudent.status === 'Enrolled' && "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+                                        selectedStudent.status === 'Not Enrolled' && "bg-red-500/10 text-red-400 border-red-500/20",
+                                    )}>
+                                        {selectedStudent.status}
+                                    </Badge>
                                 </div>
                             </div>
                         </DialogHeader>
-                        <div className="max-h-[65vh] overflow-y-auto pr-6 pl-1 -ml-1 py-4">
-                            <div className="grid gap-6 items-start lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <h4 className="font-semibold text-sm">Details</h4>
-                                        <div className="border rounded-2xl p-4 space-y-1 bg-muted/10 shadow-sm">
-                                            <InfoField label="Status" value={selectedStudent.status} />
-                                            <InfoField label="Block" value={selectedStudent.block} />
-                                            <InfoField label="Email" value={selectedStudent.email} />
-                                            <InfoField label="Phone" value={selectedStudent.phoneNumber} />
-                                            {selectedStudent.specialization && <InfoField label="Specialization" value={selectedStudent.specialization} />}
-                                        </div>
-                                    </div>
+                        
+                        <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                            <div className="grid gap-6 lg:grid-cols-12">
+                                {/* Left Column: Personal Info & Docs */}
+                                <div className="lg:col-span-4 space-y-6">
+                                    <Card className="bg-white/5 border-white/10 shadow-none rounded-2xl">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base font-medium text-white flex items-center gap-2">
+                                                <User className="h-4 w-4 text-blue-400" />
+                                                Student Details
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-1">
+                                            <InfoRow icon={Layers} label="Block Section" value={selectedStudent.block} />
+                                            <InfoRow icon={Mail} label="Email" value={selectedStudent.email} />
+                                            <InfoRow icon={Phone} label="Phone" value={selectedStudent.phoneNumber} />
+                                            {selectedStudent.specialization && <InfoRow icon={GraduationCap} label="Specialization" value={selectedStudent.specialization} />}
+                                        </CardContent>
+                                    </Card>
 
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="font-semibold text-sm">Submitted Documents</h4>
-                                            {combinedDocuments.length > 0 && (
-                                                <Badge variant="secondary" className="rounded-full text-xs">
-                                                    {combinedDocuments.length} file{combinedDocuments.length === 1 ? '' : 's'}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <div className="border rounded-2xl bg-muted/20 p-2 space-y-2 max-h-[180px] overflow-y-auto no-scrollbar">
+                                    <Card className="bg-white/5 border-white/10 shadow-none flex flex-col h-full max-h-[400px] rounded-2xl">
+                                        <CardHeader className="pb-3">
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle className="text-base font-medium text-white flex items-center gap-2">
+                                                    <FileText className="h-4 w-4 text-orange-400" />
+                                                    Documents
+                                                </CardTitle>
+                                                {combinedDocuments.length > 0 && (
+                                                    <Badge variant="secondary" className="bg-white/10 text-slate-300 hover:bg-white/20">
+                                                        {combinedDocuments.length}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 overflow-y-auto pr-2 custom-scrollbar p-3">
+                                            <div className="space-y-2">
                                             {combinedDocuments.length > 0 ? (
                                                 combinedDocuments.map((doc, index) => {
                                                     const sizeLabel = formatDocumentSize(doc.fileSize);
@@ -972,43 +1023,46 @@ export default function StudentsPage() {
                                                     return (
                                                         <div
                                                             key={key}
-                                                            className="p-3 space-y-3 rounded-xl border border-border/40 bg-background/70 shadow-sm"
+                                                            className="p-3 space-y-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
                                                         >
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="flex items-start gap-3">
-                                                                    <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                                                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 mt-0.5">
+                                                                        <FileText className="h-4 w-4" />
+                                                                    </div>
                                                                     <div>
-                                                                        <p className="text-sm font-medium">{doc.name || doc.fileName || 'Untitled Document'}</p>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            {uploadedLabel ?? 'Upload date unavailable'}
+                                                                        <p className="text-sm font-medium text-slate-200 line-clamp-1">{doc.name || doc.fileName || 'Untitled'}</p>
+                                                                        <p className="text-xs text-slate-500">
+                                                                            {uploadedLabel ?? 'No date'}
                                                                             {sizeLabel ? ` • ${sizeLabel}` : ''}
                                                                         </p>
                                                                     </div>
                                                                 </div>
-                                                                <Badge variant={getDocumentStatusVariant(doc.status)} className="text-xs">
+                                                            </div>
+                                                            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                                                                <Badge variant={getDocumentStatusVariant(doc.status)} className={cn("text-[10px] px-2 h-5 border-white/10",
+                                                                    (doc.status?.toLowerCase() === 'approved') && "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+                                                                    (doc.status?.toLowerCase() === 'rejected') && "bg-red-500/10 text-red-400 border-red-500/20",
+                                                                    (doc.status?.toLowerCase() === 'pending') && "bg-amber-500/10 text-amber-400 border-amber-500/20",
+                                                                )}>
                                                                     {doc.status ?? 'Unknown'}
                                                                 </Badge>
-                                                            </div>
-                                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                {!downloadUrl && (
-                                                                    <span className="text-xs text-muted-foreground">File unavailable</span>
-                                                                )}
-                                                                <div className="flex items-center gap-2">
+                                                                <div className="flex items-center gap-1">
                                                                     <DropdownMenu>
                                                                         <DropdownMenuTrigger asChild>
                                                                             <Button
                                                                                 variant="ghost"
                                                                                 size="icon"
-                                                                                className="h-8 w-8"
+                                                                                className="h-7 w-7 text-slate-400 hover:text-white hover:bg-white/10"
                                                                                 disabled={isPendingAction}
                                                                             >
-                                                                                <span className="sr-only">Open document actions</span>
                                                                                 <MoreHorizontal className="h-4 w-4" />
                                                                             </Button>
                                                                         </DropdownMenuTrigger>
-                                                                        <DropdownMenuContent align="end">
+                                                                        <DropdownMenuContent align="end" className="bg-slate-900 border-white/10 text-slate-200">
                                                                             <DropdownMenuItem
                                                                                 disabled={!downloadUrl}
+                                                                                className="focus:bg-white/10 focus:text-white"
                                                                                 onSelect={(event) => {
                                                                                     event.preventDefault();
                                                                                     handleViewDocument(downloadUrl);
@@ -1016,147 +1070,171 @@ export default function StudentsPage() {
                                                                             >
                                                                                 View
                                                                             </DropdownMenuItem>
-                                                                            <DropdownMenuItem
-                                                                                disabled={approveDisabled}
-                                                                                onSelect={(event) => {
-                                                                                    event.preventDefault();
-                                                                                    if (!canModerate || approveDisabled || typeof doc.id !== 'number') {
-                                                                                        return;
-                                                                                    }
-                                                                                    handleDocumentStatusUpdate(doc.id, 'Approved');
-                                                                                }}
-                                                                            >
-                                                                                Accept
-                                                                            </DropdownMenuItem>
-                                                                            <DropdownMenuItem
-                                                                                disabled={rejectDisabled}
-                                                                                onSelect={(event) => {
-                                                                                    event.preventDefault();
-                                                                                    if (!canModerate || rejectDisabled || typeof doc.id !== 'number') {
-                                                                                        return;
-                                                                                    }
-                                                                                    handleDocumentStatusUpdate(doc.id, 'Rejected');
-                                                                                }}
-                                                                            >
-                                                                                Reject
-                                                                            </DropdownMenuItem>
+                                                                            {!isModerator && (
+                                                                                <>
+                                                                                    <DropdownMenuItem
+                                                                                        disabled={approveDisabled}
+                                                                                        className="focus:bg-white/10 focus:text-white"
+                                                                                        onSelect={(event) => {
+                                                                                            event.preventDefault();
+                                                                                            if (!canModerate || approveDisabled || typeof doc.id !== 'number') {
+                                                                                                return;
+                                                                                            }
+                                                                                            handleDocumentStatusUpdate(doc.id, 'Approved');
+                                                                                        }}
+                                                                                    >
+                                                                                        Accept
+                                                                                    </DropdownMenuItem>
+                                                                                    <DropdownMenuItem
+                                                                                        disabled={rejectDisabled}
+                                                                                        className="focus:bg-white/10 focus:text-white"
+                                                                                        onSelect={(event) => {
+                                                                                            event.preventDefault();
+                                                                                            if (!canModerate || rejectDisabled || typeof doc.id !== 'number') {
+                                                                                                return;
+                                                                                            }
+                                                                                            handleDocumentStatusUpdate(doc.id, 'Rejected');
+                                                                                        }}
+                                                                                    >
+                                                                                        Reject
+                                                                                    </DropdownMenuItem>
+                                                                                </>
+                                                                            )}
                                                                         </DropdownMenuContent>
                                                                     </DropdownMenu>
-                                                                    {isPendingAction && (
-                                                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     );
                                                 })
                                             ) : (
-                                                <p className="p-3 text-sm text-muted-foreground">No submitted documents on record.</p>
+                                                <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-white/10 rounded-xl">
+                                                    <FileText className="h-8 w-8 text-slate-600 mb-2" />
+                                                    <p className="text-sm text-slate-500">No documents submitted</p>
+                                                </div>
                                             )}
-                                        </div>
-                                    </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
                                 </div>
 
-                                <div className="space-y-3">
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <h4 className="font-semibold text-sm">Enlisted Subjects</h4>
-                                            <p className="text-xs text-muted-foreground">
-                                                {(selectedStudent.enlistedSubjects || []).length} subject{(selectedStudent.enlistedSubjects || []).length === 1 ? '' : 's'} enlisted
-                                            </p>
-                                        </div>
-                                        <Popover open={isAddSubjectPopoverOpen} onOpenChange={setIsAddSubjectPopoverOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button className="rounded-xl" size="sm" disabled={subjectActionBusy}>
-                                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                                    Add Subject
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-72 rounded-xl space-y-3" align="end">
-                                                {availableSubjects.length ? (
-                                                    <>
-                                                        <div className="space-y-1">
-                                                            <p className="text-sm font-medium">Assign from catalog</p>
-                                                            <p className="text-xs text-muted-foreground">Choose a subject to add to this student.</p>
-                                                        </div>
-                                                        <Select
-                                                            value={selectedSubjectId}
-                                                            onValueChange={setSelectedSubjectId}
-                                                            disabled={subjectActionBusy}
-                                                        >
-                                                            <SelectTrigger className="rounded-xl">
-                                                                <SelectValue placeholder="Select subject" />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="rounded-xl max-h-64">
-                                                                {availableSubjects.map(subject => (
-                                                                    <SelectItem key={subject.id} value={String(subject.id)}>
-                                                                        {subject.code} - {subject.description}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <Button
-                                                            onClick={handleAddSubject}
-                                                            disabled={!selectedSubjectId || subjectActionBusy}
-                                                            className="w-full rounded-xl"
-                                                        >
-                                                            {subjectActionBusy ? (
-                                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                            ) : (
-                                                                <PlusCircle className="mr-2 h-4 w-4" />
-                                                            )}
-                                                            Confirm Add
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground">No eligible subjects are available for this student right now.</p>
-                                                )}
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                    <div className="border rounded-2xl shadow-sm">
-                                        <div className="max-h-[392px] overflow-y-auto no-scrollbar">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className="w-32">Subject</TableHead>
-                                                        <TableHead>Description</TableHead>
-                                                        <TableHead className="text-right w-24">Units</TableHead>
-                                                        <TableHead className="text-right w-20">Actions</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {(selectedStudent.enlistedSubjects || []).length > 0 ? (
-                                                        (selectedStudent.enlistedSubjects || []).map(subject => (
-                                                            <TableRow key={subject.code}>
-                                                                <TableCell className="font-medium">{subject.code}</TableCell>
-                                                                <TableCell className="text-sm text-muted-foreground">
-                                                                    {subject.description || '—'}
-                                                                </TableCell>
-                                                                <TableCell className="text-right">{subject.units}</TableCell>
-                                                                <TableCell className="text-right">
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-8 w-8"
-                                                                        onClick={() => handleRemoveSubject(subject.id)}
+                                {/* Right Column: Subjects */}
+                                <div className="lg:col-span-8">
+                                    <Card className="bg-white/5 border-white/10 shadow-none h-full flex flex-col rounded-2xl">
+                                        <CardHeader className="pb-3 border-b border-white/5">
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <CardTitle className="text-base font-medium text-white flex items-center gap-2">
+                                                        <BookOpen className="h-4 w-4 text-emerald-400" />
+                                                        Enlisted Subjects
+                                                    </CardTitle>
+                                                    <CardDescription className="text-xs text-slate-400">
+                                                        {(selectedStudent.enlistedSubjects || []).length} subjects for this semester
+                                                    </CardDescription>
+                                                </div>
+                                                {!isModerator && (
+                                                    <Popover open={isAddSubjectPopoverOpen} onOpenChange={setIsAddSubjectPopoverOpen}>
+                                                        <PopoverTrigger asChild>
+                                                            <Button className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0 h-8 text-xs" size="sm" disabled={subjectActionBusy}>
+                                                                <PlusCircle className="mr-2 h-3.5 w-3.5" />
+                                                                Add Subject
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-72 rounded-xl space-y-3 bg-slate-900 border-white/10 text-slate-200" align="end">
+                                                            {availableSubjects.length ? (
+                                                                <>
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-sm font-medium text-white">Assign from catalog</p>
+                                                                        <p className="text-xs text-slate-400">Choose a subject to add to this student.</p>
+                                                                    </div>
+                                                                    <Select
+                                                                        value={selectedSubjectId}
+                                                                        onValueChange={setSelectedSubjectId}
                                                                         disabled={subjectActionBusy}
                                                                     >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                        <span className="sr-only">Remove subject</span>
+                                                                        <SelectTrigger className="rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                                                                            <SelectValue placeholder="Select subject" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="rounded-xl max-h-64 bg-slate-900 border-white/10 text-slate-200">
+                                                                            {availableSubjects.map(subject => (
+                                                                                <SelectItem key={subject.id} value={String(subject.id)} className="focus:bg-white/10 focus:text-white">
+                                                                                    {subject.code} - {subject.description}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                    <Button
+                                                                        onClick={handleAddSubject}
+                                                                        disabled={!selectedSubjectId || subjectActionBusy}
+                                                                        className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
+                                                                    >
+                                                                        {subjectActionBusy ? (
+                                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                        ) : (
+                                                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                                                        )}
+                                                                        Confirm Add
                                                                     </Button>
+                                                                </>
+                                                            ) : (
+                                                                <p className="text-xs text-slate-500">No eligible subjects are available for this student right now.</p>
+                                                            )}
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                )}
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="p-0 flex-1 overflow-hidden">
+                                            <div className="h-full overflow-y-auto custom-scrollbar">
+                                                <Table>
+                                                    <TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-sm">
+                                                        <TableRow className="border-white/10 hover:bg-white/5">
+                                                            <TableHead className="w-32 text-slate-400 font-medium">Subject</TableHead>
+                                                            <TableHead className="text-slate-400 font-medium">Description</TableHead>
+                                                            <TableHead className="text-right w-24 text-slate-400 font-medium">Units</TableHead>
+                                                            <TableHead className="text-right w-20 text-slate-400 font-medium">Actions</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {(selectedStudent.enlistedSubjects || []).length > 0 ? (
+                                                            (selectedStudent.enlistedSubjects || []).map(subject => (
+                                                                <TableRow key={subject.code} className="border-white/5 hover:bg-white/5">
+                                                                    <TableCell className="font-medium text-slate-200">{subject.code}</TableCell>
+                                                                    <TableCell className="text-sm text-slate-400">
+                                                                        {subject.description || '—'}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right text-slate-300">{subject.units}</TableCell>
+                                                                    <TableCell className="text-right">
+                                                                        {!isModerator && (
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                                                                onClick={() => handleRemoveSubject(subject.id)}
+                                                                                disabled={subjectActionBusy}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                                <span className="sr-only">Remove subject</span>
+                                                                            </Button>
+                                                                        )}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))
+                                                        ) : (
+                                                            <TableRow>
+                                                                <TableCell colSpan={4} className="text-center h-32 text-slate-500">
+                                                                    <div className="flex flex-col items-center justify-center">
+                                                                        <BookOpen className="h-8 w-8 mb-2 opacity-20" />
+                                                                        <p>No subjects enlisted for this semester.</p>
+                                                                    </div>
                                                                 </TableCell>
                                                             </TableRow>
-                                                        ))
-                                                    ) : (
-                                                        <TableRow>
-                                                            <TableCell colSpan={4} className="text-center h-24">No subjects enlisted for this semester.</TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </div>
+                                                        )}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
                                 </div>
                             </div>
                         </div>
@@ -1165,11 +1243,11 @@ export default function StudentsPage() {
             </Dialog>
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent className="rounded-xl">
+                <AlertDialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                             This action cannot be undone. This will permanently delete the record for <span className="font-semibold">{selectedStudent?.name}</span>.
+                        <AlertDialogTitle className="text-white">Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                             This action cannot be undone. This will permanently delete the record for <span className="font-semibold text-white">{selectedStudent?.name}</span>.
                              <br/><br/>
                              To confirm, please type "delete" below.
                         </AlertDialogDescription>
@@ -1178,14 +1256,14 @@ export default function StudentsPage() {
                             name="delete-confirm"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
-                            className="mt-4"
+                            className="mt-4 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl" onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="rounded-xl bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white" onClick={() => setDeleteInput('')}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             disabled={deleteInput !== 'delete'}
-                            className="bg-destructive hover:bg-destructive/90 rounded-xl"
+                            className="bg-red-600 hover:bg-red-500 text-white border-0 rounded-xl"
                             onClick={handleDeleteStudent}
                         >
                             Delete

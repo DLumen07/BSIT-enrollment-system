@@ -123,6 +123,18 @@ ON DUPLICATE KEY UPDATE
   created_at = VALUES(created_at),
   updated_at = VALUES(updated_at);
 
+-- Program events
+INSERT INTO program_events (id, event_date, title, description, created_by, created_at, updated_at) VALUES
+  (1, '2025-01-15', 'General Assembly', 'Kick-off orientation for all BSIT students.', 1, NOW() - INTERVAL 30 DAY, NOW() - INTERVAL 30 DAY),
+  (2, '2025-02-05', 'Hackathon Sprint', '48-hour campus-wide innovation challenge.', 1, NOW() - INTERVAL 10 DAY, NOW() - INTERVAL 10 DAY)
+ON DUPLICATE KEY UPDATE
+  event_date = VALUES(event_date),
+  title = VALUES(title),
+  description = VALUES(description),
+  created_by = VALUES(created_by),
+  created_at = VALUES(created_at),
+  updated_at = VALUES(updated_at);
+
 -- Student subjects
 INSERT INTO student_subjects (id, student_user_id, subject_id) VALUES
   (1, 2, 8),

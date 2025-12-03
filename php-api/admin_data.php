@@ -210,6 +210,13 @@ function finalize_report_entry(array $entry): array {
     return $entry;
 }
 
+$gradeTermKeys = ['prelim', 'midterm', 'final'];
+$gradeTermWeightDefaults = [
+    'prelim' => 0.30,
+    'midterm' => 0.30,
+    'final' => 0.40,
+];
+
 try {
     $conn->set_charset('utf8mb4');
 
@@ -512,7 +519,11 @@ SQL;
                 ];
             }
 
-            $termKey = $row['term_key'] ?? null;
+            $termKeyRaw = $row['term_key'] ?? null;
+            $termKey = null;
+            if (is_string($termKeyRaw)) {
+                $termKey = strtolower(trim($termKeyRaw));
+            }
             if ($termKey !== null && $termKey !== '') {
                 $termGradeValue = isset($row['term_grade']) ? (float) $row['term_grade'] : null;
                 if ($isIncompleteRemark && $termGradeValue === null) {
@@ -529,6 +540,32 @@ SQL;
         $result->free();
 
         foreach ($gradesMap as $studentId => $gradeEntries) {
+            foreach ($gradeEntries as $gradeIndex => $gradeEntry) {
+                $terms = $gradeEntry['terms'] ?? [];
+
+                foreach ($gradeTermKeys as $termKey) {
+                    if (!isset($terms[$termKey])) {
+                        $terms[$termKey] = [
+                            'term' => $termKey,
+                            'grade' => $gradeEntry['grade'] === 'INC' ? 'INC' : null,
+                            'weight' => $gradeTermWeightDefaults[$termKey] ?? null,
+                            'encodedAt' => null,
+                        ];
+                    } else {
+                        if (!isset($terms[$termKey]['weight']) || $terms[$termKey]['weight'] === null) {
+                            $terms[$termKey]['weight'] = $gradeTermWeightDefaults[$termKey] ?? null;
+                        }
+
+                        $termGradeValue = $terms[$termKey]['grade'] ?? null;
+                        if (($termGradeValue === null || $termGradeValue === '') && $gradeEntry['grade'] === 'INC') {
+                            $terms[$termKey]['grade'] = 'INC';
+                        }
+                    }
+                }
+
+                $gradeEntries[$gradeIndex]['terms'] = $terms;
+            }
+
             $gradesMap[$studentId] = array_values($gradeEntries);
         }
     } else {

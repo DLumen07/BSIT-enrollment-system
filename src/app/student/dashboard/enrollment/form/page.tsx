@@ -10,6 +10,10 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info, AlertCircle, BookOpen, GraduationCap, Calendar, ShieldCheck, ScrollText } from "lucide-react";
 import { useStudent } from '@/app/student/context/student-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import { useRouter } from 'next/navigation';
@@ -194,182 +198,206 @@ function AcademicSelectionSection() {
     }, [availableSubjects, form]);
     
     return (
-        <div className="space-y-6">
-            <h3 className="text-lg font-medium">Academic Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="course" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Course</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled>
-                            <FormControl>
-                                <SelectTrigger className="rounded-xl">
-                                    <SelectValue placeholder="Course is auto-assigned" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem value="BSIT">BSIT</SelectItem>
-                                <SelectItem value="ACT">ACT</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                <FormField name="status" render={({ field }) => (
-                    <FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled><FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="New">New</SelectItem><SelectItem value="Old">Old</SelectItem><SelectItem value="Transferee">Transferee</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                )} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <FormLabel htmlFor="unifast-status">UniFAST</FormLabel>
-                    <Input
-                        id="unifast-status"
-                        value={unifastLabel}
-                        disabled
-                        readOnly
-                        className="rounded-xl"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                        This status is managed by the registrar under RA 10931.
-                    </p>
+        <div className="space-y-8">
+            {/* Student Profile Summary */}
+            <div className="rounded-lg border bg-muted/30 p-5">
+                <div className="flex items-center gap-2 mb-4 text-primary">
+                    <Info className="h-5 w-5" />
+                    <h3 className="font-semibold text-base">Academic Profile</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <BookOpen className="h-4 w-4" />
+                            <span className="text-xs font-medium uppercase tracking-wider">Course</span>
+                        </div>
+                        <div className="font-bold text-lg pl-6">{derivedCourse}</div>
+                        {/* Hidden inputs to keep form state valid */}
+                        <input type="hidden" {...form.register('course')} />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <GraduationCap className="h-4 w-4" />
+                            <span className="text-xs font-medium uppercase tracking-wider">Year Level</span>
+                        </div>
+                        <div className="font-bold text-lg pl-6">{selectedYear}</div>
+                        <input type="hidden" {...form.register('yearLevel')} />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span className="text-xs font-medium uppercase tracking-wider">Status</span>
+                        </div>
+                        <div className="font-bold text-lg pl-6">{form.getValues('status')}</div>
+                        <input type="hidden" {...form.register('status')} />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <ShieldCheck className="h-4 w-4" />
+                            <span className="text-xs font-medium uppercase tracking-wider">UniFAST</span>
+                        </div>
+                        <div className="text-sm font-medium pl-6 leading-tight">{unifastLabel}</div>
+                        <p className="text-[10px] text-muted-foreground pl-6 pt-1">
+                            This status is managed by the registrar.
+                        </p>
+                    </div>
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField name="yearLevel" render={({ field }) => (
-                    <FormItem><FormLabel>Year Level</FormLabel>
-                    <Select onValueChange={(value) => {
-                        field.onChange(value);
-                        const isUpper = value === '3rd Year' || value === '4th Year';
-                        if (!isUpper) {
-                            form.setValue('specialization', undefined);
-                        }
-                         if (value === '4th Year' && studentData?.academic.specialization) {
-                            form.setValue('specialization', studentData.academic.specialization);
-                        }
-                    }} defaultValue={field.value} disabled>
-                    <FormControl>
-                        <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Select year level" />
-                        </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="rounded-xl">
-                        <SelectItem value="1st Year">1st Year</SelectItem>
-                        <SelectItem value="2nd Year">2nd Year</SelectItem>
-                        <SelectItem value="3rd Year">3rd Year</SelectItem>
-                        <SelectItem value="4th Year">4th Year</SelectItem>
-                    </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )} />
-                 {isUpperYear && (
-                    <FormField name="specialization" render={({ field }) => (
+
+            <Separator />
+
+            {/* Enrollment Configuration */}
+            <div className="space-y-6">
+                <div className="flex flex-col space-y-1">
+                    <h3 className="text-lg font-medium">Enrollment Configuration</h3>
+                    <p className="text-sm text-muted-foreground">Select your block section and specialization if applicable.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField name="block" render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Specialization</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={isFourthYear}>
+                            <FormLabel>Block Section</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={availableBlocks.length === 0 || (isUpperYear && !selectedSpecialization)}>
                                 <FormControl>
-                                    <SelectTrigger className="rounded-xl">
-                                        <SelectValue placeholder="Select specialization" />
+                                    <SelectTrigger className="h-11 rounded-xl">
+                                        <SelectValue placeholder={availableBlocks.length === 0 ? "No available blocks" : "Select a block"} />
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent className="rounded-xl">
-                                    <SelectItem value="AP">Application Programming (AP)</SelectItem>
-                                    <SelectItem value="DD">Digital Design (DD)</SelectItem>
+                                    {availableBlocks.map(block => (
+                                        <SelectItem key={block.value} value={block.value}>{block.label}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
-                             {isFourthYear && <p className="text-sm text-muted-foreground mt-2">Your specialization is locked from your 3rd year.</p>}
+                            {availableBlocks.length === 0 && <p className="text-sm text-muted-foreground mt-2">There are no available blocks for this year level. Please try again later.</p>}
                             <FormMessage />
                         </FormItem>
                     )} />
-                )}
+
+                    {isUpperYear && (
+                        <FormField name="specialization" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Specialization</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value} disabled={isFourthYear}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl">
+                                            <SelectValue placeholder="Select specialization" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="AP">Application Programming (AP)</SelectItem>
+                                        <SelectItem value="DD">Digital Design (DD)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {isFourthYear && <p className="text-sm text-muted-foreground mt-2">Your specialization is locked from your 3rd year.</p>}
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    )}
+                </div>
             </div>
-            <FormField name="block" render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Block</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={availableBlocks.length === 0 || (isUpperYear && !selectedSpecialization)}>
-                        <FormControl>
-                            <SelectTrigger className="rounded-xl">
-                                <SelectValue placeholder={availableBlocks.length === 0 ? "No available blocks" : "Select block"} />
-                            </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="rounded-xl">
-                            {availableBlocks.map(block => (
-                                <SelectItem key={block.value} value={block.value}>{block.label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {availableBlocks.length === 0 && <p className="text-sm text-muted-foreground mt-2">There are no available blocks for this year level. Please try again later.</p>}
-                    <FormMessage />
-                </FormItem>
-            )} />
-            
+
+            {/* Subject Enlistment */}
             {availableSubjects.length > 0 && (
-                <div className="space-y-4 pt-4 border-t">
-                     <h3 className="text-lg font-medium">Enlist Subjects</h3>
-                     <p className="text-sm text-muted-foreground">
-                        {hasEligibleSubjects
-                            ? 'Select the subjects you want to enroll in. Ineligible subjects are shown for reference.'
-                            : 'You do not have any eligible subjects for enlistment this term.'}
-                    </p>
-                     <FormField
+                <div className="space-y-4 pt-4">
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                            <h3 className="text-lg font-medium">Enlist Subjects</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {hasEligibleSubjects
+                                    ? 'Select the subjects you want to enroll in.'
+                                    : 'You do not have any eligible subjects for enlistment this term.'}
+                            </p>
+                        </div>
+                        <Badge variant="secondary" className="h-8 px-3 text-sm">
+                            {form.watch('subjects')?.length ?? 0} Selected
+                        </Badge>
+                    </div>
+
+                    <FormField
                         control={form.control}
                         name="subjects"
                         render={() => (
                             <FormItem>
-                            <div className="space-y-2">
-                                {availableSubjects.map((subject) => (
-                                <FormField
-                                    key={subject.id}
-                                    control={form.control}
-                                    name="subjects"
-                                    render={({ field }) => {
-                                    return (
-                                        <FormItem
-                                        key={subject.id}
-                                        className="flex flex-row items-center justify-between rounded-xl border p-3"
-                                        >
-                                        <div className="flex items-center space-x-3">
-                                            <FormControl>
-                                                <Checkbox
-                                                checked={field.value?.includes(subject.id)}
-                                                disabled={!subject.eligible}
-                                                onCheckedChange={(checked) => {
-                                                    if (!subject.eligible) {
-                                                        return;
-                                                    }
-                                                    if (checked === true) {
-                                                        field.onChange([...(field.value ?? []), subject.id]);
-                                                        return;
-                                                    }
-                                                    const filtered = (field.value ?? []).filter((selection: string) => selection !== subject.id);
-                                                    field.onChange(filtered);
-                                                }}
-                                                />
-                                            </FormControl>
-                                            <div className="space-y-1">
-                                                <FormLabel className="font-normal m-0">
-                                                    {subject.label}
-                                                </FormLabel>
-                                                {subject.prerequisites.length > 0 && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Prerequisite{subject.prerequisites.length > 1 ? 's' : ''}: {subject.prerequisites.join(', ')}
-                                                    </p>
-                                                )}
-                                                {!subject.eligible && subject.ineligibilityReason && (
-                                                    <p className="text-xs text-destructive">{subject.ineligibilityReason}</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">{subject.units} units</div>
-                                        </FormItem>
-                                    )
-                                    }}
-                                />
-                                ))}
-                            </div>
-                            <FormMessage />
+                                <div className="grid grid-cols-1 gap-3">
+                                    {availableSubjects.map((subject) => (
+                                        <FormField
+                                            key={subject.id}
+                                            control={form.control}
+                                            name="subjects"
+                                            render={({ field }) => {
+                                                const isSelected = field.value?.includes(subject.id);
+                                                return (
+                                                    <FormItem
+                                                        key={subject.id}
+                                                        className={`
+                                                            relative flex flex-col sm:flex-row sm:items-center justify-between 
+                                                            rounded-xl border p-4 transition-all duration-200
+                                                            ${isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'hover:border-primary/50'}
+                                                            ${!subject.eligible ? 'opacity-60 bg-muted/50' : ''}
+                                                        `}
+                                                    >
+                                                        <div className="flex items-start space-x-4 w-full">
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={isSelected}
+                                                                    disabled={!subject.eligible}
+                                                                    className="mt-1"
+                                                                    onCheckedChange={(checked) => {
+                                                                        if (!subject.eligible) return;
+                                                                        if (checked === true) {
+                                                                            field.onChange([...(field.value ?? []), subject.id]);
+                                                                        } else {
+                                                                            field.onChange((field.value ?? []).filter((s: string) => s !== subject.id));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </FormControl>
+                                                            <div className="space-y-1.5 flex-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <FormLabel className="font-semibold text-base m-0 cursor-pointer">
+                                                                        {subject.label}
+                                                                    </FormLabel>
+                                                                    {!subject.eligible && (
+                                                                        <Badge variant="destructive" className="text-[10px] h-5 px-1.5">Ineligible</Badge>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                {subject.prerequisites.length > 0 && (
+                                                                    <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                                                        <span className="font-medium text-xs uppercase tracking-wide">Prerequisites:</span>
+                                                                        {subject.prerequisites.join(', ')}
+                                                                    </div>
+                                                                )}
+
+                                                                {!subject.eligible && subject.ineligibilityReason && (
+                                                                    <div className="flex items-start gap-2 text-sm text-destructive mt-1 bg-destructive/10 p-2 rounded-md">
+                                                                        <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                                                        <span>{subject.ineligibilityReason}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="mt-3 sm:mt-0 sm:ml-4 flex-shrink-0">
+                                                            <Badge variant="outline" className="text-sm font-medium px-3 py-1 h-auto">
+                                                                {subject.units} Units
+                                                            </Badge>
+                                                        </div>
+                                                    </FormItem>
+                                                );
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                                <FormMessage />
                             </FormItem>
                         )}
-                        />
+                    />
                 </div>
             )}
         </div>
@@ -583,19 +611,26 @@ export default function EnrollmentFormPage() {
         <main className="flex-1 p-4 sm:p-6">
             <FormProvider {...methods}>
                 <form onSubmit={methods.handleSubmit(processForm)}>
-                    <Card className="max-w-4xl mx-auto rounded-xl">
-                        <CardHeader>
-                            <CardTitle>Enrollment Form</CardTitle>
-                             <CardDescription>
-                                Choose your block and enlist subjects for this term. Your profile information stays locked for registrar review.
-                            </CardDescription>
+                    <Card className="max-w-4xl mx-auto rounded-xl shadow-lg border-muted/40">
+                        <CardHeader className="border-b bg-muted/10 pb-6">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-primary/10 rounded-xl mt-1">
+                                    <ScrollText className="h-8 w-8 text-primary" />
+                                </div>
+                                <div className="space-y-1">
+                                    <CardTitle className="text-2xl">Enrollment Form</CardTitle>
+                                    <CardDescription className="text-base">
+                                        Choose your block and enlist subjects for this term. Your profile information stays locked for registrar review.
+                                    </CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-6">
                             <AcademicSelectionSection />
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="border-t bg-muted/10 py-6">
                            <div className="flex justify-end w-full">
-                                <Button type="submit" className="rounded-xl min-w-[200px]" disabled={isSubmitting}>
+                                <Button type="submit" size="lg" className="rounded-xl min-w-[200px] font-semibold" disabled={isSubmitting}>
                                     {isSubmitting ? 'Submitting...' : 'Submit Enrollment'}
                                 </Button>
                             </div>

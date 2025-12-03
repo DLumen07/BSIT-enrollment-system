@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useStudent } from '../../context/student-context';
+import { Settings, User, Lock, Mail, Phone, Save, ShieldCheck } from 'lucide-react';
 
 export default function StudentSettingsPage() {
     const { toast } = useToast();
@@ -150,100 +151,160 @@ export default function StudentSettingsPage() {
     };
 
     return (
-        <main className="flex-1 p-4 sm:p-6 space-y-6">
-            <div className="space-y-0.5">
-                <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground">
-                    Manage your profile, account settings, and preferences.
-                </p>
+        <main className="flex-1 space-y-6 p-4 sm:p-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="flex items-center gap-3 mb-2">
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <Settings className="h-6 w-6 text-blue-500" />
+                </div>
+                <div className="space-y-0.5">
+                    <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+                    <p className="text-muted-foreground">
+                        Manage your profile, account settings, and preferences.
+                    </p>
+                </div>
             </div>
 
             <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
-                <Card className="flex h-full flex-col rounded-xl">
-                    <CardHeader>
-                        <CardTitle>Basic Information</CardTitle>
-                        <CardDescription>Update your contact details below.</CardDescription>
+                <Card className="flex h-full flex-col rounded-2xl border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-sm">
+                    <CardHeader className="border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-xl bg-blue-500/10">
+                                <User className="h-4 w-4 text-blue-500" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg">Basic Information</CardTitle>
+                                <CardDescription>Update your contact details below.</CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 pt-6">
                         <div className="space-y-2">
-                            <Label htmlFor="full-name">Full Name</Label>
-                            <Input id="full-name" value={displayName} readOnly className="rounded-xl" />
+                            <Label htmlFor="full-name" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Full Name</Label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    id="full-name" 
+                                    value={displayName} 
+                                    readOnly 
+                                    className="pl-9 rounded-xl border-white/10 bg-white/5 text-muted-foreground" 
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email Address</Label>
-                            <Input
-                                id="email"
-                                value={email}
-                                onChange={(event) => setEmail(event.target.value)}
-                                className="rounded-xl"
-                            />
+                            <Label htmlFor="email" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Email Address</Label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="email"
+                                    value={email}
+                                    onChange={(event) => setEmail(event.target.value)}
+                                    className="pl-9 rounded-xl border-white/10 bg-white/5 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all"
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="contact-number">Contact Number</Label>
-                            <Input
-                                id="contact-number"
-                                value={contactNumber}
-                                onChange={(event) => setContactNumber(event.target.value)}
-                                className="rounded-xl"
-                            />
+                            <Label htmlFor="contact-number" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Contact Number</Label>
+                            <div className="relative">
+                                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="contact-number"
+                                    value={contactNumber}
+                                    onChange={(event) => setContactNumber(event.target.value)}
+                                    className="pl-9 rounded-xl border-white/10 bg-white/5 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all"
+                                />
+                            </div>
                         </div>
                     </CardContent>
-                    <CardFooter>
-                        <Button onClick={handleSaveChanges} className="rounded-xl">
+                    <CardFooter className="mt-auto p-6">
+                        <Button 
+                            onClick={handleSaveChanges} 
+                            className="w-full sm:w-auto rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                            <Save className="mr-2 h-4 w-4" />
                             Save Changes
                         </Button>
                     </CardFooter>
                 </Card>
 
-                <Card className="flex h-full flex-col rounded-xl">
+                <Card className="flex h-full flex-col rounded-2xl border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-sm">
                     <form onSubmit={handlePasswordChange} className="flex h-full flex-col">
-                        <CardHeader>
-                            <CardTitle>Change Password</CardTitle>
-                            <CardDescription>Set a new password for your student account.</CardDescription>
+                        <CardHeader className="border-b border-white/10 pb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 rounded-xl bg-purple-500/10">
+                                    <ShieldCheck className="h-4 w-4 text-purple-500" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg">Change Password</CardTitle>
+                                    <CardDescription>Set a new password for your student account.</CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
-                        <CardContent className="flex-1 space-y-4">
+                        <CardContent className="flex-1 space-y-4 pt-6">
                             <div className="space-y-2">
-                                <Label htmlFor="current-password">Current Password</Label>
-                                <Input
-                                    id="current-password"
-                                    type="password"
-                                    value={currentPassword}
-                                    onChange={(event) => setCurrentPassword(event.target.value)}
-                                    className="rounded-xl"
-                                    required
-                                    disabled={passwordSaving}
-                                />
+                                <Label htmlFor="current-password" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Current Password</Label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="current-password"
+                                        type="password"
+                                        value={currentPassword}
+                                        onChange={(event) => setCurrentPassword(event.target.value)}
+                                        className="pl-9 rounded-xl border-white/10 bg-white/5 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all"
+                                        required
+                                        disabled={passwordSaving}
+                                    />
+                                </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="new-password">New Password</Label>
-                                <Input
-                                    id="new-password"
-                                    type="password"
-                                    value={newPassword}
-                                    onChange={(event) => setNewPassword(event.target.value)}
-                                    className="rounded-xl"
-                                    required
-                                    disabled={passwordSaving}
-                                    minLength={8}
-                                />
+                                <Label htmlFor="new-password" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">New Password</Label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="new-password"
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(event) => setNewPassword(event.target.value)}
+                                        className="pl-9 rounded-xl border-white/10 bg-white/5 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all"
+                                        required
+                                        disabled={passwordSaving}
+                                        minLength={8}
+                                    />
+                                </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="confirm-password">Confirm New Password</Label>
-                                <Input
-                                    id="confirm-password"
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(event) => setConfirmPassword(event.target.value)}
-                                    className="rounded-xl"
-                                    required
-                                    disabled={passwordSaving}
-                                    minLength={8}
-                                />
+                                <Label htmlFor="confirm-password" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Confirm New Password</Label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="confirm-password"
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(event) => setConfirmPassword(event.target.value)}
+                                        className="pl-9 rounded-xl border-white/10 bg-white/5 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all"
+                                        required
+                                        disabled={passwordSaving}
+                                        minLength={8}
+                                    />
+                                </div>
                             </div>
                         </CardContent>
-                        <CardFooter>
-                            <Button type="submit" className="rounded-xl" disabled={passwordSaving}>
-                                {passwordSaving ? 'Updating Password…' : 'Change Password'}
+                        <CardFooter className="mt-auto p-6">
+                            <Button 
+                                type="submit" 
+                                className="w-full sm:w-auto rounded-xl bg-purple-600 hover:bg-purple-700 text-white" 
+                                disabled={passwordSaving}
+                            >
+                                {passwordSaving ? (
+                                    <span className="flex items-center gap-2">
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                        Updating...
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        <ShieldCheck className="h-4 w-4" />
+                                        Change Password
+                                    </span>
+                                )}
                             </Button>
                         </CardFooter>
                     </form>

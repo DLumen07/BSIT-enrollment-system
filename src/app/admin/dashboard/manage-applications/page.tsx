@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle, BadgeCheck, FileText, Download, Clock } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle, BadgeCheck, FileText, Download, Clock, BookOpen, User, Calendar, MapPin, Users, GraduationCap, Phone, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -498,6 +498,19 @@ export default function ManageApplicationsPage() {
         return orderedSubjects;
     }, [applicationToEnroll, flattenedSubjectCatalog]);
 
+    const enrollmentSpecialization = useMemo(() => {
+        if (!applicationToEnroll?.formSnapshot) return null;
+        const root = toRecord(applicationToEnroll.formSnapshot);
+        if (!root) return null;
+        const nestedForm = pickRecord(root, 'formSnapshot');
+        const academic = pickRecord(nestedForm, 'academic') ?? pickRecord(root, 'academic');
+        const spec = getStringValue(academic, 'specialization') ?? getStringValue(root, 'specialization');
+
+        if (spec === 'AP') return 'Application Programming';
+        if (spec === 'DD') return 'Digital Design';
+        return spec;
+    }, [applicationToEnroll]);
+
     const allPrerequisites = useMemo(() => {
         const prereqs = new Set<string>();
         Object.values(yearLevelSubjects).flat().forEach((subject) => {
@@ -951,7 +964,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
 
   return (
     <>
-        <main className="flex-1 p-4 sm:p-6 space-y-6">
+        <main className="flex-1 p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
              <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
                 <div className="space-y-0.5">
                     <h1 className="text-2xl font-bold tracking-tight">Manage Applications</h1>
@@ -962,82 +975,82 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                  {canManageApprovedApplications ? (
                     <Dialog open={isDirectEnrollOpen} onOpenChange={setIsDirectEnrollOpen}>
                         <DialogTrigger asChild>
-                            <Button className="rounded-full">
+                            <Button className="rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20 border-0">
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Direct Enroll Student
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="rounded-xl sm:max-w-lg">
+                        <DialogContent className="rounded-xl sm:max-w-lg bg-slate-900/95 border-white/10 text-slate-200">
                         {directEnrollStep === 1 && (
                             <>
                                 <DialogHeader>
-                                    <DialogTitle>Direct Enrollment: Find Student</DialogTitle>
-                                    <DialogDescription>
+                                    <DialogTitle className="text-white">Direct Enrollment: Find Student</DialogTitle>
+                                    <DialogDescription className="text-slate-400">
                                         Enter the Student ID of the student you want to enroll. Only unenrolled students can be found.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="studentId-search">Student ID</Label>
+                                        <Label htmlFor="studentId-search" className="text-slate-300">Student ID</Label>
                                         <Input
                                             id="studentId-search"
                                             value={directEnrollSearchId}
                                             onChange={(e) => setDirectEnrollSearchId(e.target.value)}
-                                            className="rounded-xl"
+                                            className="rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                                             placeholder="e.g., 23-00-0456"
                                         />
                                     </div>
                                 </div>
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={resetDirectEnroll} className="rounded-xl">Cancel</Button>
-                                    <Button onClick={handleDirectEnrollSearch} className="rounded-xl">Find Student</Button>
+                                    <Button variant="outline" onClick={resetDirectEnroll} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">Cancel</Button>
+                                    <Button onClick={handleDirectEnrollSearch} className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0">Find Student</Button>
                                 </DialogFooter>
                             </>
                         )}
                         {directEnrollStep === 2 && foundStudent && (
                             <>
                                 <DialogHeader>
-                                    <DialogTitle>Direct Enrollment: Assign Block & Subjects</DialogTitle>
-                                    <DialogDescription>
+                                    <DialogTitle className="text-white">Direct Enrollment: Assign Block & Subjects</DialogTitle>
+                                    <DialogDescription className="text-slate-400">
                                         Assign a block and subjects for {foundStudent.name}.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-4">
-                                    <Card className="p-4 rounded-xl bg-secondary/50 border-none">
+                                    <Card className="p-4 rounded-xl bg-transparent border-white/10">
                                         <div className="flex items-start gap-4">
-                                            <Avatar className="h-16 w-16">
+                                            <Avatar className="h-16 w-16 border-2 border-white/10">
                                                 <AvatarImage src={foundStudent.avatar} alt={foundStudent.name} />
-                                                <AvatarFallback>{foundStudent.name.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback className="bg-blue-600 text-white">{foundStudent.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            <div className="grid gap-0.5 text-sm">
-                                                <p className="font-semibold text-base">{foundStudent.name}</p>
-                                                <p><span className="text-muted-foreground">Email:</span> {foundStudent.email}</p>
-                                                <p><span className="text-muted-foreground">Phone:</span> {foundStudent.phoneNumber}</p>
-                                                <p><span className="text-muted-foreground">Sex:</span> {foundStudent.sex}</p>
-                                                <p><span className="text-muted-foreground">Current Level:</span> {foundStudent.course} - {foundStudent.year} Year</p>
-                                                 <p><span className="text-muted-foreground">Units Earned:</span> {totalUnitsForFoundStudent}</p>
+                                            <div className="grid gap-0.5 text-sm text-slate-300">
+                                                <p className="font-semibold text-base text-white">{foundStudent.name}</p>
+                                                <p><span className="text-slate-500">Email:</span> {foundStudent.email}</p>
+                                                <p><span className="text-slate-500">Phone:</span> {foundStudent.phoneNumber}</p>
+                                                <p><span className="text-slate-500">Sex:</span> {foundStudent.sex}</p>
+                                                <p><span className="text-slate-500">Current Level:</span> {foundStudent.course} - {foundStudent.year} Year</p>
+                                                 <p><span className="text-slate-500">Units Earned:</span> {totalUnitsForFoundStudent}</p>
                                             </div>
                                         </div>
                                     </Card>
                                     <div className="space-y-2">
-                                        <Label htmlFor="block">Block</Label>
+                                        <Label htmlFor="block" className="text-slate-300">Block</Label>
                                         <Select value={directEnrollBlock} onValueChange={setDirectEnrollBlock} required>
-                                            <SelectTrigger id="block" className="rounded-xl"><SelectValue placeholder="Select a block" /></SelectTrigger>
-                                            <SelectContent className="rounded-xl">
+                                            <SelectTrigger id="block" className="rounded-xl bg-transparent border-white/10 text-white focus:ring-blue-500/20"><SelectValue placeholder="Select a block" /></SelectTrigger>
+                                            <SelectContent className="rounded-xl bg-slate-900/95 border-white/10 text-slate-200">
                                                 {availableBlocksForDirectEnroll.map(b => (
-                                                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                                    <SelectItem key={b.id} value={b.name} className="focus:bg-white/10 focus:text-white">{b.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     {directEnrollBlock && availableSubjectsForDirectEnroll.length > 0 && (
-                                        <div className="space-y-3 mt-4 pt-4 border-t">
-                                            <h4 className="font-medium">Enlist Subjects</h4>
+                                        <div className="space-y-3 mt-4 pt-4 border-t border-white/10">
+                                            <h4 className="font-medium text-white">Enlist Subjects</h4>
                                             <div className="space-y-2">
                                                 {availableSubjectsForDirectEnroll.map((subject) => {
                                                     const prerequisitesMet = hasMetPrerequisites(subject, completedSubjectsForFoundStudent);
                                                     return (
-                                                        <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md", prerequisitesMet ? "" : "bg-muted/50")}>
+                                                        <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md border-white/10", prerequisitesMet ? "bg-transparent" : "bg-red-500/5 border-red-500/20")}>
                                                             <SubjectCheckbox
                                                                 subject={subject}
                                                                 checked={directEnlistedSubjects.some((s) => s.id === subject.id)}
@@ -1050,10 +1063,10 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                                                 }}
                                                                 completedSubjects={completedSubjectsForFoundStudent}
                                                             />
-                                                            <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal", !prerequisitesMet && "text-muted-foreground")}>
+                                                            <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal text-slate-300", !prerequisitesMet && "text-red-400")}>
                                                                 {subject.code} - {subject.description}
                                                             </Label>
-                                                            <span className="text-xs text-muted-foreground">{subject.units} units</span>
+                                                            <span className="text-xs text-slate-500">{subject.units} units</span>
                                                         </div>
                                                     );
                                                 })}
@@ -1062,52 +1075,52 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                     )}
                                 </div>
                                 <DialogFooter className="sm:justify-between">
-                                    <Button variant="outline" onClick={() => setDirectEnrollStep(1)} className="rounded-xl">Back</Button>
-                                    <Button onClick={() => setDirectEnrollStep(3)} className="rounded-xl">Review</Button>
+                                    <Button variant="outline" onClick={() => setDirectEnrollStep(1)} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">Back</Button>
+                                    <Button onClick={() => setDirectEnrollStep(3)} className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0">Review</Button>
                                 </DialogFooter>
                             </>
                         )}
                         {directEnrollStep === 3 && foundStudent && (
                              <>
                                 <DialogHeader>
-                                    <DialogTitle>Review Enrollment</DialogTitle>
-                                    <DialogDescription>
+                                    <DialogTitle className="text-white">Review Enrollment</DialogTitle>
+                                    <DialogDescription className="text-slate-400">
                                         Please review the details below before finalizing the enrollment for {foundStudent.name}.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-6 py-2 max-h-[60vh] overflow-y-auto pr-4">
-                                     <Card className="p-4 rounded-xl bg-secondary/50 border-none">
-                                        <div className="grid gap-1 text-sm">
-                                            <p className="font-semibold text-base">{foundStudent.name}</p>
-                                            <p><span className="text-muted-foreground">ID:</span> {foundStudent.studentId}</p>
-                                            <p><span className="text-muted-foreground">Course:</span> {foundStudent.course} - {foundStudent.year} Year</p>
+                                     <Card className="p-4 rounded-xl bg-transparent border-white/10">
+                                        <div className="grid gap-1 text-sm text-slate-300">
+                                            <p className="font-semibold text-base text-white">{foundStudent.name}</p>
+                                            <p><span className="text-slate-500">ID:</span> {foundStudent.studentId}</p>
+                                            <p><span className="text-slate-500">Course:</span> {foundStudent.course} - {foundStudent.year} Year</p>
                                         </div>
                                     </Card>
                                     <div>
-                                        <h4 className="font-semibold mb-2">Enrollment Details</h4>
-                                        <div className="grid gap-1 text-sm p-3 border rounded-lg">
-                                            <p><span className="text-muted-foreground">Assigned Block:</span> <span className="font-medium">{directEnrollBlock}</span></p>
+                                        <h4 className="font-semibold mb-2 text-white">Enrollment Details</h4>
+                                        <div className="grid gap-1 text-sm p-3 border rounded-lg border-white/10 bg-transparent">
+                                            <p className="text-slate-300"><span className="text-slate-500">Assigned Block:</span> <span className="font-medium text-white">{directEnrollBlock}</span></p>
                                         </div>
                                     </div>
                                      <div>
-                                        <h4 className="font-semibold mb-2">Enlisted Subjects ({directEnlistedSubjects.length})</h4>
-                                        <div className="border rounded-lg max-h-40 overflow-y-auto">
+                                        <h4 className="font-semibold mb-2 text-white">Enlisted Subjects ({directEnlistedSubjects.length})</h4>
+                                        <div className="border rounded-lg max-h-40 overflow-y-auto border-white/10 bg-transparent">
                                             <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Code</TableHead>
-                                                        <TableHead>Description</TableHead>
+                                                <TableHeader className="bg-transparent">
+                                                    <TableRow className="border-white/10 hover:bg-transparent">
+                                                        <TableHead className="text-slate-400">Code</TableHead>
+                                                        <TableHead className="text-slate-400">Description</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                 {directEnlistedSubjects.length > 0 ? directEnlistedSubjects.map(sub => (
-                                                    <TableRow key={sub.id}>
-                                                        <TableCell>{sub.code}</TableCell>
-                                                        <TableCell>{sub.description}</TableCell>
+                                                    <TableRow key={sub.id} className="border-white/5 hover:bg-white/5">
+                                                        <TableCell className="text-slate-300">{sub.code}</TableCell>
+                                                        <TableCell className="text-slate-300">{sub.description}</TableCell>
                                                     </TableRow>
                                                 )) : (
-                                                    <TableRow>
-                                                        <TableCell colSpan={2} className="text-center">No subjects enlisted.</TableCell>
+                                                    <TableRow className="border-white/5 hover:bg-transparent">
+                                                        <TableCell colSpan={2} className="text-center text-slate-500">No subjects enlisted.</TableCell>
                                                     </TableRow>
                                                 )}
                                                 </TableBody>
@@ -1116,10 +1129,10 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                     </div>
                                 </div>
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={() => setDirectEnrollStep(2)} className="rounded-xl">Back</Button>
+                                    <Button variant="outline" onClick={() => setDirectEnrollStep(2)} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">Back</Button>
                                     <Button
                                         onClick={handleDirectEnrollSubmit}
-                                        className="rounded-xl"
+                                        className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
                                         disabled={foundStudent ? isBusy(`direct-enroll-${foundStudent.id}`) : false}
                                     >
                                         Confirm Enrollment
@@ -1135,7 +1148,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                     </Badge>
                  )}
             </div>
-            <Card className="rounded-xl">
+            <Card className="rounded-xl border-white/10 bg-transparent shadow-sm">
                 <CardHeader>
                     <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center">
                          <div className="relative flex-1 md:grow-0">
@@ -1143,7 +1156,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             <Input
                                 type="search"
                                 placeholder="Search by name or ID..."
-                                className="w-full rounded-xl bg-background pl-8 md:w-[200px] lg:w-[240px]"
+                                className="w-full rounded-full bg-transparent border-white/10 pl-8 md:w-[200px] lg:w-[240px] focus:bg-white/5 transition-colors"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -1151,43 +1164,43 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                         <div className="flex flex-wrap items-center gap-2">
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-accent focus:text-accent rounded-xl">
+                                    <Button variant="outline" className="gap-2 rounded-full border-white/10 bg-transparent hover:bg-white/5 hover:text-accent transition-colors">
                                         <Filter className="h-4 w-4" />
                                         Filter
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-4 rounded-xl" align="end">
+                                <PopoverContent className="w-auto p-4 rounded-xl bg-slate-900/95 border-white/10 text-slate-200" align="end">
                                     <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-2">
                                             <Label>Course</Label>
                                             <Select value={filters.course} onValueChange={(value) => handleFilterChange('course', value)}>
-                                                <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl">
+                                                <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl bg-transparent border-white/10 text-white">
                                                     <SelectValue placeholder="All Courses" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    {courses.map(course => <SelectItem key={course} value={course}>{course === 'all' ? 'All Courses' : course}</SelectItem>)}
+                                                <SelectContent className="rounded-xl bg-slate-900/95 border-white/10 text-slate-200">
+                                                    {courses.map(course => <SelectItem key={course} value={course} className="focus:bg-white/10 focus:text-white">{course === 'all' ? 'All Courses' : course}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                          <div className="space-y-2">
                                             <Label>Year</Label>
                                             <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
-                                                <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl">
+                                                <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl bg-transparent border-white/10 text-white">
                                                     <SelectValue placeholder="All Years" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    {years.map(year => <SelectItem key={year} value={year}>{year === 'all' ? 'All Years' : `Year ${year}`}</SelectItem>)}
+                                                <SelectContent className="rounded-xl bg-slate-900/95 border-white/10 text-slate-200">
+                                                    {years.map(year => <SelectItem key={year} value={year} className="focus:bg-white/10 focus:text-white">{year === 'all' ? 'All Years' : `Year ${year}`}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                          <div className="space-y-2">
                                             <Label>Type</Label>
                                             <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                                                <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl">
+                                                <SelectTrigger className="focus:ring-0 focus:ring-offset-0 rounded-xl bg-transparent border-white/10 text-white">
                                                     <SelectValue placeholder="All Types" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    {statuses.map(status => <SelectItem key={status} value={status}>{status === 'all' ? 'All Types' : status}</SelectItem>)}
+                                                <SelectContent className="rounded-xl bg-slate-900/95 border-white/10 text-slate-200">
+                                                    {statuses.map(status => <SelectItem key={status} value={status} className="focus:bg-white/10 focus:text-white">{status === 'all' ? 'All Types' : status}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -1205,54 +1218,59 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                 </CardHeader>
                 <CardContent>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 rounded-xl">
-                            <TabsTrigger value="pending" className="rounded-lg">Pending</TabsTrigger>
-                            <TabsTrigger value="approved" className="rounded-lg">Approved</TabsTrigger>
-                            <TabsTrigger value="rejected" className="rounded-lg">Rejected</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-3 rounded-xl bg-transparent border border-white/10 p-1">
+                            <TabsTrigger value="pending" className="rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">Pending</TabsTrigger>
+                            <TabsTrigger value="approved" className="rounded-lg data-[state=active]:bg-green-600 data-[state=active]:text-white transition-all">Approved</TabsTrigger>
+                            <TabsTrigger value="rejected" className="rounded-lg data-[state=active]:bg-red-600 data-[state=active]:text-white transition-all">Rejected</TabsTrigger>
                         </TabsList>
                         <TabsContent value="pending">
-                            <div className="border rounded-lg mt-4">
+                            <div className="border border-white/10 rounded-xl mt-4 overflow-hidden bg-transparent">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Student ID</TableHead>
-                                            <TableHead>Student Name</TableHead>
-                                            <TableHead>Course</TableHead>
-                                            <TableHead>Year</TableHead>
-                                            <TableHead>Type</TableHead>
+                                    <TableHeader className="bg-transparent">
+                                        <TableRow className="border-white/10 hover:bg-transparent">
+                                            <TableHead className="text-muted-foreground">Student ID</TableHead>
+                                            <TableHead className="text-muted-foreground">Student Name</TableHead>
+                                            <TableHead className="text-muted-foreground">Course</TableHead>
+                                            <TableHead className="text-muted-foreground">Year</TableHead>
+                                            <TableHead className="text-muted-foreground">Type</TableHead>
                                             {canManageApprovedApplications && (
-                                                <TableHead className="text-right">Actions</TableHead>
+                                                <TableHead className="text-right text-muted-foreground">Actions</TableHead>
                                             )}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredApplications.map((application) => (
-                                            <TableRow key={application.id}>
-                                                <TableCell>{application.studentId}</TableCell>
+                                            <TableRow key={application.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                                                <TableCell className="font-mono text-xs">{application.studentId}</TableCell>
                                                 <TableCell className="font-medium">{application.name}</TableCell>
                                                 <TableCell>{application.course}</TableCell>
                                                 <TableCell>{application.year}</TableCell>
-                                                <TableCell>{application.status}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/20">
+                                                        {application.status}
+                                                    </Badge>
+                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
+                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-white hover:bg-white/10">
                                                                 <span className="sr-only">Open menu</span>
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => setSelectedApplication(application)}>
+                                                        <DropdownMenuContent align="end" className="bg-slate-900/95 border-white/10 text-slate-200">
+                                                            <DropdownMenuItem onSelect={() => setSelectedApplication(application)} className="focus:bg-white/10 focus:text-white cursor-pointer">
                                                                 View Credentials
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuSeparator className="bg-white/10" />
                                                             <DropdownMenuItem
                                                                 onSelect={() => handleApprove(application)}
                                                                 disabled={isBusy(`approve-${application.id}`)}
+                                                                className="focus:bg-green-500/20 focus:text-green-400 text-green-400 cursor-pointer"
                                                             >
                                                                 Approve
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)}>
+                                                            <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)} className="focus:bg-red-500/20 focus:text-red-400 text-red-400 cursor-pointer">
                                                                 Reject
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
@@ -1271,51 +1289,55 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                         </TabsContent>
                         <TabsContent value="approved">
                             {!canManageApprovedApplications && (
-                                <div className="mt-4 rounded-xl border border-dashed bg-muted/50 p-4 text-sm text-muted-foreground">
+                                <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-transparent p-4 text-sm text-muted-foreground">
                                     Approved applications are finalized by the Registrar Admin. You can monitor their status here, but only the registrar completes the enrollment process for these students.
                                 </div>
                             )}
-                             <div className="border rounded-lg mt-4">
+                             <div className="border border-white/10 rounded-xl mt-4 overflow-hidden bg-transparent">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Student ID</TableHead>
-                                            <TableHead>Student Name</TableHead>
-                                            <TableHead>Course</TableHead>
-                                            <TableHead>Year</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                    <TableHeader className="bg-transparent">
+                                        <TableRow className="border-white/10 hover:bg-transparent">
+                                            <TableHead className="text-muted-foreground">Student ID</TableHead>
+                                            <TableHead className="text-muted-foreground">Student Name</TableHead>
+                                            <TableHead className="text-muted-foreground">Course</TableHead>
+                                            <TableHead className="text-muted-foreground">Year</TableHead>
+                                            <TableHead className="text-muted-foreground">Type</TableHead>
+                                            <TableHead className="text-right text-muted-foreground">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredApplications.map((application) => (
-                                            <TableRow key={application.id}>
-                                                <TableCell>{application.studentId}</TableCell>
+                                            <TableRow key={application.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                                                <TableCell className="font-mono text-xs">{application.studentId}</TableCell>
                                                 <TableCell className="font-medium">{application.name}</TableCell>
                                                 <TableCell>{application.course}</TableCell>
                                                 <TableCell>{application.year}</TableCell>
-                                                <TableCell>{application.status}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="secondary" className="bg-green-500/10 text-green-400 hover:bg-green-500/20 border-green-500/20">
+                                                        {application.status}
+                                                    </Badge>
+                                                </TableCell>
                                                 {canManageApprovedApplications && (
                                                     <TableCell className="text-right">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
+                                                                <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-white hover:bg-white/10">
                                                                     <span className="sr-only">Open menu</span>
                                                                     <MoreHorizontal className="h-4 w-4" />
                                                                 </Button>
                                                             </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onSelect={() => setSelectedApplication(application)}>
+                                                            <DropdownMenuContent align="end" className="bg-slate-900/95 border-white/10 text-slate-200">
+                                                                <DropdownMenuItem onSelect={() => setSelectedApplication(application)} className="focus:bg-white/10 focus:text-white cursor-pointer">
                                                                     <FileText className="mr-2 h-4 w-4" />
                                                                     View Credentials
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onSelect={() => openEnrollDialog(application)}>
+                                                                <DropdownMenuSeparator className="bg-white/10" />
+                                                                <DropdownMenuItem onSelect={() => openEnrollDialog(application)} className="focus:bg-blue-500/20 focus:text-blue-400 text-blue-400 cursor-pointer">
                                                                     <UserPlus className="mr-2 h-4 w-4" />
                                                                     Enroll Student
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)}>
+                                                                <DropdownMenuSeparator className="bg-white/10" />
+                                                                <DropdownMenuItem onSelect={() => handleOpenRejectionDialog(application)} className="focus:bg-red-500/20 focus:text-red-400 text-red-400 cursor-pointer">
                                                                     <X className="mr-2 h-4 w-4" />
                                                                     Reject
                                                                 </DropdownMenuItem>
@@ -1335,48 +1357,53 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             </div>
                         </TabsContent>
                         <TabsContent value="rejected">
-                             <div className="border rounded-lg mt-4">
+                             <div className="border border-white/10 rounded-xl mt-4 overflow-hidden bg-transparent">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Student ID</TableHead>
-                                            <TableHead>Student Name</TableHead>
-                                            <TableHead>Course</TableHead>
-                                            <TableHead>Year</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                    <TableHeader className="bg-transparent">
+                                        <TableRow className="border-white/10 hover:bg-transparent">
+                                            <TableHead className="text-muted-foreground">Student ID</TableHead>
+                                            <TableHead className="text-muted-foreground">Student Name</TableHead>
+                                            <TableHead className="text-muted-foreground">Course</TableHead>
+                                            <TableHead className="text-muted-foreground">Year</TableHead>
+                                            <TableHead className="text-muted-foreground">Type</TableHead>
+                                            <TableHead className="text-right text-muted-foreground">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredApplications.map((application) => (
-                                            <TableRow key={application.id}>
-                                                <TableCell>{application.studentId}</TableCell>
+                                            <TableRow key={application.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                                                <TableCell className="font-mono text-xs">{application.studentId}</TableCell>
                                                 <TableCell className="font-medium">{application.name}</TableCell>
                                                 <TableCell>{application.course}</TableCell>
                                                 <TableCell>{application.year}</TableCell>
-                                                 <TableCell>{application.status}</TableCell>
+                                                 <TableCell>
+                                                    <Badge variant="secondary" className="bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20">
+                                                        {application.status}
+                                                    </Badge>
+                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
+                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-white hover:bg-white/10">
                                                                 <span className="sr-only">Open menu</span>
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => setSelectedApplication(application)}>
+                                                        <DropdownMenuContent align="end" className="bg-slate-900/95 border-white/10 text-slate-200">
+                                                            <DropdownMenuItem onSelect={() => setSelectedApplication(application)} className="focus:bg-white/10 focus:text-white cursor-pointer">
                                                                 View Credentials
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
                                                                 onSelect={() => handleRetrieve(application)}
                                                                 disabled={isBusy(`retrieve-${application.id}`)}
+                                                                className="focus:bg-blue-500/20 focus:text-blue-400 text-blue-400 cursor-pointer"
                                                             >
                                                                 <RotateCw className="mr-2 h-4 w-4" />
                                                                 Retrieve
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuSeparator className="bg-white/10" />
                                                             <DropdownMenuItem
-                                                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                                                                className="text-red-400 focus:bg-red-500/20 focus:text-red-300 cursor-pointer"
                                                                 disabled={isBusy(`delete-${application.id}`)}
                                                                 onSelect={() => {
                                                                     setDeleteDialog({ isOpen: true, application });
@@ -1407,94 +1434,123 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
         
         {selectedApplication && (
             <Dialog open={!!selectedApplication} onOpenChange={(open) => !open && setSelectedApplication(null)}>
-                <DialogContent className="sm:max-w-lg rounded-xl">
-                    <DialogHeader>
-                        <DialogTitle>Student Credentials</DialogTitle>
-                        <DialogDescription>Review the submitted documents for this applicant.</DialogDescription>
+                <DialogContent className="sm:max-w-lg rounded-xl bg-slate-900/95 border-white/10 text-slate-200 p-0 overflow-hidden gap-0">
+                    <DialogHeader className="p-6 pb-4 border-b border-white/10">
+                        <DialogTitle className="text-xl font-semibold text-white">Student Credentials</DialogTitle>
+                        <DialogDescription className="text-slate-400">Review the submitted documents for this applicant.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <p className="text-sm font-medium text-right col-span-1">Name</p>
-                            <p className="col-span-3 text-sm">{selectedApplication.name}</p>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                                <p className="text-sm font-medium text-right col-span-1">Course</p>
-                            <p className="col-span-3 text-sm">{selectedApplication.course} {selectedApplication.year}</p>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                                <p className="text-sm font-medium text-right col-span-1">Type</p>
-                            <p className="col-span-3 text-sm">
-                                {selectedApplication.status}
-                            </p>
-                        </div>
-                        {formattedSubmittedAt && (
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <p className="text-sm font-medium text-right col-span-1">Submitted</p>
-                                <p className="col-span-3 text-sm">{formattedSubmittedAt}</p>
+                    
+                    <div className="p-6 space-y-6">
+                        {/* Student Profile Card */}
+                        <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                            <Avatar className="h-12 w-12 border border-white/10">
+                                <AvatarImage src={`https://picsum.photos/seed/${selectedApplication.id}/48/48`} />
+                                <AvatarFallback className="bg-blue-600 text-white font-medium">
+                                    {selectedApplication.name.charAt(0)}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="space-y-1 flex-1">
+                                <h4 className="font-semibold text-white leading-none">{selectedApplication.name}</h4>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
+                                    <div className="flex items-center gap-1.5">
+                                        <BookOpen className="h-3.5 w-3.5" />
+                                        <span>{selectedApplication.course} {selectedApplication.year}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <User className="h-3.5 w-3.5" />
+                                        <span>{selectedApplication.status}</span>
+                                    </div>
+                                </div>
+                                {formattedSubmittedAt && (
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-1">
+                                        <Calendar className="h-3 w-3" />
+                                        <span>Submitted {formattedSubmittedAt}</span>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                         {selectedApplication.rejectionReason && (
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <p className="text-sm font-medium text-right col-span-1">Reason</p>
-                                <p className="col-span-3 text-sm text-destructive">{selectedApplication.rejectionReason}</p>
-                            </div>
-                        )}
-                        <div className="space-y-3 mt-4">
-                            {credentialLabels
-                                .filter((cred) => cred.requiredFor.includes(selectedApplication.status))
-                                .map((credential) => {
-                                    const statusInfo = credentialStatuses[credential.key] ?? defaultCredentialStatus;
-                                    const statusMeta = credentialStatusMeta[statusInfo.status];
-                                    const StatusIcon = statusMeta.icon;
-                                    const canViewForm = (
-                                        credential.key === 'registrationForm'
-                                        && Boolean(selectedApplication.credentials[credential.key])
-                                        && Boolean(selectedApplication.formSnapshot)
-                                    );
+                        </div>
 
-                                    return (
-                                        <div key={credential.key} className="flex items-center justify-between">
-                                            <span className="text-sm">{credential.label}</span>
-                                            {canViewForm ? (
-                                                <Button variant="secondary" size="sm" className="h-7 rounded-md" onClick={() => setIsReviewFormOpen(true)}>
-                                                    <FileText className="h-3 w-3 mr-2" />
-                                                    View Form
-                                                </Button>
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    <StatusIcon className={`h-4 w-4 ${statusMeta.className}`} />
-                                                    <span className="text-xs text-muted-foreground">{statusMeta.label}</span>
+                        {selectedApplication.rejectionReason && (
+                            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm">
+                                <span className="font-medium text-red-400 block mb-1">Rejection Reason:</span>
+                                <span className="text-slate-300">{selectedApplication.rejectionReason}</span>
+                            </div>
+                        )}
+
+                        {/* Credentials List */}
+                        <div className="space-y-3">
+                            <h5 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Required Documents</h5>
+                            <div className="grid gap-2">
+                                {credentialLabels
+                                    .filter((cred) => cred.requiredFor.includes(selectedApplication.status))
+                                    .map((credential) => {
+                                        const statusInfo = credentialStatuses[credential.key] ?? defaultCredentialStatus;
+                                        const statusMeta = credentialStatusMeta[statusInfo.status];
+                                        const StatusIcon = statusMeta.icon;
+                                        const canViewForm = (
+                                            credential.key === 'registrationForm'
+                                            && Boolean(selectedApplication.credentials[credential.key])
+                                            && Boolean(selectedApplication.formSnapshot)
+                                        );
+
+                                        return (
+                                            <div key={credential.key} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-full bg-white/5 ${statusInfo.status === 'submitted' ? 'text-green-400' : 'text-slate-400'}`}>
+                                                        <FileText className="h-4 w-4" />
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-sm font-medium text-slate-200">{credential.label}</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <StatusIcon className={`h-3 w-3 ${statusMeta.className}`} />
+                                                            <span className={`text-xs ${statusMeta.className}`}>{statusMeta.label}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                                
+                                                {canViewForm && (
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="h-8 px-3 rounded-lg border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors" 
+                                                        onClick={() => setIsReviewFormOpen(true)}
+                                                    >
+                                                        View Form
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                            </div>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button
-                            variant="destructive"
-                            className="rounded-xl"
-                            onClick={() => {
-                                if (selectedApplication) {
-                                    handleOpenRejectionDialog(selectedApplication);
-                                }
-                            }}
-                            disabled={selectedApplication ? isBusy(`reject-${selectedApplication.id}`) || isBusy(`approve-${selectedApplication.id}`) : false}
-                        >
-                            Reject
-                        </Button>
-                        <Button
-                            className="bg-green-500 hover:bg-green-600 text-white rounded-xl"
-                            onClick={() => {
-                                 if (selectedApplication) {
-                                    handleApprove(selectedApplication);
-                                }
-                            }}
-                            disabled={selectedApplication ? isBusy(`approve-${selectedApplication.id}`) : false}
-                        >
-                            Approve
-                        </Button>
+
+                    <DialogFooter className="p-6 pt-4 border-t border-white/10 bg-white/5">
+                        <div className="flex w-full gap-3">
+                            <Button
+                                variant="destructive"
+                                className="flex-1 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 h-11"
+                                onClick={() => {
+                                    if (selectedApplication) {
+                                        handleOpenRejectionDialog(selectedApplication);
+                                    }
+                                }}
+                                disabled={selectedApplication ? isBusy(`reject-${selectedApplication.id}`) || isBusy(`approve-${selectedApplication.id}`) : false}
+                            >
+                                Reject Application
+                            </Button>
+                            <Button
+                                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-xl border-0 h-11 font-medium shadow-lg shadow-blue-900/20"
+                                onClick={() => {
+                                     if (selectedApplication) {
+                                        handleApprove(selectedApplication);
+                                    }
+                                }}
+                                disabled={selectedApplication ? isBusy(`approve-${selectedApplication.id}`) : false}
+                            >
+                                Approve Application
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -1502,118 +1558,256 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
         
         {isReviewFormOpen && selectedApplication && (
              <Dialog open={isReviewFormOpen} onOpenChange={setIsReviewFormOpen}>
-                <DialogContent className="sm:max-w-2xl rounded-xl">
-                    <DialogHeader>
-                        <DialogTitle>Review Submitted Form</DialogTitle>
-                        <DialogDescription>
-                            This is the information submitted by {selectedApplication.name}.
+                <DialogContent className="sm:max-w-3xl rounded-xl bg-slate-900/95 border-white/10 text-slate-200 p-0 overflow-hidden gap-0">
+                    <DialogHeader className="p-6 pb-4 border-b border-white/10">
+                        <div className="flex items-center gap-3 pr-10">
+                            <DialogTitle className="text-xl font-semibold text-white">Review Submitted Form</DialogTitle>
+                            <Badge variant="outline" className="border-blue-500/20 text-blue-400 bg-blue-500/10">
+                                {selectedApplication.status}
+                            </Badge>
+                        </div>
+                        <DialogDescription className="text-slate-400">
+                            Detailed enrollment information for <span className="text-white font-medium">{selectedApplication.name}</span>.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="max-h-[70vh] overflow-y-auto p-1 pr-4">
+                    
+                    <div className="max-h-[70vh] overflow-y-auto p-6 space-y-8">
                         {formReview ? (
-                            <div className="space-y-6">
-                                <section>
-                                    <h4 className="font-semibold mb-2">Student Details</h4>
-                                    <div className="border rounded-lg p-4 space-y-1">
-                                        <ReviewField label="Student ID" value={withFallback(formReview.student.id ?? selectedApplication.studentId)} />
-                                        <ReviewField label="Course" value={withFallback(formReview.student.course ?? selectedApplication.course)} />
-                                        <ReviewField label="Year Level" value={withFallback(formReview.student.yearLevel ?? `${selectedApplication.year}`)} />
-                                        <ReviewField label="Student Type" value={withFallback(formReview.student.status ?? selectedApplication.status)} />
-                                        <ReviewField label="Block" value={withFallback(formReview.student.block ?? selectedApplication.block ?? null)} />
-                                        <ReviewField label="Specialization" value={withFallback(formReview.student.specialization, 'None')} />
-                                        <ReviewField label="Email" value={withFallback(contactEmail)} />
-                                        <ReviewField label="Phone" value={withFallback(contactPhone)} />
+                            <>
+                                {/* Student Details */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+                                            <User className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="font-semibold text-white">Student Details</h4>
                                     </div>
-                                </section>
-
-                                <section>
-                                    <h4 className="font-semibold mb-2">Personal Information</h4>
-                                    <div className="border rounded-lg p-4 space-y-1">
-                                        <ReviewField label="Full Name" value={withFallback(formReview.personal.name ?? selectedApplication.name)} />
-                                        <ReviewField label="Birthdate" value={withFallback(personalBirthdate)} />
-                                        <ReviewField label="Sex" value={withFallback(formReview.personal.sex)} />
-                                        <ReviewField label="Civil Status" value={withFallback(formReview.personal.civilStatus)} />
-                                        <ReviewField label="Nationality" value={withFallback(formReview.personal.nationality)} />
-                                        <ReviewField label="Religion" value={withFallback(formReview.personal.religion)} />
-                                        <ReviewField label="Dialect" value={withFallback(formReview.personal.dialect)} />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Student ID</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.student.id ?? selectedApplication.studentId)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Course</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.student.course ?? selectedApplication.course)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Year Level</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.student.yearLevel ?? `${selectedApplication.year}`)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Block</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.student.block ?? selectedApplication.block ?? null)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Specialization</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.student.specialization, 'None')}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Email</p>
+                                            <p className="font-medium text-white truncate" title={withFallback(contactEmail)}>{withFallback(contactEmail)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Phone</p>
+                                            <p className="font-medium text-white">{withFallback(contactPhone)}</p>
+                                        </div>
                                     </div>
-                                </section>
+                                </div>
 
-                                <section>
-                                    <h4 className="font-semibold mb-2">Address</h4>
-                                    <div className="border rounded-lg p-4 space-y-1">
-                                        <ReviewField label="Current Address" value={withFallback(formReview.address.currentAddress)} />
-                                        <ReviewField label="Permanent Address" value={withFallback(formReview.address.permanentAddress)} />
+                                {/* Personal Information */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
+                                            <BadgeCheck className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="font-semibold text-white">Personal Information</h4>
                                     </div>
-                                </section>
-
-                                <section>
-                                    <h4 className="font-semibold mb-2">Family Background</h4>
-                                    <div className="border rounded-lg p-4 space-y-1">
-                                        <ReviewField label="Father's Name" value={withFallback(formReview.family.fathersName)} />
-                                        <ReviewField label="Father's Occupation" value={withFallback(formReview.family.fathersOccupation)} />
-                                        <ReviewField label="Mother's Name" value={withFallback(formReview.family.mothersName)} />
-                                        <ReviewField label="Mother's Occupation" value={withFallback(formReview.family.mothersOccupation)} />
-                                        <ReviewField label="Guardian's Name" value={withFallback(formReview.family.guardiansName)} />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Full Name</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.personal.name ?? selectedApplication.name)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Birthdate</p>
+                                            <p className="font-medium text-white">{withFallback(personalBirthdate)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Sex</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.personal.sex)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Civil Status</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.personal.civilStatus)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Nationality</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.personal.nationality)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Religion</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.personal.religion)}</p>
+                                        </div>
                                     </div>
-                                </section>
+                                </div>
 
-                                <section>
-                                    <h4 className="font-semibold mb-2">Emergency Contact</h4>
-                                    <div className="border rounded-lg p-4 space-y-1">
-                                        <ReviewField label="Contact Name" value={withFallback(formReview.additional.emergencyContactName)} />
-                                        <ReviewField label="Contact Number" value={withFallback(formReview.additional.emergencyContactNumber)} />
-                                        <ReviewField label="Contact Address" value={withFallback(formReview.additional.emergencyContactAddress)} />
+                                {/* Address */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                            <MapPin className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="font-semibold text-white">Address</h4>
                                     </div>
-                                </section>
-
-                                <section>
-                                    <h4 className="font-semibold mb-2">Education History</h4>
-                                    <div className="border rounded-lg p-4 space-y-1">
-                                        <ReviewField label="Elementary School" value={withFallback(formReview.education.elementarySchool)} />
-                                        <ReviewField label="Elementary Year Graduated" value={withFallback(formReview.education.elemYearGraduated)} />
-                                        <ReviewField label="Secondary School" value={withFallback(formReview.education.secondarySchool)} />
-                                        <ReviewField label="Secondary Year Graduated" value={withFallback(formReview.education.secondaryYearGraduated)} />
-                                        <ReviewField label="Previous College" value={withFallback(formReview.education.collegiateSchool, 'None')} />
+                                    <div className="grid grid-cols-1 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Current Address</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.address.currentAddress)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Permanent Address</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.address.permanentAddress)}</p>
+                                        </div>
                                     </div>
-                                </section>
+                                </div>
 
-                                <section>
-                                    <h4 className="font-semibold mb-2">Enlisted Subjects</h4>
+                                {/* Family Background */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                                            <Users className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="font-semibold text-white">Family Background</h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Father's Name</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.family.fathersName)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Father's Occupation</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.family.fathersOccupation)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Mother's Name</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.family.mothersName)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Mother's Occupation</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.family.mothersOccupation)}</p>
+                                        </div>
+                                        <div className="space-y-1 sm:col-span-2">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Guardian's Name</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.family.guardiansName)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Emergency Contact */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400">
+                                            <Phone className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="font-semibold text-white">Emergency Contact</h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Contact Name</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.additional.emergencyContactName)}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Contact Number</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.additional.emergencyContactNumber)}</p>
+                                        </div>
+                                        <div className="space-y-1 sm:col-span-2">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Contact Address</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.additional.emergencyContactAddress)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Education History */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400">
+                                            <GraduationCap className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="font-semibold text-white">Education History</h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <div className="space-y-1 sm:col-span-2">
+                                                <p className="text-xs text-slate-500 uppercase tracking-wider">Elementary School</p>
+                                                <p className="font-medium text-white">{withFallback(formReview.education.elementarySchool)}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-slate-500 uppercase tracking-wider">Year Graduated</p>
+                                                <p className="font-medium text-white">{withFallback(formReview.education.elemYearGraduated)}</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-white/5">
+                                            <div className="space-y-1 sm:col-span-2">
+                                                <p className="text-xs text-slate-500 uppercase tracking-wider">Secondary School</p>
+                                                <p className="font-medium text-white">{withFallback(formReview.education.secondarySchool)}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-slate-500 uppercase tracking-wider">Year Graduated</p>
+                                                <p className="font-medium text-white">{withFallback(formReview.education.secondaryYearGraduated)}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1 pt-2 border-t border-white/5">
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">Previous College</p>
+                                            <p className="font-medium text-white">{withFallback(formReview.education.collegiateSchool, 'None')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Enlisted Subjects */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400">
+                                            <BookOpen className="h-4 w-4" />
+                                        </div>
+                                        <h4 className="font-semibold text-white">Enlisted Subjects</h4>
+                                    </div>
                                     {reviewSubjects.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground">No subjects were selected in this application.</p>
+                                        <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                                            <p className="text-sm text-slate-400">No subjects were selected in this application.</p>
+                                        </div>
                                     ) : (
-                                        <div className="border rounded-lg overflow-hidden">
+                                        <div className="rounded-xl overflow-hidden border border-white/10 bg-white/5">
                                             <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Code</TableHead>
-                                                        <TableHead>Description</TableHead>
-                                                        <TableHead className="w-20 text-right">Units</TableHead>
+                                                <TableHeader className="bg-white/5">
+                                                    <TableRow className="border-white/10 hover:bg-transparent">
+                                                        <TableHead className="text-slate-400 font-medium">Code</TableHead>
+                                                        <TableHead className="text-slate-400 font-medium">Description</TableHead>
+                                                        <TableHead className="w-24 text-right text-slate-400 font-medium">Units</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {reviewSubjects.map((subject) => (
-                                                        <TableRow key={`subject-${subject.code}`}>
-                                                            <TableCell className="font-medium">{subject.code}</TableCell>
-                                                            <TableCell>{withFallback(subject.description ?? null, 'Subject details unavailable')}</TableCell>
-                                                            <TableCell className="text-right">{subject.units !== null && subject.units !== undefined ? subject.units : '—'}</TableCell>
+                                                        <TableRow key={`subject-${subject.code}`} className="border-white/5 hover:bg-white/5">
+                                                            <TableCell className="font-medium text-blue-400">{subject.code}</TableCell>
+                                                            <TableCell className="text-slate-300">{withFallback(subject.description ?? null, 'Subject details unavailable')}</TableCell>
+                                                            <TableCell className="text-right text-slate-300">{subject.units !== null && subject.units !== undefined ? subject.units : '—'}</TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
                                             </Table>
                                         </div>
                                     )}
-                                </section>
-                            </div>
+                                </div>
+                            </>
                         ) : (
-                            <div className="flex items-center justify-center rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                                No form details were captured for this application.
+                            <div className="flex flex-col items-center justify-center py-12 rounded-xl border border-dashed border-white/10 bg-white/5 text-center">
+                                <FileText className="h-12 w-12 text-slate-600 mb-3" />
+                                <p className="text-slate-400 font-medium">No form details available</p>
+                                <p className="text-sm text-slate-500">The application form snapshot could not be loaded.</p>
                             </div>
                         )}
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsReviewFormOpen(false)} className="rounded-xl">Close</Button>
+                    <DialogFooter className="p-6 pt-4 border-t border-white/10 bg-white/5">
+                        <Button variant="outline" onClick={() => setIsReviewFormOpen(false)} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/10 hover:text-white">Close Review</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -1621,11 +1815,11 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
 
         {rejectionDialog.isOpen && rejectionDialog.application && (
             <Dialog open={rejectionDialog.isOpen} onOpenChange={(open) => !open && handleCloseRejectionDialog()}>
-                <DialogContent className="sm:max-w-md rounded-xl">
+                <DialogContent className="sm:max-w-md rounded-xl bg-slate-900/95 border-white/10 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>Reject Application</DialogTitle>
-                        <DialogDescription>
-                            Provide a reason for rejecting the application for <span className="font-semibold">{rejectionDialog.application.name}</span>.
+                        <DialogTitle className="text-white">Reject Application</DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            Provide a reason for rejecting the application for <span className="font-semibold text-white">{rejectionDialog.application.name}</span>.
                         </DialogDescription>
                     </DialogHeader>
                     <form id="rejection-form" onSubmit={(e) => {
@@ -1639,28 +1833,28 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                         }
                     }}>
                         <div className="grid gap-4 py-4">
-                            <Label>Select a reason:</Label>
-                            <RadioGroup name="rejection-reason" defaultValue={rejectionReasons[0].id}>
+                            <Label className="text-slate-300">Select a reason:</Label>
+                            <RadioGroup name="rejection-reason" defaultValue={rejectionReasons[0].id} className="gap-3">
                                 {rejectionReasons.map((reason) => (
                                     <div key={reason.id} className="flex items-center space-x-2">
-                                        <RadioGroupItem value={reason.id} id={reason.id} />
-                                        <Label htmlFor={reason.id}>{reason.label}</Label>
+                                        <RadioGroupItem value={reason.id} id={reason.id} className="border-white/20 text-blue-500" />
+                                        <Label htmlFor={reason.id} className="text-slate-300 font-normal cursor-pointer">{reason.label}</Label>
                                     </div>
                                 ))}
                             </RadioGroup>
-                            <div className="grid w-full gap-1.5">
-                                <Label htmlFor="custom-reason">Or provide a custom reason:</Label>
-                                <Textarea placeholder="Type your message here." id="custom-reason" name="custom-reason" className="rounded-xl"/>
+                            <div className="grid w-full gap-1.5 mt-2">
+                                <Label htmlFor="custom-reason" className="text-slate-300">Or provide a custom reason:</Label>
+                                <Textarea placeholder="Type your message here." id="custom-reason" name="custom-reason" className="rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 min-h-[100px]"/>
                             </div>
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleCloseRejectionDialog} className="rounded-xl">Cancel</Button>
+                        <Button variant="outline" onClick={handleCloseRejectionDialog} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">Cancel</Button>
                         <Button
                             variant="destructive"
                             type="submit"
                             form="rejection-form"
-                            className="rounded-xl"
+                            className="rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20"
                             disabled={
                                 rejectionDialog.application ? isBusy(`reject-${rejectionDialog.application.id}`) : false
                             }
@@ -1674,39 +1868,68 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
 
         {isEnrollDialogOpen && applicationToEnroll && (
             <Dialog open={isEnrollDialogOpen} onOpenChange={setIsEnrollDialogOpen}>
-                <DialogContent className="sm:max-w-lg rounded-xl">
-                    <DialogHeader>
-                        <DialogTitle>Enroll Student</DialogTitle>
-                        <DialogDescription>
-                            Confirm block and enlist subjects for {applicationToEnroll.name}.
+                <DialogContent className="sm:max-w-3xl rounded-xl bg-slate-900/95 border-white/10 text-slate-200 p-0 overflow-hidden gap-0">
+                    <DialogHeader className="p-6 pb-4 border-b border-white/10">
+                        <div className="flex items-center gap-3 pr-10">
+                            <DialogTitle className="text-xl font-semibold text-white">Enroll Student</DialogTitle>
+                            <Badge variant="outline" className="border-blue-500/20 text-blue-400 bg-blue-500/10">
+                                {applicationToEnroll.status}
+                            </Badge>
+                        </div>
+                        <DialogDescription className="text-slate-400">
+                            Confirm block and enlist subjects for <span className="text-white font-medium">{applicationToEnroll.name}</span>.
                         </DialogDescription>
                     </DialogHeader>
                     <form id="enroll-student-form" onSubmit={handleEnroll}>
-                        <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-4 no-scrollbar">
-                             <div className="flex items-center justify-between gap-4 p-4 border rounded-xl">
-                                <div className="flex items-center gap-4">
-                                     <Avatar>
-                                        <AvatarImage src={`https://picsum.photos/seed/${applicationToEnroll.id}/40/40`} alt={applicationToEnroll.name} />
-                                        <AvatarFallback>{applicationToEnroll.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <p className="font-semibold">{applicationToEnroll.name}</p>
-                                        <p className="text-sm text-muted-foreground">{applicationToEnroll.course} - {applicationToEnroll.year} Year ({applicationToEnroll.status})</p>
+                        <div className="max-h-[70vh] overflow-y-auto p-6 space-y-8">
+                             {/* Student Profile Card */}
+                             <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                                <Avatar className="h-12 w-12 border border-white/10">
+                                    <AvatarImage src={`https://picsum.photos/seed/${applicationToEnroll.id}/48/48`} alt={applicationToEnroll.name} />
+                                    <AvatarFallback className="bg-blue-600 text-white font-medium">{applicationToEnroll.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="space-y-1 flex-1">
+                                    <h4 className="font-semibold text-white leading-none">{applicationToEnroll.name}</h4>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-400">
+                                        <div className="flex items-center gap-1.5">
+                                            <BookOpen className="h-3.5 w-3.5" />
+                                            <span>{applicationToEnroll.course} {applicationToEnroll.year}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <User className="h-3.5 w-3.5" />
+                                            <span>{applicationToEnroll.status}</span>
+                                        </div>
+                                        {enrollmentSpecialization && (
+                                            <div className="flex items-center gap-1.5">
+                                                <BadgeCheck className="h-3.5 w-3.5" />
+                                                <span>{enrollmentSpecialization}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                 <div className="text-right">
-                                    <Label className="text-xs">Assigned Block</Label>
-                                    <p className="font-semibold">{enrollBlock || 'N/A'}</p>
-                                 </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Assigned Block</p>
+                                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-sm font-mono">
+                                        {enrollBlock || 'N/A'}
+                                    </Badge>
+                                </div>
                             </div>
 
                             {(applicationToEnroll.status === 'Transferee' || applicationToEnroll.status === 'New') && allPrerequisites.length > 0 && (
-                                 <div className="space-y-3 mt-4 pt-4 border-t">
-                                    <h4 className="font-medium">Credential Override</h4>
-                                    <p className="text-xs text-muted-foreground">For transferees or new students, manually credit any prerequisites they have fulfilled.</p>
-                                    <div className="space-y-2 max-h-32 overflow-y-auto pr-2 no-scrollbar">
+                                 <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                                            <BadgeCheck className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-white">Credential Override</h4>
+                                            <p className="text-xs text-slate-400">For transferees or new students, manually credit any prerequisites they have fulfilled.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-4 rounded-xl bg-white/5 border border-white/10 max-h-48 overflow-y-auto">
                                         {allPrerequisites.map(prereq => (
-                                            <div key={`prereq-${prereq.id}`} className="flex items-center space-x-2 p-2 border rounded-md">
+                                            <div key={`prereq-${prereq.id}`} className="flex items-start space-x-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
                                                 <Checkbox
                                                     id={`prereq-check-${prereq.id}`}
                                                     checked={prerequisiteOverrides.includes(prereq.code)}
@@ -1717,10 +1940,14 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                                             setPrerequisiteOverrides(prev => prev.filter(code => code !== prereq.code));
                                                         }
                                                     }}
+                                                    className="mt-0.5 border-white/20 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                                                 />
-                                                <Label htmlFor={`prereq-check-${prereq.id}`} className="flex-1 font-normal">
-                                                    {prereq.code} - {prereq.description}
-                                                </Label>
+                                                <div className="grid gap-0.5">
+                                                    <Label htmlFor={`prereq-check-${prereq.id}`} className="font-medium text-slate-200 cursor-pointer leading-none">
+                                                        {prereq.code}
+                                                    </Label>
+                                                    <p className="text-xs text-slate-500 line-clamp-1" title={prereq.description}>{prereq.description}</p>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -1728,9 +1955,14 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             )}
 
                             {enrollBlock && availableSubjectsForEnrollment.length > 0 && (
-                                <div className="space-y-3 mt-4 pt-4 border-t">
-                                    <div className="flex justify-between items-center">
-                                        <h4 className="font-medium">Enlist Subjects</h4>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+                                                <BookOpen className="h-4 w-4" />
+                                            </div>
+                                            <h4 className="font-semibold text-white">Enlist Subjects</h4>
+                                        </div>
                                         <div className="flex items-center space-x-2">
                                             <Checkbox
                                                 id="select-all-subjects"
@@ -1743,80 +1975,116 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                                         setEnlistedSubjects([]);
                                                     }
                                                 }}
+                                                className="border-white/20 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                                             />
-                                            <Label htmlFor="select-all-subjects" className="text-sm font-normal">
+                                            <Label htmlFor="select-all-subjects" className="text-sm font-medium text-slate-300 cursor-pointer">
                                                 Select All
                                             </Label>
                                         </div>
                                     </div>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 no-scrollbar">
-                                        {availableSubjectsForEnrollment.map((subject) => {
-                                            const prerequisitesMet = hasMetPrerequisites(subject, completedSubjectsForEnrollment);
-                                            return (
-                                                <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md", prerequisitesMet ? "" : "bg-muted/50")}>
-                                                    <SubjectCheckbox
-                                                        subject={subject}
-                                                        checked={enlistedSubjects.some((s) => s.id === subject.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            if (checked) {
-                                                                setEnlistedSubjects((prev) => [...prev, subject]);
-                                                            } else {
-                                                                setEnlistedSubjects((prev) => prev.filter((s) => s.id !== subject.id));
-                                                            }
-                                                        }}
-                                                        completedSubjects={completedSubjectsForEnrollment}
-                                                    />
-                                                    <Label
-                                                        htmlFor={`sub-${subject.id}`}
-                                                        className={cn("flex-1 font-normal cursor-pointer", !prerequisitesMet && "text-muted-foreground cursor-not-allowed")}
-                                                    >
-                                                        {subject.code} - {subject.description}
-                                                    </Label>
-                                                    <span className="text-xs text-muted-foreground">{subject.units} units</span>
-                                                </div>
-                                            );
-                                        })}
+                                    
+                                    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+                                        <div className="max-h-[300px] overflow-y-auto">
+                                            <Table>
+                                                <TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-sm">
+                                                    <TableRow className="border-white/10 hover:bg-transparent">
+                                                        <TableHead className="w-[50px]"></TableHead>
+                                                        <TableHead className="text-slate-400">Code</TableHead>
+                                                        <TableHead className="text-slate-400">Description</TableHead>
+                                                        <TableHead className="text-right text-slate-400">Units</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {availableSubjectsForEnrollment.map((subject) => {
+                                                        const prerequisitesMet = hasMetPrerequisites(subject, completedSubjectsForEnrollment);
+                                                        const isSelected = enlistedSubjects.some((s) => s.id === subject.id);
+                                                        
+                                                        return (
+                                                            <TableRow 
+                                                                key={subject.id} 
+                                                                className={cn(
+                                                                    "border-white/5 transition-colors", 
+                                                                    isSelected ? "bg-blue-500/5 hover:bg-blue-500/10" : "hover:bg-white/5",
+                                                                    !prerequisitesMet && "opacity-60 bg-red-500/5 hover:bg-red-500/10"
+                                                                )}
+                                                            >
+                                                                <TableCell className="py-3">
+                                                                    <SubjectCheckbox
+                                                                        subject={subject}
+                                                                        checked={isSelected}
+                                                                        onCheckedChange={(checked) => {
+                                                                            if (checked) {
+                                                                                setEnlistedSubjects((prev) => [...prev, subject]);
+                                                                            } else {
+                                                                                setEnlistedSubjects((prev) => prev.filter((s) => s.id !== subject.id));
+                                                                            }
+                                                                        }}
+                                                                        completedSubjects={completedSubjectsForEnrollment}
+                                                                    />
+                                                                </TableCell>
+                                                                <TableCell className="font-medium text-slate-200 py-3">
+                                                                    <Label htmlFor={`sub-${subject.id}`} className={cn("cursor-pointer", !prerequisitesMet && "text-red-400 cursor-not-allowed")}>
+                                                                        {subject.code}
+                                                                    </Label>
+                                                                </TableCell>
+                                                                <TableCell className="text-slate-400 py-3">
+                                                                    <Label htmlFor={`sub-${subject.id}`} className={cn("cursor-pointer font-normal", !prerequisitesMet && "text-red-400 cursor-not-allowed")}>
+                                                                        {subject.description}
+                                                                    </Label>
+                                                                </TableCell>
+                                                                <TableCell className="text-right text-slate-400 py-3">{subject.units}</TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="space-y-3 mt-4 pt-4 border-t">
+                            <div className="space-y-3">
                                 <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                        <h4 className="font-medium">Assessment of Fees</h4>
-                                        <p className="text-xs text-muted-foreground">
-                                            Republic Act 10931 (Universal Access to Quality Tertiary Education Act) covers the mandatory fees of qualified students through UniFAST. This preview mirrors the fee table on the registration form.
-                                        </p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-green-500/10 text-green-400">
+                                            <FileText className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-white">Assessment of Fees</h4>
+                                            <p className="text-xs text-slate-400 max-w-md">
+                                                Republic Act 10931 (Universal Access to Quality Tertiary Education Act) covers mandatory fees.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <Badge variant="secondary" className="rounded-full whitespace-nowrap">RA 10931</Badge>
+                                    <Badge variant="secondary" className="rounded-full whitespace-nowrap bg-blue-500/10 text-blue-400 border-blue-500/20">RA 10931</Badge>
                                 </div>
-                                <div className="border rounded-lg overflow-hidden">
+                                <div className="border rounded-xl overflow-hidden border-white/10 bg-white/5">
                                     <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-1/2">Fee</TableHead>
-                                                <TableHead className="text-right">Amount</TableHead>
-                                                <TableHead className="text-right">Paid</TableHead>
-                                                <TableHead className="text-right">Balance</TableHead>
-                                                <TableHead className="text-right">UniFAST</TableHead>
+                                        <TableHeader className="bg-white/5">
+                                            <TableRow className="border-white/10 hover:bg-transparent">
+                                                <TableHead className="w-1/3 text-slate-400">Fee</TableHead>
+                                                <TableHead className="text-right text-slate-400">Amount</TableHead>
+                                                <TableHead className="text-right text-slate-400">Paid</TableHead>
+                                                <TableHead className="text-right text-slate-400">Balance</TableHead>
+                                                <TableHead className="text-right text-slate-400">UniFAST</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {UNIFAST_FEE_ITEMS.map((fee) => (
-                                                <TableRow key={fee.description}>
-                                                    <TableCell className="font-medium">{fee.description}</TableCell>
-                                                    <TableCell className="text-right">{formatCurrency(fee.amount)}</TableCell>
-                                                    <TableCell className="text-right text-muted-foreground">{formatCurrency(fee.paid)}</TableCell>
-                                                    <TableCell className="text-right text-muted-foreground">{formatCurrency(fee.balance)}</TableCell>
-                                                    <TableCell className="text-right text-muted-foreground">{formatCurrency(fee.unifast)}</TableCell>
+                                                <TableRow key={fee.description} className="border-white/5 hover:bg-white/5">
+                                                    <TableCell className="font-medium text-slate-300">{fee.description}</TableCell>
+                                                    <TableCell className="text-right text-slate-300">{formatCurrency(fee.amount)}</TableCell>
+                                                    <TableCell className="text-right text-slate-500">{formatCurrency(fee.paid)}</TableCell>
+                                                    <TableCell className="text-right text-slate-500">{formatCurrency(fee.balance)}</TableCell>
+                                                    <TableCell className="text-right text-slate-500">{formatCurrency(fee.unifast)}</TableCell>
                                                 </TableRow>
                                             ))}
-                                            <TableRow className="bg-muted/40 font-semibold">
-                                                <TableCell>Total</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(UNIFAST_FEE_TOTALS.amount)}</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(UNIFAST_FEE_TOTALS.paid)}</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(UNIFAST_FEE_TOTALS.balance)}</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(UNIFAST_FEE_TOTALS.unifast)}</TableCell>
+                                            <TableRow className="bg-white/10 font-semibold border-white/10 hover:bg-white/10">
+                                                <TableCell className="text-white">Total</TableCell>
+                                                <TableCell className="text-right text-white">{formatCurrency(UNIFAST_FEE_TOTALS.amount)}</TableCell>
+                                                <TableCell className="text-right text-white">{formatCurrency(UNIFAST_FEE_TOTALS.paid)}</TableCell>
+                                                <TableCell className="text-right text-white">{formatCurrency(UNIFAST_FEE_TOTALS.balance)}</TableCell>
+                                                <TableCell className="text-right text-white">{formatCurrency(UNIFAST_FEE_TOTALS.unifast)}</TableCell>
                                             </TableRow>
                                         </TableBody>
                                     </Table>
@@ -1824,12 +2092,12 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             </div>
                         </div>
                     </form>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEnrollDialogOpen(false)} className="rounded-xl">Cancel</Button>
+                    <DialogFooter className="p-6 pt-4 border-t border-white/10 bg-white/5">
+                        <Button variant="outline" onClick={() => setIsEnrollDialogOpen(false)} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/10 hover:text-white">Cancel</Button>
                         <Button
                             type="submit"
                             form="enroll-student-form"
-                            className="rounded-xl"
+                            className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-900/20"
                             disabled={applicationToEnroll ? isBusy(`enroll-${applicationToEnroll.id}`) : false}
                         >
                             Confirm Enrollment
@@ -1846,11 +2114,11 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                     setDeleteInput('');
                 }
             }}>
-                <AlertDialogContent className="rounded-xl">
+                <AlertDialogContent className="rounded-xl bg-slate-900/95 border-white/10 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                             This action cannot be undone. This will permanently delete the application for <span className="font-semibold">{deleteDialog.application.name}</span>.
+                        <AlertDialogTitle className="text-white">Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                             This action cannot be undone. This will permanently delete the application for <span className="font-semibold text-white">{deleteDialog.application.name}</span>.
                             <br/><br/>
                             To confirm, please type "delete" below.
                         </AlertDialogDescription>
@@ -1859,17 +2127,17 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                             name="delete-confirm"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
-                            className="mt-4 rounded-xl"
+                            className="mt-4 rounded-xl bg-transparent border-white/10 text-white placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteInput('')} className="rounded-xl">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             disabled={
                                 deleteInput !== 'delete' ||
                                 (deleteDialog.application ? isBusy(`delete-${deleteDialog.application.id}`) : false)
                             }
-                            className="bg-destructive hover:bg-destructive/90 rounded-xl"
+                            className="bg-red-600 hover:bg-red-500 text-white rounded-xl border-0"
                             onClick={() => handleDelete(deleteDialog.application!)}
                         >
                             Delete

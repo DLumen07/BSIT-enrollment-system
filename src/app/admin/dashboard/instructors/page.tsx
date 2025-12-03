@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MoreHorizontal, PlusCircle, Trash2, Pencil, Calendar, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Pencil, Calendar, ChevronDown, Eye, EyeOff, GraduationCap } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -75,19 +75,20 @@ const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedS
     return (
          <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full justify-between rounded-xl">
+                <Button variant="outline" className="w-full justify-between rounded-xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white">
                     <span>{selectedSubjects.length > 0 ? `${selectedSubjects.length} selected` : 'Select subjects'}</span>
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-full rounded-xl max-h-72 overflow-y-auto">
-                <DropdownMenuLabel>Available Subjects</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+            <DropdownMenuContent className="w-full rounded-xl max-h-72 overflow-y-auto bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
+                <DropdownMenuLabel className="text-slate-400">Available Subjects</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-white/10" />
                 {availableSubjects.map(subject => (
                     <DropdownMenuCheckboxItem
                         key={subject.id}
                         checked={selectedSubjects.includes(subject.id)}
                         onSelect={(e) => { e.preventDefault(); handleSelect(subject.id); }}
+                        className="focus:bg-white/10 focus:text-white"
                     >
                         {subject.label}
                     </DropdownMenuCheckboxItem>
@@ -305,95 +306,104 @@ export default function InstructorsPage() {
 
     return (
         <>
-            <main className="flex-1 p-4 sm:p-6 space-y-6">
+            <div className="flex-1 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                        <h1 className="text-2xl font-bold tracking-tight">Instructors</h1>
-                        <p className="text-muted-foreground">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-100 tracking-tight">Instructors</h1>
+                        <p className="text-slate-400 mt-1">
                             Manage instructor profiles and their assigned subjects.
                         </p>
                     </div>
-                    <Button onClick={openAddDialog} className="rounded-full">
+                    <Button onClick={openAddDialog} className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 border-0">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Instructor
                     </Button>
                 </div>
 
-                <Card className="rounded-xl">
-                    <CardHeader>
-                        <CardTitle>Instructor List</CardTitle>
-                        <CardDescription>
-                            A list of all instructors in the system.
-                        </CardDescription>
+                <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <CardHeader className="border-b border-white/5 pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                <GraduationCap className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg font-semibold text-white">Instructor List</CardTitle>
+                                <CardDescription className="text-slate-400">
+                                    A list of all instructors in the system.
+                                </CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Instructor</TableHead>
-                                    <TableHead>Subjects Handled</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {instructors.map((instructor) => (
-                                    <TableRow key={instructor.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-4">
-                                                <Avatar>
-                                                    <AvatarImage src={instructor.avatar} alt={instructor.name} data-ai-hint="person avatar"/>
-                                                    <AvatarFallback>{instructor.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="grid gap-1">
-                                                    <p className="font-medium">{instructor.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{instructor.email}</p>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-1">
-                                                {instructor.subjects.map(subject => (
-                                                    <Badge key={subject} variant="secondary">{subject}</Badge>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0 hover:text-accent">
-                                                        <span className="sr-only">Open menu</span>
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="rounded-xl">
-                                                     <DropdownMenuItem asChild>
-                                                        <Link href={`/admin/dashboard/instructors/${instructor.id}/schedule`}>
-                                                            <Calendar className="mr-2 h-4 w-4" />
-                                                            View Schedule
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => openEditDialog(instructor)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit Profile
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                                        onSelect={() => openDeleteDialog(instructor)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Instructor
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
+                    <CardContent className="p-6">
+                        <div className="rounded-xl border border-white/10 overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-white/5">
+                                    <TableRow className="hover:bg-white/5 border-white/10">
+                                        <TableHead className="text-slate-400 font-medium">Instructor</TableHead>
+                                        <TableHead className="text-slate-400 font-medium">Subjects Handled</TableHead>
+                                        <TableHead className="text-right text-slate-400 font-medium">Actions</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {instructors.map((instructor) => (
+                                        <TableRow key={instructor.id} className="hover:bg-white/5 border-white/5">
+                                            <TableCell className="text-slate-300">
+                                                <div className="flex items-center gap-4">
+                                                    <Avatar className="border border-white/10">
+                                                        <AvatarImage src={instructor.avatar} alt={instructor.name} data-ai-hint="person avatar"/>
+                                                        <AvatarFallback className="bg-slate-800 text-slate-200">{instructor.name.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="grid gap-1">
+                                                        <p className="font-medium text-slate-200">{instructor.name}</p>
+                                                        <p className="text-sm text-slate-500">{instructor.email}</p>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {instructor.subjects.map(subject => (
+                                                        <Badge key={subject} variant="secondary" className="bg-slate-800 text-slate-300 border-white/10 hover:bg-slate-700">{subject}</Badge>
+                                                    ))}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-white/10">
+                                                            <span className="sr-only">Open menu</span>
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                                         <DropdownMenuItem asChild className="focus:bg-white/10 focus:text-white">
+                                                            <Link href={`/admin/dashboard/instructors/${instructor.id}/schedule`}>
+                                                                <Calendar className="mr-2 h-4 w-4" />
+                                                                View Schedule
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => openEditDialog(instructor)} className="focus:bg-white/10 focus:text-white">
+                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                            Edit Profile
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator className="bg-white/10" />
+                                                        <DropdownMenuItem
+                                                            className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                                                            onSelect={() => openDeleteDialog(instructor)}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete Instructor
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
-            </main>
+            </div>
 
             {/* Add Dialog */}
             <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
@@ -402,50 +412,50 @@ export default function InstructorsPage() {
                     resetForm();
                 }
             }}>
-                <DialogContent className="rounded-xl">
+                <DialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>Add New Instructor</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-white">Add New Instructor</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             Create an account for the new instructor.
                         </DialogDescription>
                     </DialogHeader>
                     <form id="add-instructor-form" onSubmit={handleAddInstructor}>
                         <div className="space-y-4 py-2">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Full Name</Label>
-                                <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} required className="rounded-xl"/>
+                                <Label htmlFor="name" className="text-slate-300">Full Name</Label>
+                                <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} required className="rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="email">Email Address</Label>
-                                <Input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="rounded-xl"/>
+                                <Label htmlFor="email" className="text-slate-300">Email Address</Label>
+                                <Input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="password">Password</Label>
+                                <Label htmlFor="password" className="text-slate-300">Password</Label>
                                 <div className="relative group">
-                                    <Input id="password" name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="rounded-xl pr-10"/>
-                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowPassword(p => !p)}>
+                                    <Input id="password" name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="rounded-xl pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"/>
+                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowPassword(p => !p)}>
                                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </Button>
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                                <Label htmlFor="confirmPassword" className="text-slate-300">Confirm Password</Label>
                                 <div className="relative group">
-                                    <Input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="rounded-xl pr-10"/>
-                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowConfirmPassword(p => !p)}>
+                                    <Input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="rounded-xl pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"/>
+                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={() => setShowConfirmPassword(p => !p)}>
                                         {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </Button>
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="subjects">Subjects Handled</Label>
+                                <Label htmlFor="subjects" className="text-slate-300">Subjects Handled</Label>
                                 <MultiSelectSubject selectedSubjects={subjects} onSelectionChange={setSubjects} />
                             </div>
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl" disabled={isBusy('create-instructor')}>Cancel</Button>
-                        <Button type="submit" form="add-instructor-form" className="rounded-xl" disabled={isBusy('create-instructor')}>
+                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white" disabled={isBusy('create-instructor')}>Cancel</Button>
+                        <Button type="submit" form="add-instructor-form" className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0" disabled={isBusy('create-instructor')}>
                             {isBusy('create-instructor') ? 'Creating...' : 'Create Account'}
                         </Button>
                     </DialogFooter>
@@ -460,35 +470,35 @@ export default function InstructorsPage() {
                     resetForm();
                 }
             }}>
-                <DialogContent className="rounded-xl">
+                <DialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>Edit Instructor</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-white">Edit Instructor</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             Update the details for {selectedInstructor?.name}.
                         </DialogDescription>
                     </DialogHeader>
                     <form id="edit-instructor-form" onSubmit={handleEditInstructor}>
                         <div className="space-y-4 py-2">
                              <div className="space-y-2">
-                                <Label htmlFor="edit-name">Full Name</Label>
-                                <Input id="edit-name" name="name" value={name} onChange={(e) => setName(e.target.value)} required className="rounded-xl" />
+                                <Label htmlFor="edit-name" className="text-slate-300">Full Name</Label>
+                                <Input id="edit-name" name="name" value={name} onChange={(e) => setName(e.target.value)} required className="rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20" />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-email">Email Address</Label>
-                                <Input id="edit-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="rounded-xl" />
+                                <Label htmlFor="edit-email" className="text-slate-300">Email Address</Label>
+                                <Input id="edit-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20" />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="edit-subjects">Subjects Handled</Label>
+                                <Label htmlFor="edit-subjects" className="text-slate-300">Subjects Handled</Label>
                                 <MultiSelectSubject selectedSubjects={subjects} onSelectionChange={setSubjects} />
                             </div>
                         </div>
                     </form>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl" disabled={selectedInstructor ? isBusy(`edit-instructor-${selectedInstructor.id}`) : false}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white" disabled={selectedInstructor ? isBusy(`edit-instructor-${selectedInstructor.id}`) : false}>Cancel</Button>
                         <Button
                             type="submit"
                             form="edit-instructor-form"
-                            className="rounded-xl"
+                            className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
                             disabled={!selectedInstructor || isBusy(`edit-instructor-${selectedInstructor.id}`)}
                         >
                             {selectedInstructor && isBusy(`edit-instructor-${selectedInstructor.id}`) ? 'Saving...' : 'Save Changes'}
@@ -505,11 +515,11 @@ export default function InstructorsPage() {
                     setSelectedInstructor(null);
                 }
             }}>
-                <AlertDialogContent className="rounded-xl">
+                <AlertDialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the profile for <span className="font-semibold">{selectedInstructor?.name}</span>.
+                        <AlertDialogTitle className="text-white">Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                            This action cannot be undone. This will permanently delete the profile for <span className="font-semibold text-white">{selectedInstructor?.name}</span>.
                             <br/><br/>
                             To confirm, please type "delete" below.
                         </AlertDialogDescription>
@@ -518,14 +528,14 @@ export default function InstructorsPage() {
                             name="delete-confirm"
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
-                            className="mt-4 rounded-xl"
+                            className="mt-4 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteInput('')} className="rounded-xl">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setDeleteInput('')} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             disabled={deleteInput !== 'delete' || (selectedInstructor ? isBusy(`delete-instructor-${selectedInstructor.id}`) : false)}
-                            className="bg-destructive hover:bg-destructive/90 rounded-xl"
+                            className="bg-red-600 hover:bg-red-500 text-white border-0 rounded-xl"
                             onClick={handleDeleteInstructor}
                         >
                             {selectedInstructor && isBusy(`delete-instructor-${selectedInstructor.id}`) ? 'Deleting...' : 'Delete'}

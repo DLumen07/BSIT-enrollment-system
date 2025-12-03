@@ -2,7 +2,7 @@
 'use client';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { CheckCircle, Clock, CloudUpload, Download, FileText, Trash2 } from 'lucide-react';
+import { CheckCircle, Clock, CloudUpload, Download, FileText, Trash2, History, FileCheck, AlertCircle, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
     Table,
@@ -403,56 +403,86 @@ export default function RecordsPage() {
     }, [handleDeleteDocument, pendingDeleteDoc]);
 
     return (
-        <main className="flex-1 space-y-6 p-4 sm:p-6">
-            <div className="space-y-0.5">
-                <h1 className="text-2xl font-bold tracking-tight">My Records</h1>
-                <p className="text-muted-foreground">
-                    Review your enrollment history and submit required documents.
-                </p>
+        <main className="flex-1 space-y-6 p-4 sm:p-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="flex items-center gap-3 mb-2">
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <History className="h-6 w-6 text-blue-500" />
+                </div>
+                <div className="space-y-0.5">
+                    <h1 className="text-2xl font-bold tracking-tight">My Records</h1>
+                    <p className="text-muted-foreground">
+                        Review your enrollment history and submit required documents.
+                    </p>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-6">
-                    <Card className="rounded-xl">
-                        <CardHeader>
-                            <CardTitle>Enrollment History</CardTitle>
-                            <CardDescription>A timeline of your academic standing across semesters.</CardDescription>
+                    <Card className="rounded-2xl border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-sm">
+                        <CardHeader className="border-b border-white/10 pb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 rounded-xl bg-green-500/10">
+                                    <Clock className="h-4 w-4 text-green-500" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg">Enrollment History</CardTitle>
+                                    <CardDescription>A timeline of your academic standing across semesters.</CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-6">
                             {enrollmentHistory.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                                    <FileText className="h-10 w-10 text-muted-foreground" />
+                                <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 bg-white/5 p-12 text-center text-sm text-muted-foreground">
+                                    <div className="p-3 rounded-full bg-white/5">
+                                        <FileText className="h-8 w-8 text-muted-foreground/50" />
+                                    </div>
                                     <p>No enrollment history is available yet.</p>
                                 </div>
                             ) : (
-                                <div className="relative pl-6">
-                                    <div className="absolute left-6 top-0 bottom-0 w-0.5 rounded-full bg-border" />
+                                <div className="relative pl-6 space-y-8">
+                                    <div className="absolute left-6 top-2 bottom-2 w-px bg-white/10" />
                                     {enrollmentHistory.map((entry, index) => {
                                         const statusVariant = normalizeStatusVariant(entry.status);
-                                        const icon = statusVariant === 'secondary' || statusVariant === 'default' ? (
-                                            <CheckCircle className="h-6 w-6 text-green-500" />
-                                        ) : (
-                                            <Clock className="h-6 w-6 text-primary" />
-                                        );
-
+                                        const isCompleted = statusVariant === 'secondary' || statusVariant === 'default';
+                                        
                                         return (
-                                            <div key={`${entry.academicYear}-${entry.semester}-${index}`} className="relative mb-8 last:mb-0">
-                                                <div className="absolute -left-9 flex h-6 w-6 items-center justify-center rounded-full bg-background">
-                                                    {icon}
-                                                </div>
-                                                <div className="ml-4">
-                                                    <p className="font-semibold">{formatEnrollmentLabel(entry.academicYear, entry.semester)}</p>
-                                                    <div className="flex flex-wrap items-center gap-2 text-sm">
-                                                        <Badge variant={statusVariant}>{entry.status || '—'}</Badge>
-                                                        <span className="text-muted-foreground">{formatDisplayDate(entry.recordedAt)}</span>
-                                                    </div>
-                                                    {typeof entry.gwa === 'number' && !Number.isNaN(entry.gwa) && (
-                                                        <p className="mt-1 text-sm">
-                                                            GWA: <span className="font-medium">{entry.gwa.toFixed(2)}</span>
-                                                        </p>
+                                            <div key={`${entry.academicYear}-${entry.semester}-${index}`} className="relative pl-8 group">
+                                                <div className={`absolute left-0 top-1 flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border-4 border-background ${
+                                                    isCompleted ? 'bg-green-500/10' : 'bg-blue-500/10'
+                                                }`}>
+                                                    {isCompleted ? (
+                                                        <CheckCircle className="h-5 w-5 text-green-500" />
+                                                    ) : (
+                                                        <Clock className="h-5 w-5 text-blue-500" />
                                                     )}
+                                                </div>
+                                                <div className="rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                                        <h3 className="font-semibold text-lg text-foreground">
+                                                            {formatEnrollmentLabel(entry.academicYear, entry.semester)}
+                                                        </h3>
+                                                        <Badge variant={statusVariant} className="w-fit capitalize">
+                                                            {entry.status || '—'}
+                                                        </Badge>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                                            <Calendar className="h-4 w-4" />
+                                                            <span>{formatDisplayDate(entry.recordedAt)}</span>
+                                                        </div>
+                                                        {typeof entry.gwa === 'number' && !Number.isNaN(entry.gwa) && (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-muted-foreground">GWA:</span>
+                                                                <span className="font-bold text-foreground">{entry.gwa.toFixed(2)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
                                                     {entry.notes && entry.notes.trim() !== '' && (
-                                                        <p className="mt-1 text-sm text-muted-foreground">{entry.notes}</p>
+                                                        <div className="mt-3 pt-3 border-t border-white/10">
+                                                            <p className="text-sm text-muted-foreground italic">"{entry.notes}"</p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -465,30 +495,41 @@ export default function RecordsPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="rounded-xl">
-                        <CardHeader>
-                            <CardTitle>Submit Document</CardTitle>
-                            <CardDescription>Upload the registrar requirements listed below.</CardDescription>
+                    <Card className="rounded-2xl border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-sm">
+                        <CardHeader className="border-b border-white/10 pb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 rounded-xl bg-orange-500/10">
+                                    <CloudUpload className="h-4 w-4 text-orange-500" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg">Submit Document</CardTitle>
+                                    <CardDescription>Upload registrar requirements.</CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
                         <form onSubmit={handleUpload}>
-                            <CardContent className="space-y-4">
-                                <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                                    <p className="font-medium text-foreground">Required documents:</p>
-                                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                            <CardContent className="space-y-4 pt-6">
+                                <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-4 text-sm">
+                                    <div className="flex items-center gap-2 mb-2 text-foreground font-medium">
+                                        <AlertCircle className="h-4 w-4 text-blue-400" />
+                                        Required Documents
+                                    </div>
+                                    <ul className="space-y-1.5 ml-6 list-disc text-muted-foreground">
                                         {REQUIRED_DOCUMENTS.map((doc) => (
                                             <li key={doc.value}>{doc.label}</li>
                                         ))}
                                     </ul>
                                 </div>
+                                
                                 <div className="space-y-2">
-                                    <Label htmlFor="document-name">Select Requirement</Label>
+                                    <Label htmlFor="document-name" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Requirement Type</Label>
                                     <Select
                                         value={documentName}
                                         onValueChange={setDocumentName}
                                         disabled={uploading}
                                     >
-                                        <SelectTrigger id="document-name" className="rounded-xl">
-                                            <SelectValue placeholder="Choose a document" />
+                                        <SelectTrigger id="document-name" className="rounded-xl border-white/10 bg-white/5">
+                                            <SelectValue placeholder="Select document type" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {REQUIRED_DOCUMENTS.map((doc) => (
@@ -499,113 +540,134 @@ export default function RecordsPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                
                                 <div className="space-y-2">
-                                    <Label htmlFor="document-file">Attachment</Label>
-                                    <Input
-                                        id="document-file"
-                                        type="file"
-                                        accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                        onChange={handleFileChange}
-                                        ref={fileInputRef}
-                                        className="rounded-xl"
-                                        disabled={uploading}
-                                    />
-                                    <p className="text-xs text-muted-foreground">Accepted formats: JPG, PNG, WEBP, PDF (max 10MB).</p>
+                                    <Label htmlFor="document-file" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">File Attachment</Label>
+                                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                                        <Input
+                                            id="document-file"
+                                            type="file"
+                                            accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                            onChange={handleFileChange}
+                                            ref={fileInputRef}
+                                            className="rounded-xl border-white/10 bg-white/5 file:text-foreground cursor-pointer"
+                                            disabled={uploading}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Supported: JPG, PNG, PDF (Max 10MB)
+                                    </p>
                                 </div>
                             </CardContent>
-                            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end p-6">
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                     onClick={handleFileReset}
-                                    className="rounded-xl"
+                                    className="rounded-xl hover:bg-white/10"
                                     disabled={uploading}
                                 >
                                     Clear
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="rounded-xl"
+                                    className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
                                     disabled={uploading || !selectedFile || !documentName}
                                 >
-                                    <CloudUpload className="mr-2 h-4 w-4" />
-                                    {uploading ? 'Uploading…' : 'Upload Document'}
+                                    {uploading ? (
+                                        <span className="flex items-center gap-2">
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                            Uploading...
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-2">
+                                            <CloudUpload className="h-4 w-4" />
+                                            Upload
+                                        </span>
+                                    )}
                                 </Button>
                             </CardFooter>
                         </form>
                     </Card>
 
-                    <Card className="rounded-xl">
-                        <CardHeader>
-                            <CardTitle>Document Records</CardTitle>
-                            <CardDescription>Your submitted and pending requirement files.</CardDescription>
+                    <Card className="rounded-2xl border-white/10 bg-slate-900/50 backdrop-blur-xl shadow-sm">
+                        <CardHeader className="border-b border-white/10 pb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 rounded-xl bg-purple-500/10">
+                                    <FileCheck className="h-4 w-4 text-purple-500" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg">Uploaded Files</CardTitle>
+                                    <CardDescription>Your submitted documents.</CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="p-0">
                             {documents.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                                    <FileText className="h-10 w-10 text-muted-foreground" />
-                                    <p>No documents have been uploaded yet.</p>
+                                <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
+                                    <div className="p-3 rounded-full bg-white/5">
+                                        <FileText className="h-6 w-6 text-muted-foreground/50" />
+                                    </div>
+                                    <p>No documents uploaded yet.</p>
                                 </div>
                             ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Document</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Uploaded</TableHead>
-                                            <TableHead>Size</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {documents.map((doc) => {
-                                            const variant = normalizeStatusVariant(doc.status);
-                                            const downloadUrl = doc.filePath ? buildApiUrl(doc.filePath) : null;
-                                            const canDelete = typeof doc.id === 'number' && doc.id > 0;
-                                            const isDeleting = deletingDocumentId === doc.id;
-                                            return (
-                                                <TableRow key={doc.id}>
-                                                    <TableCell className="font-medium">{doc.name || doc.fileName}</TableCell>
-                                                    <TableCell>
-                                                        <Badge variant={variant}>{doc.status}</Badge>
-                                                    </TableCell>
-                                                    <TableCell>{formatDisplayDate(doc.uploadedAt)}</TableCell>
-                                                    <TableCell>{formatFileSize(doc.fileSize)}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            {downloadUrl ? (
-                                                                <Button asChild variant="outline" size="sm" className="rounded-full">
-                                                                    <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                                                                        <Download className="mr-2 h-4 w-4" /> View
-                                                                    </a>
-                                                                </Button>
-                                                            ) : (
-                                                                <span className="text-xs text-muted-foreground">Unavailable</span>
-                                                            )}
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                disabled={!canDelete || isDeleting}
-                                                                onClick={() => canDelete && promptDeleteDocument(doc)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                                <span className="sr-only">Delete document</span>
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
+                                <div className="divide-y divide-white/10">
+                                    {documents.map((doc) => {
+                                        const variant = normalizeStatusVariant(doc.status);
+                                        const downloadUrl = doc.filePath ? buildApiUrl(doc.filePath) : null;
+                                        const canDelete = typeof doc.id === 'number' && doc.id > 0;
+                                        const isDeleting = deletingDocumentId === doc.id;
+                                        
+                                        return (
+                                            <div key={doc.id} className="p-4 hover:bg-white/5 transition-colors">
+                                                <div className="flex items-start justify-between gap-3 mb-2">
+                                                    <div className="font-medium text-sm text-foreground line-clamp-1" title={doc.name || doc.fileName || ''}>
+                                                        {doc.name || doc.fileName}
+                                                    </div>
+                                                    <Badge variant={variant} className="shrink-0 text-[10px] h-5 px-1.5">
+                                                        {doc.status}
+                                                    </Badge>
+                                                </div>
+                                                
+                                                <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                                                    <span>{formatDisplayDate(doc.uploadedAt)}</span>
+                                                    <span>{formatFileSize(doc.fileSize)}</span>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-2">
+                                                    {downloadUrl ? (
+                                                        <Button asChild variant="outline" size="sm" className="h-7 text-xs w-full border-white/10 hover:bg-white/10 hover:text-foreground rounded-lg">
+                                                            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                                                                <Download className="mr-2 h-3 w-3" /> View
+                                                            </a>
+                                                        </Button>
+                                                    ) : (
+                                                        <Button variant="outline" size="sm" disabled className="h-7 text-xs w-full border-white/10 opacity-50 rounded-lg">
+                                                            Unavailable
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                                                        disabled={!canDelete || isDeleting}
+                                                        onClick={() => canDelete && promptDeleteDocument(doc)}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                        <span className="sr-only">Delete</span>
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             )}
                         </CardContent>
                     </Card>
                 </div>
             </div>
             <AlertDialog open={deleteDialogOpen} onOpenChange={handleDeleteDialogOpenChange}>
-                <AlertDialogContent className="rounded-xl">
+                <AlertDialogContent className="rounded-2xl border-white/10 bg-[#020617]">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete document?</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -615,9 +677,9 @@ export default function RecordsPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="rounded-xl border-white/10 hover:bg-white/10 hover:text-foreground">Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            className="rounded-xl bg-red-600 text-white hover:bg-red-700"
                             onClick={(event) => {
                                 event.preventDefault();
                                 confirmDeleteDocument();

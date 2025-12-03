@@ -2,15 +2,16 @@
 'use client';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock, UserX, AlertTriangle, MapPin } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Pencil, Clock, UserX, AlertTriangle, MapPin, CalendarClock, User2, Layers } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -37,7 +38,6 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useAdmin, Instructor, deriveTeachingAssignments } from '../../../context/admin-context';
 import { useToast } from "@/hooks/use-toast";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 export type Subject = {
     id: number;
@@ -69,7 +69,7 @@ type ScheduleMutationResponse =
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const timeSlots = Array.from({ length: 12 }, (_, i) => `${(i + 7).toString().padStart(2, '0')}:00`); // 7 AM to 6 PM
 
-const HOUR_HEIGHT_REM = 4; // 4rem = 64px per hour
+const HOUR_HEIGHT_REM = 5; // Increased height for better readability
 
 const timeToPosition = (time: string) => {
     const [hour, minute] = time.split(':').map(Number);
@@ -85,16 +85,23 @@ const formatTime = (timeStr: string) => {
     return `${formattedHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
 }
 
-const colorChoices = [
-    'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400',
-    'bg-green-200/50 dark:bg-green-800/50 border-green-400',
-    'bg-yellow-200/50 dark:bg-yellow-800/50 border-yellow-400',
-    'bg-orange-200/50 dark:bg-orange-800/50 border-orange-400',
-    'bg-purple-200/50 dark:bg-purple-800/50 border-purple-400',
-    'bg-pink-200/50 dark:bg-pink-800/50 border-pink-400',
-    'bg-red-200/50 dark:bg-red-800/50 border-red-400',
-    'bg-indigo-200/50 dark:bg-indigo-800/50 border-indigo-400',
+// Color palette for schedule blocks to ensure visibility in dark mode
+const SCHEDULE_COLORS = [
+    { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-100', accent: 'text-blue-400' },
+    { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-100', accent: 'text-orange-400' },
+    { bg: 'bg-green-500/10', border: 'border-green-500/20', text: 'text-green-100', accent: 'text-green-400' },
+    { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-100', accent: 'text-purple-400' },
+    { bg: 'bg-pink-500/10', border: 'border-pink-500/20', text: 'text-pink-100', accent: 'text-pink-400' },
+    { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-100', accent: 'text-cyan-400' },
 ];
+
+const getSubjectColor = (code: string) => {
+    let hash = 0;
+    for (let i = 0; i < code.length; i++) {
+        hash = code.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return SCHEDULE_COLORS[Math.abs(hash) % SCHEDULE_COLORS.length];
+};
 
 const TBA_INSTRUCTOR = 'TBA';
 const TBA_ROOM = 'TBA';
@@ -126,24 +133,13 @@ export default function SchedulePage() {
         return map;
     }, [instructors]);
 
-    const assignColor = useCallback((id?: number | null, fallbackIndex?: number) => {
-        const paletteLength = colorChoices.length;
-        if (paletteLength === 0) {
-            return 'bg-blue-200/50 dark:bg-blue-800/50 border-blue-400';
-        }
-        const base = typeof id === 'number' && Number.isFinite(id)
-            ? Math.abs(id)
-            : Math.abs(fallbackIndex ?? 0);
-        return colorChoices[base % paletteLength];
-    }, []);
-
     const subjects = useMemo(() => {
         const blockSchedules = schedules[blockId] ?? [];
-        return blockSchedules.map((subject, index) => ({
+        return blockSchedules.map((subject) => ({
             ...subject,
-            color: subject.color ?? assignColor(subject.id, index),
+            color: subject.color ?? '',
         }));
-    }, [assignColor, blockId, schedules]);
+    }, [blockId, schedules]);
 
     const dayOrder = useMemo(() => {
         const order = new Map<string, number>();
@@ -167,9 +163,9 @@ export default function SchedulePage() {
         setAdminData((prev) => {
             const current = prev.schedules[blockId] ?? [];
             const transformed = transform([...current]);
-            const normalized = transformed.map((entry, index) => ({
+            const normalized = transformed.map((entry) => ({
                 ...entry,
-                color: entry.color ?? assignColor(entry.id, index),
+                color: entry.color ?? '',
             }));
 
             const updatedSchedules = {
@@ -188,7 +184,7 @@ export default function SchedulePage() {
                 ),
             };
         });
-    }, [assignColor, blockId, setAdminData, sortSchedulesForBlock]);
+    }, [blockId, setAdminData, sortSchedulesForBlock]);
 
     const parseInstructorSelection = useCallback((value: FormDataEntryValue | null | undefined): { id: number | null; name: string } => {
         const raw = typeof value === 'string' ? value : '';
@@ -248,8 +244,6 @@ export default function SchedulePage() {
     const [editRoom, setEditRoom] = useState('');
     const [isEditRoomTBA, setIsEditRoomTBA] = useState(false);
 
-    const studentsInBlock = useMemo(() => students.filter(s => s.block === blockId), [students, blockId]);
-    
     const blockYear = useMemo(() => adminData.blocks.find(b => b.name === blockId)?.year, [adminData.blocks, blockId]);
 
     const availableSubjectsForBlock = useMemo(() => {
@@ -736,290 +730,297 @@ export default function SchedulePage() {
     };
 
     return (
-        <main className="flex-1 p-4 sm:p-6 space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                    <h1 className="text-2xl font-bold tracking-tight">Class Schedule for {blockId}</h1>
-                    <p className="text-muted-foreground">
-                        Manage the subjects, schedule, and instructors for this block.
-                    </p>
-                </div>
-                 <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-                        if (isAddSubmitting) {
-                            return;
-                        }
-                        setIsAddDialogOpen(open);
-                        if (open) {
-                            setSelectedSubjectCode('');
-                            setAddRoom('');
-                            setIsAddRoomTBA(false);
-                        } else {
-                            setSelectedSubjectCode('');
-                            setAddRoom('');
-                            setIsAddRoomTBA(false);
-                        }
-                    }}>
-                    <DialogTrigger asChild>
-                        <Button className="rounded-full" disabled={isAddSubmitting}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Schedule
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Add New Schedule</DialogTitle>
-                            <DialogDescription>
-                                Enter the details for the new schedule.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form id="add-subject-form" onSubmit={handleAddSubject}>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="subject" className="text-right">Subject</Label>
-                                    <Select
-                                        name="subject"
-                                        required
-                                        disabled={isAddSubmitting}
-                                        value={selectedSubjectCode}
-                                        onValueChange={(value) => setSelectedSubjectCode(value)}
-                                    >
-                                        <SelectTrigger className="col-span-3 rounded-xl">
-                                            <SelectValue placeholder="Select a subject" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {availableSubjectsForBlock.map(sub => {
-                                                const prerequisiteCodes = Array.isArray(sub.prerequisites) && sub.prerequisites.length > 0
-                                                    ? sub.prerequisites
-                                                    : (sub.prerequisite ? [sub.prerequisite] : []);
-
-                                                const allStudentsHavePrereq = prerequisiteCodes.length === 0 || studentsInBlock.every((student) => {
-                                                    const studentCompleted = new Set(adminData.getCompletedSubjects(student.studentId).map((s) => s.code));
-                                                    return prerequisiteCodes.every((code) => studentCompleted.has(code));
-                                                });
-
-                                                if (prerequisiteCodes.length === 0 || allStudentsHavePrereq) {
-                                                    return <SelectItem key={sub.id} value={sub.code}>{sub.description}</SelectItem>;
-                                                }
-                                                
-                                                return (
-                                                    <TooltipProvider key={sub.id}>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <div className="relative flex w-full cursor-not-allowed select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm text-muted-foreground opacity-50 outline-none">
-                                                                    {sub.description}
-                                                                </div>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>Some students in this block have not passed the prerequisite{prerequisiteCodes.length > 1 ? 's' : ''} ({prerequisiteCodes.join(', ')}).</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                );
-                                            })}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="instructor" className="text-right">Instructor</Label>
-                                     <Select name="instructor" disabled={isAddSubmitting}>
-                                        <SelectTrigger className="col-span-3 rounded-xl">
-                                            <SelectValue placeholder="Select an instructor (optional)" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {selectedSubjectCode.length === 0 ? (
-                                                <SelectItem value="__select-subject" disabled>
-                                                    Select a subject first
-                                                </SelectItem>
-                                            ) : (
-                                                <>
-                                                    {eligibleInstructorsForAdd.map((ins) => (
-                                                        <SelectItem key={ins.id} value={ins.id.toString()}>{ins.name}</SelectItem>
-                                                    ))}
-                                                    <SelectItem value={TBA_INSTRUCTOR}>
-                                                        {eligibleInstructorsForAdd.length > 0
-                                                            ? 'Assign Later (TBA)'
-                                                            : 'No eligible instructors – set to TBA'}
-                                                    </SelectItem>
-                                                </>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="room" className="text-right">Room</Label>
-                                    <div className="col-span-3 flex items-center gap-3">
-                                        <Input
-                                            id="room"
-                                            name="room"
-                                            value={isAddRoomTBA ? '' : addRoom}
-                                            onChange={(event) => setAddRoom(event.target.value)}
-                                            disabled={isAddSubmitting || isAddRoomTBA}
-                                            placeholder="e.g., Room 101"
-                                            className="rounded-xl"
-                                        />
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <Switch
-                                                id="room-tba"
-                                                checked={isAddRoomTBA}
-                                                onCheckedChange={setIsAddRoomTBA}
-                                                disabled={isAddSubmitting}
-                                            />
-                                            <span>TBA</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="day" className="text-right">Day</Label>
-                                    <Select name="day" required disabled={isAddSubmitting}>
-                                        <SelectTrigger className="col-span-3 rounded-xl">
-                                            <SelectValue placeholder="Select a day" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {days.map(day => <SelectItem key={day} value={day}>{day}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                 <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="startTime" className="text-right">Start Time</Label>
-                                    <Select name="startTime" required disabled={isAddSubmitting}>
-                                        <SelectTrigger className="col-span-3 rounded-xl">
-                                            <SelectValue placeholder="Select start time" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {detailedTimeSlots.map(ts => <SelectItem key={`start-${ts.value}`} value={ts.value}>{ts.label}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                 <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="endTime" className="text-right">End Time</Label>
-                                    <Select name="endTime" required disabled={isAddSubmitting}>
-                                        <SelectTrigger className="col-span-3 rounded-xl">
-                                            <SelectValue placeholder="Select end time" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {detailedTimeSlots.map(ts => <SelectItem key={`end-${ts.value}`} value={ts.value}>{ts.label}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </form>
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsAddDialogOpen(false)}
-                                className="rounded-xl"
-                                disabled={isAddSubmitting}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                form="add-subject-form"
-                                className="rounded-xl"
-                                disabled={isAddSubmitting}
-                            >
-                                {isAddSubmitting ? 'Saving...' : 'Create Schedule'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
-            <Card>
-                <CardContent className="p-4 overflow-x-auto">
-                     <div className="grid grid-cols-[4rem_repeat(6,1fr)] min-w-[800px]">
-                        {/* Top-left empty cell */}
-                        <div></div>
-                        {/* Day Headers */}
-                        {days.map(day => (
-                            <div key={day} className="h-10 text-center font-semibold text-muted-foreground text-sm p-2 sticky top-0 bg-background z-10">{day}</div>
-                        ))}
-
-                        {/* Time Column and Grid */}
-                        <div className="col-start-1 row-start-2 relative">
-                             {timeSlots.map((time) => (
-                                <div key={time} className="h-16 relative">
-                                    <div className="absolute -top-2.5 right-2 text-xs text-muted-foreground">{formatTime(time)}</div>
-                                </div>
-                            ))}
+        <main className="flex-1 p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                            <CalendarClock className="h-6 w-6 text-blue-500" />
                         </div>
-                        <div className="col-start-2 col-span-6 row-start-2 relative grid grid-cols-6" style={{ height: `${timeSlots.length * HOUR_HEIGHT_REM}rem`}}>
-                             {/* Grid Lines */}
-                            {Array.from({ length: 12 * 6 }).map((_, i) => (
-                                <div key={i} className="h-16 border-t border-r border-dashed"></div>
-                            ))}
-                            
-                            {/* Scheduled Subjects */}
-                            {subjects.map(subject => {
-                                const top = timeToPosition(subject.startTime);
-                                const height = timeToPosition(subject.endTime) - top;
-                                const dayIndex = days.indexOf(subject.day);
-                                
-                                if (dayIndex === -1) return null;
-
-                                const hasInstructor = !!subject.instructor;
-                                const cardColor = hasInstructor ? subject.color : 'bg-red-200/50 dark:bg-red-900/50 border-red-500';
-                                const normalizedRoom = (subject.room ?? '').trim();
-                                const hasRoomAssigned = normalizedRoom !== '' && normalizedRoom.toUpperCase() !== TBA_ROOM;
-
-                                return (
-                                    <div
-                                        key={subject.id}
-                                        className={cn("absolute rounded-lg p-2 border text-xs overflow-hidden m-px", cardColor)}
-                                        style={{
-                                            top: `${top}rem`,
-                                            height: `${height}rem`,
-                                            left: `calc(${(100 / 6) * dayIndex}% + 2px)`,
-                                            width: `calc(${(100 / 6)}% - 4px)`,
-                                        }}
-                                    >
-                                        <p className="font-bold truncate">{subject.code}</p>
-                                        <p className="truncate">{subject.description}</p>
-                                        {hasInstructor ? (
-                                            <p className="truncate text-muted-foreground">{subject.instructor}</p>
-                                        ) : (
-                                            <div className="flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
-                                                <UserX className="h-3 w-3 shrink-0" />
-                                                <span>No Instructor</span>
-                                            </div>
-                                        )}
-                                        {hasRoomAssigned ? (
-                                            <div className="mt-1 flex items-center gap-1 text-muted-foreground text-[10px]">
-                                                <MapPin className="h-3 w-3 shrink-0" />
-                                                <span className="truncate">{normalizedRoom}</span>
-                                            </div>
-                                        ) : (
-                                            <div className="mt-1 flex items-center gap-1 text-amber-600 dark:text-amber-400 text-[10px]">
-                                                <AlertTriangle className="h-3 w-3 shrink-0" />
-                                                <span className="truncate">Room TBA</span>
-                                            </div>
-                                        )}
-                                        
-                                        <div className="absolute bottom-1 right-1 left-1 text-muted-foreground flex items-center gap-1 bg-background/50 backdrop-blur-sm p-1 rounded-sm text-[10px]">
-                                            <Clock className="h-3 w-3 shrink-0" />
-                                            <span className="truncate">{formatTime(subject.startTime)} - {formatTime(subject.endTime)}</span>
+                        <div>
+                            <CardTitle className="text-xl font-bold">Class Schedule for {blockId}</CardTitle>
+                            <CardDescription className="flex items-center gap-2 mt-1">
+                                <span className="text-muted-foreground">Manage the subjects, schedule, and instructors for this block.</span>
+                            </CardDescription>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+                                if (isAddSubmitting) {
+                                    return;
+                                }
+                                setIsAddDialogOpen(open);
+                                if (open) {
+                                    setSelectedSubjectCode('');
+                                    setAddRoom('');
+                                    setIsAddRoomTBA(false);
+                                } else {
+                                    setSelectedSubjectCode('');
+                                    setAddRoom('');
+                                    setIsAddRoomTBA(false);
+                                }
+                            }}>
+                            <DialogTrigger asChild>
+                                <Button className="rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 border-0" disabled={isAddSubmitting}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Schedule
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
+                                <DialogHeader>
+                                    <DialogTitle className="text-white">Add New Schedule</DialogTitle>
+                                    <DialogDescription className="text-slate-400">
+                                        Enter the details for the new schedule.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form id="add-subject-form" onSubmit={handleAddSubject}>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="subject" className="text-right text-slate-300">Subject</Label>
+                                            <Select
+                                                name="subject"
+                                                required
+                                                disabled={isAddSubmitting}
+                                                value={selectedSubjectCode}
+                                                onValueChange={(value) => setSelectedSubjectCode(value)}
+                                            >
+                                                <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                                                    <SelectValue placeholder="Select a subject" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                                    {availableSubjectsForBlock.map((sub) => (
+                                                        <SelectItem key={sub.id} value={sub.code} className="focus:bg-white/10 focus:text-white">
+                                                            {sub.description}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="absolute top-0 right-0 h-6 w-6 p-1 text-muted-foreground hover:bg-transparent hover:text-accent focus-visible:ring-0 focus-visible:ring-offset-0">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => openEditDialog(subject)}>
-                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem 
-                                                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                                    onSelect={() => openDeleteDialog(subject)}
-                                                >
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="instructor" className="text-right text-slate-300">Instructor</Label>
+                                             <Select name="instructor" disabled={isAddSubmitting}>
+                                                <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                                                    <SelectValue placeholder="Select an instructor (optional)" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                                    {selectedSubjectCode.length === 0 ? (
+                                                        <SelectItem value="__select-subject" disabled className="text-slate-500">
+                                                            Select a subject first
+                                                        </SelectItem>
+                                                    ) : (
+                                                        <>
+                                                            {eligibleInstructorsForAdd.map((ins) => (
+                                                                <SelectItem key={ins.id} value={ins.id.toString()} className="focus:bg-white/10 focus:text-white">{ins.name}</SelectItem>
+                                                            ))}
+                                                            <SelectItem value={TBA_INSTRUCTOR} className="focus:bg-white/10 focus:text-white">
+                                                                {eligibleInstructorsForAdd.length > 0
+                                                                    ? 'Assign Later (TBA)'
+                                                                    : 'No eligible instructors – set to TBA'}
+                                                            </SelectItem>
+                                                        </>
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="room" className="text-right text-slate-300">Room</Label>
+                                            <div className="col-span-3 flex items-center gap-3">
+                                                <Input
+                                                    id="room"
+                                                    name="room"
+                                                    value={isAddRoomTBA ? '' : addRoom}
+                                                    onChange={(event) => setAddRoom(event.target.value)}
+                                                    disabled={isAddSubmitting || isAddRoomTBA}
+                                                    placeholder="e.g., Room 101"
+                                                    className="rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
+                                                />
+                                                <div className="flex items-center gap-2 text-xs text-slate-400">
+                                                    <Switch
+                                                        id="room-tba"
+                                                        checked={isAddRoomTBA}
+                                                        onCheckedChange={setIsAddRoomTBA}
+                                                        disabled={isAddSubmitting}
+                                                        className="data-[state=checked]:bg-blue-600"
+                                                    />
+                                                    <span>TBA</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="day" className="text-right text-slate-300">Day</Label>
+                                            <Select name="day" required disabled={isAddSubmitting}>
+                                                <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                                                    <SelectValue placeholder="Select a day" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                                    {days.map(day => <SelectItem key={day} value={day} className="focus:bg-white/10 focus:text-white">{day}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="startTime" className="text-right text-slate-300">Start Time</Label>
+                                            <Select name="startTime" required disabled={isAddSubmitting}>
+                                                <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                                                    <SelectValue placeholder="Select start time" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                                    {detailedTimeSlots.map(ts => <SelectItem key={`start-${ts.value}`} value={ts.value} className="focus:bg-white/10 focus:text-white">{ts.label}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="endTime" className="text-right text-slate-300">End Time</Label>
+                                            <Select name="endTime" required disabled={isAddSubmitting}>
+                                                <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
+                                                    <SelectValue placeholder="Select end time" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                                    {detailedTimeSlots.map(ts => <SelectItem key={`end-${ts.value}`} value={ts.value} className="focus:bg-white/10 focus:text-white">{ts.label}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
-                                )
-                            })}
+                                </form>
+                                <DialogFooter>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsAddDialogOpen(false)}
+                                        className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
+                                        disabled={isAddSubmitting}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        form="add-subject-form"
+                                        className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
+                                        disabled={isAddSubmitting}
+                                    >
+                                        {isAddSubmitting ? 'Saving...' : 'Create Schedule'}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                    <div className="min-w-[1000px] p-6">
+                        <div className="grid grid-cols-[5rem_repeat(6,1fr)]">
+                            {/* Header Row */}
+                            <div className="h-12 border-b border-white/10"></div>
+                            {days.map(day => (
+                                <div key={day} className="h-12 flex items-center justify-center border-b border-white/10 bg-white/5 first:rounded-tl-lg last:rounded-tr-lg">
+                                    <span className="font-semibold text-sm text-foreground">{day}</span>
+                                </div>
+                            ))}
+
+                            {/* Time Slots & Grid */}
+                            <div className="col-start-1 row-start-2 relative border-r border-white/10 bg-white/5/50">
+                                {timeSlots.map((time) => (
+                                    <div key={time} className="relative" style={{ height: `${HOUR_HEIGHT_REM}rem` }}>
+                                        <div className="absolute -top-3 right-3 text-xs font-medium text-muted-foreground">
+                                            {formatTime(time)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="col-start-2 col-span-6 row-start-2 relative grid grid-cols-6 bg-white/5/20" style={{ height: `${timeSlots.length * HOUR_HEIGHT_REM}rem` }}>
+                                {/* Grid Lines */}
+                                {Array.from({ length: 12 }).map((_, i) => (
+                                    <div 
+                                        key={`h-line-${i}`} 
+                                        className="absolute w-full border-t border-dashed border-white/10"
+                                        style={{ top: `${i * HOUR_HEIGHT_REM}rem` }}
+                                    />
+                                ))}
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <div 
+                                        key={`v-line-${i}`} 
+                                        className="absolute h-full border-r border-dashed border-white/10"
+                                        style={{ left: `${(i + 1) * (100 / 6)}%` }}
+                                    />
+                                ))}
+
+                                {/* Schedule Blocks */}
+                                {subjects.map(subject => {
+                                    const dayIndex = days.indexOf(subject.day);
+                                    if (dayIndex === -1) return null;
+
+                                    const startPosition = timeToPosition(subject.startTime);
+                                    const endPosition = timeToPosition(subject.endTime);
+                                    const blockHeight = Math.max(endPosition - startPosition, 1.5);
+                                    const colorScheme = getSubjectColor(subject.code);
+
+                                    const normalizedRoom = (subject.room ?? '').trim();
+                                    const hasRoomAssigned = normalizedRoom !== '' && normalizedRoom.toUpperCase() !== TBA_ROOM;
+
+                                    return (
+                                        <div
+                                            key={subject.id}
+                                            className={cn(
+                                                'absolute rounded-lg p-3 border text-xs overflow-hidden transition-all hover:z-10 hover:shadow-lg hover:scale-[1.02] group cursor-default',
+                                                colorScheme.bg,
+                                                colorScheme.border
+                                            )}
+                                            style={{
+                                                top: `${startPosition}rem`,
+                                                height: `${blockHeight}rem`,
+                                                left: `calc(${(100 / 6) * dayIndex}% + 4px)`,
+                                                width: `calc(${100 / 6}% - 8px)`,
+                                            }}
+                                        >
+                                            <div className="flex flex-col h-full justify-between gap-1">
+                                                <div>
+                                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                                        <span className={cn("font-bold text-[11px] px-1.5 py-0.5 rounded bg-black/20 backdrop-blur-sm", colorScheme.accent)}>
+                                                            {subject.code}
+                                                        </span>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-5 w-5 p-0.5 text-white/50 hover:bg-white/10 hover:text-white focus-visible:ring-0 focus-visible:ring-offset-0 -mr-1 -mt-1">
+                                                                    <MoreHorizontal className="h-3 w-3" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="bg-slate-900 border-white/10 text-slate-200">
+                                                                <DropdownMenuItem onSelect={() => openEditDialog(subject)} className="focus:bg-white/10 focus:text-white">
+                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem 
+                                                                    className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                                                                    onSelect={() => openDeleteDialog(subject)}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                    <p className={cn("font-medium leading-tight line-clamp-2 mb-1", colorScheme.text)}>
+                                                        {subject.description}
+                                                    </p>
+                                                </div>
+                                                
+                                                <div className="space-y-1 mt-auto">
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
+                                                        <User2 className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{subject.instructor || 'TBA'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
+                                                        <MapPin className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{hasRoomAssigned ? normalizedRoom : 'TBA'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-medium pt-1 border-t border-white/5 mt-1">
+                                                        <Clock className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">
+                                                            {formatTime(subject.startTime)} - {formatTime(subject.endTime)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </CardContent>
@@ -1040,40 +1041,40 @@ export default function SchedulePage() {
                     }
                 }}
             >
-                <DialogContent>
+                <DialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>Edit Schedule</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-white">Edit Schedule</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             Update the details for {subjectToEdit?.code}.
                         </DialogDescription>
                     </DialogHeader>
                     <form id="edit-subject-form" onSubmit={handleEditSubject}>
                          <div className="grid gap-4 py-4">
                              <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="edit-subject-display" className="text-right">Subject</Label>
+                                <Label htmlFor="edit-subject-display" className="text-right text-slate-300">Subject</Label>
                                 <div className="col-span-3 h-10 flex items-center">
-                                    <p id="edit-subject-display" className="text-sm font-medium">
+                                    <p id="edit-subject-display" className="text-sm font-medium text-white">
                                         {subjectToEdit?.description}
                                     </p>
                                 </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="edit-instructor" className="text-right">Instructor</Label>
+                                <Label htmlFor="edit-instructor" className="text-right text-slate-300">Instructor</Label>
                                 <Select
                                     name="instructor"
                                     defaultValue={getInstructorSelectValue(subjectToEdit)}
                                     disabled={isEditSubmitting}
                                 >
-                                    <SelectTrigger className="col-span-3 rounded-xl">
+                                    <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
                                         <SelectValue placeholder="Select an instructor (optional)" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
                                         {subjectToEdit ? (
                                             <>
                                                 {eligibleInstructorsForEdit.map((ins) => (
-                                                    <SelectItem key={ins.id} value={ins.id.toString()}>{ins.name}</SelectItem>
+                                                    <SelectItem key={ins.id} value={ins.id.toString()} className="focus:bg-white/10 focus:text-white">{ins.name}</SelectItem>
                                                 ))}
-                                                <SelectItem value={TBA_INSTRUCTOR}>
+                                                <SelectItem value={TBA_INSTRUCTOR} className="focus:bg-white/10 focus:text-white">
                                                     Assign Later (TBA)
                                                 </SelectItem>
                                             </>
@@ -1082,7 +1083,7 @@ export default function SchedulePage() {
                                 </Select>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="edit-room" className="text-right">Room</Label>
+                                <Label htmlFor="edit-room" className="text-right text-slate-300">Room</Label>
                                 <div className="col-span-3 flex items-center gap-3">
                                     <Input
                                         id="edit-room"
@@ -1091,49 +1092,50 @@ export default function SchedulePage() {
                                         onChange={(event) => setEditRoom(event.target.value)}
                                         disabled={isEditSubmitting || isEditRoomTBA}
                                         placeholder="e.g., Room 101"
-                                        className="rounded-xl"
+                                        className="rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                                     />
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-2 text-xs text-slate-400">
                                         <Switch
                                             id="edit-room-tba"
                                             checked={isEditRoomTBA}
                                             onCheckedChange={setIsEditRoomTBA}
                                             disabled={isEditSubmitting}
+                                            className="data-[state=checked]:bg-blue-600"
                                         />
                                         <span>TBA</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="edit-day" className="text-right">Day</Label>
+                                <Label htmlFor="edit-day" className="text-right text-slate-300">Day</Label>
                                 <Select name="day" defaultValue={subjectToEdit?.day} required disabled={isEditSubmitting}>
-                                    <SelectTrigger className="col-span-3 rounded-xl">
+                                    <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
                                         <SelectValue placeholder="Select a day" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        {days.map(day => <SelectItem key={day} value={day}>{day}</SelectItem>)}
+                                    <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                        {days.map(day => <SelectItem key={day} value={day} className="focus:bg-white/10 focus:text-white">{day}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="edit-startTime" className="text-right">Start Time</Label>
+                                <Label htmlFor="edit-startTime" className="text-right text-slate-300">Start Time</Label>
                                 <Select name="startTime" defaultValue={subjectToEdit?.startTime} required disabled={isEditSubmitting}>
-                                    <SelectTrigger className="col-span-3 rounded-xl">
+                                    <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
                                         <SelectValue placeholder="Select start time" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        {detailedTimeSlots.map(ts => <SelectItem key={`edit-start-${ts.value}`} value={ts.value}>{ts.label}</SelectItem>)}
+                                    <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                        {detailedTimeSlots.map(ts => <SelectItem key={`edit-start-${ts.value}`} value={ts.value} className="focus:bg-white/10 focus:text-white">{ts.label}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="edit-endTime" className="text-right">End Time</Label>
+                                <Label htmlFor="edit-endTime" className="text-right text-slate-300">End Time</Label>
                                 <Select name="endTime" defaultValue={subjectToEdit?.endTime} required disabled={isEditSubmitting}>
-                                    <SelectTrigger className="col-span-3 rounded-xl">
+                                    <SelectTrigger className="col-span-3 rounded-xl bg-white/5 border-white/10 text-white focus:ring-blue-500/20">
                                         <SelectValue placeholder="Select end time" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        {detailedTimeSlots.map(ts => <SelectItem key={`edit-end-${ts.value}`} value={ts.value}>{ts.label}</SelectItem>)}
+                                    <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-slate-200">
+                                        {detailedTimeSlots.map(ts => <SelectItem key={`edit-end-${ts.value}`} value={ts.value} className="focus:bg-white/10 focus:text-white">{ts.label}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1143,7 +1145,7 @@ export default function SchedulePage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsEditDialogOpen(false)}
-                            className="rounded-xl"
+                            className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
                             disabled={isEditSubmitting}
                         >
                             Cancel
@@ -1151,7 +1153,7 @@ export default function SchedulePage() {
                         <Button
                             type="submit"
                             form="edit-subject-form"
-                            className="rounded-xl"
+                            className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
                             disabled={isEditSubmitting}
                         >
                             {isEditSubmitting ? 'Saving...' : 'Save Changes'}
@@ -1172,11 +1174,11 @@ export default function SchedulePage() {
                     }
                 }}
             >
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-xl bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the schedule for <span className="font-semibold">{subjectToDelete?.code}</span>.
+                        <AlertDialogTitle className="text-white">Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                            This action cannot be undone. This will permanently delete the schedule for <span className="font-semibold text-white">{subjectToDelete?.code}</span>.
                              <br/><br/>
                             To confirm, please type "delete" below.
                         </AlertDialogDescription>
@@ -1186,15 +1188,21 @@ export default function SchedulePage() {
                             value={deleteInput}
                             onChange={(e) => setDeleteInput(e.target.value)}
                             disabled={isDeleteSubmitting}
-                            className="mt-4"
+                            className="mt-4 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
                         />
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteInput('')} disabled={isDeleteSubmitting}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel 
+                            onClick={() => setDeleteInput('')} 
+                            disabled={isDeleteSubmitting}
+                            className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
+                        >
+                            Cancel
+                        </AlertDialogCancel>
                         <AlertDialogAction 
                             disabled={deleteInput !== 'delete' || isDeleteSubmitting}
                             onClick={handleDeleteSubject}
-                            className="bg-destructive hover:bg-destructive/90"
+                            className="rounded-xl bg-red-600 hover:bg-red-500 text-white border-0"
                         >
                             {isDeleteSubmitting ? 'Deleting...' : 'Delete'}
                         </AlertDialogAction>

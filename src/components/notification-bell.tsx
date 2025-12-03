@@ -24,12 +24,12 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const categoryMeta: Record<NotificationCategory, { label: string; icon: LucideIcon; accent: string }> = {
-  application: { label: 'Application', icon: ClipboardList, accent: 'text-sky-600 dark:text-sky-400' },
-  enrollment: { label: 'Enrollment', icon: Megaphone, accent: 'text-emerald-600 dark:text-emerald-400' },
-  schedule: { label: 'Schedule', icon: CalendarClock, accent: 'text-indigo-600 dark:text-indigo-400' },
-  records: { label: 'Records', icon: Inbox, accent: 'text-amber-600 dark:text-amber-400' },
-  system: { label: 'System', icon: Info, accent: 'text-muted-foreground' },
-  grade: { label: 'Grades', icon: GraduationCap, accent: 'text-purple-600 dark:text-purple-400' },
+  application: { label: 'Application', icon: ClipboardList, accent: 'text-sky-400' },
+  enrollment: { label: 'Enrollment', icon: Megaphone, accent: 'text-emerald-400' },
+  schedule: { label: 'Schedule', icon: CalendarClock, accent: 'text-indigo-400' },
+  records: { label: 'Records', icon: Inbox, accent: 'text-amber-400' },
+  system: { label: 'System', icon: Info, accent: 'text-slate-400' },
+  grade: { label: 'Grades', icon: GraduationCap, accent: 'text-purple-400' },
 };
 
 const formatRelativeTime = (timestamp: string): string => {
@@ -60,10 +60,10 @@ const formatRelativeTime = (timestamp: string): string => {
 
 const EmptyState = ({ message }: { message: string }) => (
   <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-    <Bell className="h-6 w-6 text-muted-foreground" />
+    <Bell className="h-6 w-6 text-slate-500" />
     <div className="space-y-1">
-      <p className="text-sm font-medium">All caught up</p>
-      <p className="text-xs text-muted-foreground">{message}</p>
+      <p className="text-sm font-medium text-slate-200">All caught up</p>
+      <p className="text-xs text-slate-400">{message}</p>
     </div>
   </div>
 );
@@ -148,25 +148,25 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full p-0">
+        <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full p-0 text-slate-200 hover:bg-white/10 hover:text-white">
           <Bell className="h-5 w-5" />
           <span className="sr-only">Open notifications</span>
           {unreadCount > 0 && (
-            <span className="absolute right-0 top-0 inline-flex h-4 min-w-[1rem] translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
+            <span className="absolute right-0 top-0 inline-flex h-4 min-w-[1rem] translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-semibold text-white shadow-sm shadow-blue-900/20">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-0 rounded-xl overflow-hidden" sideOffset={8}>
-        <div className="flex items-center justify-between border-b px-4 py-3">
+      <DropdownMenuContent align="end" className="w-80 p-0 rounded-xl overflow-hidden bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200" sideOffset={8}>
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div>
-            <p className="text-sm font-semibold">Notifications</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm font-semibold text-white">Notifications</p>
+            <p className="text-xs text-slate-400">
               {unreadCount > 0 ? `${unreadCount} unread` : 'No unread notifications'}
             </p>
           </div>
-          <Button size="sm" variant="ghost" className="text-xs" onClick={onMarkAllAsRead} disabled={unreadCount === 0}>
+          <Button size="sm" variant="ghost" className="text-xs text-slate-400 hover:text-white hover:bg-white/10" onClick={onMarkAllAsRead} disabled={unreadCount === 0}>
             Mark all read
           </Button>
         </div>
@@ -174,40 +174,40 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
           <EmptyState message={emptyMessage} />
         ) : (
           <ScrollArea className="max-h-[360px]">
-            <ul className="divide-y">
+            <ul className="divide-y divide-white/5">
               {notifications.map((notification) => {
                 const meta = categoryMeta[notification.category] ?? categoryMeta.system;
                 const Icon = meta.icon;
                 return (
-                  <li key={notification.id} className={cn('flex gap-3 px-4 py-3 transition-colors', !notification.read && 'bg-muted/40')}>
+                  <li key={notification.id} className={cn('flex gap-3 px-4 py-3 transition-colors hover:bg-white/5', !notification.read && 'bg-blue-500/10')}>
                     <div
                       className={cn(
                         'mt-1 flex h-9 w-9 items-center justify-center rounded-full border',
-                        notification.read ? 'border-border text-muted-foreground' : 'border-primary/50 text-primary'
+                        notification.read ? 'border-white/10 text-slate-500' : 'border-blue-500/50 text-blue-400'
                       )}
                     >
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex-1 space-y-1 text-sm">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium leading-tight">{notification.title}</p>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatRelativeTime(notification.createdAt)}</span>
+                        <p className="font-medium leading-tight text-slate-200">{notification.title}</p>
+                        <span className="text-xs text-slate-500 whitespace-nowrap">{formatRelativeTime(notification.createdAt)}</span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{notification.description}</p>
+                      <p className="text-sm text-slate-400">{notification.description}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs">
-                        <Badge variant="secondary" className={cn('bg-transparent text-xs font-medium', meta.accent, 'px-1.5')}>{meta.label}</Badge>
+                        <Badge variant="secondary" className={cn('bg-transparent text-xs font-medium border border-white/10', meta.accent, 'px-1.5')}>{meta.label}</Badge>
                         {!notification.read && (
-                          <button type="button" className="font-semibold text-primary hover:underline" onClick={() => onMarkAsRead(notification.id)}>
+                          <button type="button" className="font-semibold text-blue-400 hover:text-blue-300 hover:underline" onClick={() => onMarkAsRead(notification.id)}>
                             Mark read
                           </button>
                         )}
                         {notification.action && (
-                          <Link href={notification.action.href} className="font-semibold text-muted-foreground hover:text-primary hover:underline">
+                          <Link href={notification.action.href} className="font-semibold text-slate-400 hover:text-blue-400 hover:underline">
                             {notification.action.label}
                           </Link>
                         )}
                         {onDismissNotification && (
-                          <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => onDismissNotification(notification.id)}>
+                          <button type="button" className="text-slate-500 hover:text-red-400" onClick={() => onDismissNotification(notification.id)}>
                             Dismiss
                           </button>
                         )}

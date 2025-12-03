@@ -15,10 +15,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronRight, Users, Edit, ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronRight, Users, Edit, ChevronUp, ChevronDown, BookOpen, GraduationCap, Hash, School, Calendar, Search, IdCard } from 'lucide-react';
 import type { Student } from '@/app/admin/context/admin-context';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const TERM_ORDER: GradeTermKey[] = ['prelim', 'midterm', 'final'];
 const TERM_LABELS: Record<GradeTermKey, string> = {
@@ -211,42 +212,113 @@ export default function MyClassesPage() {
 
     return (
         <>
-            <main className="flex-1 p-4 sm:p-6 space-y-6">
-                <div className="space-y-0.5">
-                    <h1 className="text-2xl font-bold tracking-tight">My Classes</h1>
-                    <p className="text-muted-foreground">
-                        View student lists and manage grades for your assigned classes.
-                    </p>
+            <main className="flex-1 p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-blue-500/10 rounded-xl">
+                                <School className="h-6 w-6 text-blue-400" />
+                            </div>
+                            <h1 className="text-2xl font-bold tracking-tight text-slate-200">My Classes</h1>
+                        </div>
+                        <p className="text-slate-400 pl-12">
+                            View student lists and manage grades for your assigned classes.
+                        </p>
+                    </div>
                 </div>
-                <Card className="rounded-xl">
-                    <CardHeader>
-                        <CardTitle>Class List</CardTitle>
-                        <CardDescription>A list of all classes you handle this semester.</CardDescription>
+
+                <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <CardHeader className="border-b border-white/10 pb-4">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                                <CardTitle className="text-slate-200 flex items-center gap-2">
+                                    <BookOpen className="h-5 w-5 text-blue-400" />
+                                    Class List
+                                </CardTitle>
+                                <CardDescription className="text-slate-400">A list of all classes you handle this semester.</CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white/5 p-1 rounded-full border border-white/10">
+                                <Search className="h-4 w-4 text-slate-500 ml-2" />
+                                <Input 
+                                    placeholder="Search classes..." 
+                                    className="h-8 w-48 border-0 bg-transparent focus-visible:ring-0 text-slate-200 placeholder:text-slate-600"
+                                />
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="border rounded-lg">
+                    <CardContent className="p-0">
+                        <div className="overflow-hidden">
                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Class</TableHead>
-                                        <TableHead>Subject</TableHead>
-                                        <TableHead>Students</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                <TableHeader className="bg-white/5">
+                                    <TableRow className="border-white/10 hover:bg-transparent">
+                                        <TableHead className="text-slate-400 pl-6 h-12">
+                                            <div className="flex items-center gap-2">
+                                                <Hash className="h-4 w-4 text-slate-600" />
+                                                Class Block
+                                            </div>
+                                        </TableHead>
+                                        <TableHead className="text-slate-400 h-12">
+                                            <div className="flex items-center gap-2">
+                                                <BookOpen className="h-4 w-4 text-slate-600" />
+                                                Subject
+                                            </div>
+                                        </TableHead>
+                                        <TableHead className="text-slate-400 h-12">
+                                            <div className="flex items-center gap-2">
+                                                <Users className="h-4 w-4 text-slate-600" />
+                                                Students
+                                            </div>
+                                        </TableHead>
+                                        <TableHead className="text-right text-slate-400 pr-6 h-12">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {classes.map(c => (
-                                        <TableRow key={`${c.block}-${c.subjectCode}`}>
-                                            <TableCell className="font-medium">{c.block}</TableCell>
-                                            <TableCell>
-                                                <div>{c.subjectCode}</div>
-                                                <div className="text-xs text-muted-foreground">{c.subjectDescription}</div>
+                                        <TableRow key={`${c.block}-${c.subjectCode}`} className="border-white/10 hover:bg-white/5 transition-colors group">
+                                            <TableCell className="font-medium text-slate-200 pl-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold text-xs border border-blue-500/20">
+                                                        {c.block.split(' ')[0]}
+                                                    </div>
+                                                    <span className="font-semibold">{c.block}</span>
+                                                </div>
                                             </TableCell>
-                                            <TableCell>{c.studentCount}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="sm" onClick={() => openStudentsDialog(c)}>
+                                            <TableCell className="py-4">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-md text-xs border border-blue-500/20">
+                                                            {c.subjectCode}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-sm text-slate-400 line-clamp-1">{c.subjectDescription}</div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-slate-300 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex -space-x-2">
+                                                        {[...Array(Math.min(3, c.studentCount))].map((_, i) => (
+                                                            <div key={i} className="h-8 w-8 rounded-full bg-slate-800 border-2 border-[#0f172a] flex items-center justify-center text-[10px] text-slate-500">
+                                                                <Users className="h-3 w-3" />
+                                                            </div>
+                                                        ))}
+                                                        {c.studentCount > 3 && (
+                                                            <div className="h-8 w-8 rounded-full bg-slate-800 border-2 border-[#0f172a] flex items-center justify-center text-[10px] text-slate-400 font-medium">
+                                                                +{c.studentCount - 3}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-sm text-slate-500 ml-2">{c.studentCount} Students</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right pr-6 py-4">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={() => openStudentsDialog(c)}
+                                                    className="rounded-full text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 pr-4 pl-3"
+                                                >
                                                     View Class
-                                                    <ChevronRight className="h-4 w-4 ml-2" />
+                                                    <ChevronRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -259,161 +331,205 @@ export default function MyClassesPage() {
             </main>
 
             <Dialog open={isStudentsDialogOpen} onOpenChange={setIsStudentsDialogOpen}>
-                <DialogContent className="max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>Class Roster: {selectedClass?.block} - {selectedClass?.subjectCode}</DialogTitle>
-                        <DialogDescription>
-                            {selectedClass?.subjectDescription}
-                        </DialogDescription>
+                <DialogContent className="max-w-5xl bg-[#0f172a] border-white/10 text-slate-200 rounded-3xl p-0 overflow-hidden gap-0">
+                    <DialogHeader className="p-6 bg-[#020617] border-b border-white/10">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-2xl bg-blue-600/20 flex items-center justify-center border border-blue-500/30">
+                                    <GraduationCap className="h-6 w-6 text-blue-400" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-xl text-slate-200 flex items-center gap-2">
+                                        {selectedClass?.block}
+                                        <span className="text-slate-600">/</span>
+                                        <span className="text-blue-400 font-mono">{selectedClass?.subjectCode}</span>
+                                    </DialogTitle>
+                                    <DialogDescription className="text-slate-400 mt-1">
+                                        {selectedClass?.subjectDescription}
+                                    </DialogDescription>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-slate-500 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                                <Users className="h-4 w-4" />
+                                <span>{studentsInClass.length} Students Enrolled</span>
+                            </div>
+                        </div>
                     </DialogHeader>
-                    <div className="max-h-[70vh] overflow-y-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Student</TableHead>
-                                    <TableHead>Student ID</TableHead>
-                                    {TERM_ORDER.map((termKey) => (
-                                        <TableHead key={`header-${termKey}`} className="text-right">
-                                            {TERM_LABELS[termKey]}
-                                        </TableHead>
-                                    ))}
-                                    <TableHead className="text-right">Final Grade</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {studentsInClass.map(student => {
-                                    const gradeRecord = getGradeRecordForSubject(student.studentId, selectedClass?.subjectCode);
-                                    const isEditing = gradeEdit?.studentId === student.studentId && gradeEdit?.subjectCode === selectedClass?.subjectCode;
-                                    
-                                    return (
-                                        <TableRow key={student.id}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-8 w-8">
-                                                        <AvatarImage src={student.avatar} alt={student.name} data-ai-hint="person avatar" />
-                                                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="font-medium">{student.name}</span>
+                    
+                    <div className="max-h-[65vh] overflow-y-auto p-6 bg-[#0f172a]">
+                        <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#020617]/30">
+                            <Table>
+                                <TableHeader className="bg-[#020617]/80 backdrop-blur-sm sticky top-0 z-10">
+                                    <TableRow className="border-white/10 hover:bg-transparent">
+                                        <TableHead className="text-slate-400 pl-6 h-12">Student Details</TableHead>
+                                        <TableHead className="text-slate-400 h-12">ID Number</TableHead>
+                                        {TERM_ORDER.map((termKey) => (
+                                            <TableHead key={`header-${termKey}`} className="text-right text-slate-400 h-12">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Calendar className="h-3 w-3 text-slate-600" />
+                                                    {TERM_LABELS[termKey]}
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>{student.studentId}</TableCell>
-                                            {TERM_ORDER.map((termKey) => {
-                                                const termEntry = gradeRecord?.terms?.[termKey];
-                                                const termValue = termEntry?.grade ?? null;
-                                                const isTermEditing = isEditing && gradeEdit?.term === termKey;
-                                                return (
-                                                    <TableCell key={`${student.id}-${termKey}`} className="text-right">
-                                                        {isTermEditing ? (
-                                                            <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end sm:items-center">
-                                                                <div className="flex items-center gap-1">
-                                                                    <Input
-                                                                        type="text"
-                                                                        inputMode="decimal"
-                                                                        placeholder="1.0-5.0 or INC"
-                                                                        value={gradeEdit?.grade ?? ''}
-                                                                        onChange={(event) =>
-                                                                            setGradeEdit((current) =>
-                                                                                current ? { ...current, grade: event.target.value } : current,
-                                                                            )
-                                                                        }
-                                                                        className="h-8 w-28 rounded-md"
-                                                                        autoFocus
-                                                                        onKeyDown={(event) => {
-                                                                            if (event.key === 'Enter') {
-                                                                                event.preventDefault();
-                                                                                void handleSaveGrade();
+                                            </TableHead>
+                                        ))}
+                                        <TableHead className="text-right text-slate-400 pr-6 h-12">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <GraduationCap className="h-3 w-3 text-slate-600" />
+                                                Final Grade
+                                            </div>
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {studentsInClass.map(student => {
+                                        const gradeRecord = getGradeRecordForSubject(student.studentId, selectedClass?.subjectCode);
+                                        const isEditing = gradeEdit?.studentId === student.studentId && gradeEdit?.subjectCode === selectedClass?.subjectCode;
+                                        
+                                        return (
+                                            <TableRow key={student.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                                                <TableCell className="pl-6 py-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-10 w-10 border-2 border-white/10 rounded-full">
+                                                            <AvatarImage src={student.avatar} alt={student.name} data-ai-hint="person avatar" />
+                                                            <AvatarFallback className="bg-slate-800 text-slate-400">{student.name.charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <div className="font-medium text-slate-200">{student.name}</div>
+                                                            <div className="text-xs text-slate-500">{student.email}</div>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-3">
+                                                    <div className="flex items-center gap-2 text-slate-400 font-mono text-xs bg-white/5 w-fit px-2 py-1 rounded-md border border-white/5">
+                                                        <IdCard className="h-3 w-3" />
+                                                        {student.studentId}
+                                                    </div>
+                                                </TableCell>
+                                                {TERM_ORDER.map((termKey) => {
+                                                    const termEntry = gradeRecord?.terms?.[termKey];
+                                                    const termValue = termEntry?.grade ?? null;
+                                                    const isTermEditing = isEditing && gradeEdit?.term === termKey;
+                                                    return (
+                                                        <TableCell key={`${student.id}-${termKey}`} className="text-right py-3">
+                                                            {isTermEditing ? (
+                                                                <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end sm:items-center bg-[#020617] p-1.5 rounded-xl border border-blue-500/30 shadow-lg shadow-blue-900/20">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <Input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            placeholder="1.0-5.0"
+                                                                            value={gradeEdit?.grade ?? ''}
+                                                                            onChange={(event) =>
+                                                                                setGradeEdit((current) =>
+                                                                                    current ? { ...current, grade: event.target.value } : current,
+                                                                                )
                                                                             }
-                                                                            if (event.key === 'ArrowUp') {
-                                                                                event.preventDefault();
-                                                                                handleStepGrade(1);
-                                                                            }
-                                                                            if (event.key === 'ArrowDown') {
-                                                                                event.preventDefault();
-                                                                                handleStepGrade(-1);
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                    <div className="flex flex-col gap-1">
+                                                                            className="h-8 w-20 rounded-lg bg-slate-900 border-white/10 text-slate-200 focus:ring-blue-500/20 text-center font-mono"
+                                                                            autoFocus
+                                                                            onKeyDown={(event) => {
+                                                                                if (event.key === 'Enter') {
+                                                                                    event.preventDefault();
+                                                                                    void handleSaveGrade();
+                                                                                }
+                                                                                if (event.key === 'ArrowUp') {
+                                                                                    event.preventDefault();
+                                                                                    handleStepGrade(1);
+                                                                                }
+                                                                                if (event.key === 'ArrowDown') {
+                                                                                    event.preventDefault();
+                                                                                    handleStepGrade(-1);
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-3.5 w-5 rounded-sm text-slate-400 hover:text-slate-200 hover:bg-white/10"
+                                                                                onClick={() => handleStepGrade(1)}
+                                                                                disabled={isSaving}
+                                                                            >
+                                                                                <ChevronUp className="h-2.5 w-2.5" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-3.5 w-5 rounded-sm text-slate-400 hover:text-slate-200 hover:bg-white/10"
+                                                                                onClick={() => handleStepGrade(-1)}
+                                                                                disabled={isSaving}
+                                                                            >
+                                                                                <ChevronDown className="h-2.5 w-2.5" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex gap-1">
                                                                         <Button
-                                                                            type="button"
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-4 w-6"
-                                                                            onClick={() => handleStepGrade(1)}
+                                                                            size="sm"
+                                                                            onClick={() => { void handleSaveGrade(); }}
                                                                             disabled={isSaving}
-                                                                            aria-label="Increase grade"
+                                                                            className="h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white border-0 px-3 text-xs"
                                                                         >
-                                                                            <ChevronUp className="h-3 w-3" />
+                                                                            Save
                                                                         </Button>
                                                                         <Button
                                                                             type="button"
                                                                             variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-4 w-6"
-                                                                            onClick={() => handleStepGrade(-1)}
+                                                                            size="sm"
+                                                                            onClick={handleCancelEdit}
                                                                             disabled={isSaving}
-                                                                            aria-label="Decrease grade"
+                                                                            className="h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 px-2"
                                                                         >
-                                                                            <ChevronDown className="h-3 w-3" />
+                                                                            <span className="sr-only">Cancel</span>
+                                                                            <div className="h-4 w-4 flex items-center justify-center">×</div>
                                                                         </Button>
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex gap-2">
+                                                            ) : (
+                                                                <div className="flex justify-end items-center gap-2 group">
+                                                                    <span className={cn("font-mono font-semibold px-2.5 py-1 rounded-md border border-transparent transition-all", 
+                                                                        termValue === 'INC' ? "text-red-400 bg-red-500/10 border-red-500/20" : 
+                                                                        termValue && termValue <= 3.0 ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : 
+                                                                        termValue ? "text-slate-200 bg-white/5 border-white/10" : "text-slate-600"
+                                                                    )}>{formatTermValue(termValue)}</span>
                                                                     <Button
-                                                                        size="sm"
-                                                                        onClick={() => { void handleSaveGrade(); }}
-                                                                        disabled={isSaving}
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                                                                        onClick={() => setGradeEdit({
+                                                                            studentId: student.studentId,
+                                                                            subjectCode: selectedClass!.subjectCode,
+                                                                            term: termKey,
+                                                                            grade: termValue !== null ? termValue.toString() : '',
+                                                                        })}
                                                                     >
-                                                                        {isSaving ? 'Saving…' : 'Save'}
-                                                                    </Button>
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={handleCancelEdit}
-                                                                        disabled={isSaving}
-                                                                    >
-                                                                        Cancel
+                                                                        <Edit className="h-3.5 w-3.5" />
                                                                     </Button>
                                                                 </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex justify-end items-center gap-2 group">
-                                                                <span className="font-semibold">{formatTermValue(termValue)}</span>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                                                    onClick={() => setGradeEdit({
-                                                                        studentId: student.studentId,
-                                                                        subjectCode: selectedClass!.subjectCode,
-                                                                        term: termKey,
-                                                                        grade: termValue !== null ? termValue.toString() : '',
-                                                                    })}
-                                                                >
-                                                                    <Edit className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                    </TableCell>
-                                                );
-                                            })}
-                                            <TableCell className="text-right">
-                                                <div className="flex flex-col items-end">
-                                                    <span className="font-semibold">{formatTermValue(gradeRecord?.grade ?? null)}</span>
-                                                    {gradeRecord?.remark ? (
-                                                        <span className="text-xs text-muted-foreground">{gradeRecord.remark}</span>
-                                                    ) : null}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
+                                                            )}
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                                <TableCell className="text-right pr-6 py-3">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className={cn("font-mono font-bold text-lg", 
+                                                            gradeRecord?.grade === 'INC' ? "text-red-400" : 
+                                                            gradeRecord?.grade && gradeRecord.grade <= 3.0 ? "text-emerald-400" : "text-slate-500"
+                                                        )}>{formatTermValue(gradeRecord?.grade ?? null)}</span>
+                                                        {gradeRecord?.remark ? (
+                                                            <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">{gradeRecord.remark}</span>
+                                                        ) : null}
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsStudentsDialogOpen(false)}>Close</Button>
+                    <DialogFooter className="p-4 bg-[#020617] border-t border-white/10">
+                        <Button variant="outline" onClick={() => setIsStudentsDialogOpen(false)} className="rounded-full border-white/10 text-slate-300 hover:bg-white/5 hover:text-white px-6">Close Roster</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

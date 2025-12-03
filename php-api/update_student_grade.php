@@ -59,6 +59,25 @@ function respond(int $statusCode, array $payload, ?mysqli $connection = null): v
     exit;
 }
 
+function normalize_remark_for_db(?string $remark): ?string
+{
+    if ($remark === null) {
+        return null;
+    }
+
+    $trimmed = trim($remark);
+    if ($trimmed === '') {
+        return null;
+    }
+
+    $upper = strtoupper($trimmed);
+    if ($upper === 'INC' || $upper === 'INCOMPLETE') {
+        return 'Incomplete';
+    }
+
+    return $trimmed;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, [
         'status' => 'error',
@@ -96,7 +115,16 @@ if (!$isIncompleteSubmission && $gradeInput !== null) {
 $academicYear = trim((string)($payload['academicYear'] ?? ''));
 $semester = trim((string)($payload['semester'] ?? ''));
 $termInput = strtolower(trim((string)($payload['term'] ?? '')));
-$remarkInput = trim((string)($payload['remark'] ?? ''));
+$remarkInputRaw = trim((string)($payload['remark'] ?? ''));
+$remarkInput = '';
+if ($remarkInputRaw !== '') {
+    $remarkInputUpper = strtoupper($remarkInputRaw);
+    if ($remarkInputUpper === 'INC' || $remarkInputUpper === 'INCOMPLETE') {
+        $remarkInput = 'Incomplete';
+    } else {
+        $remarkInput = $remarkInputRaw;
+    }
+}
 $instructorIdInput = $payload['instructorUserId'] ?? null;
 $instructorEmailInput = trim((string)($payload['instructorEmail'] ?? ''));
 
@@ -144,7 +172,7 @@ if ($semester === '') {
 
 $manualRemark = $remarkInput !== '' ? $remarkInput : null;
 if ($manualRemark === null && $isIncompleteSubmission) {
-    $manualRemark = 'INC';
+    $manualRemark = 'Incomplete';
 }
 
 try {
@@ -220,6 +248,7 @@ try {
         $studentGradeId = (int)$existingGradeRow['id'];
     } else {
         $initialRemark = $manualRemark ?? 'In Progress';
+        $initialRemark = normalize_remark_for_db($initialRemark);
         $insertGradeStmt = $conn->prepare('INSERT INTO student_grades (student_user_id, subject_id, grade, academic_year, semester, instructor_user_id, remark, graded_at) VALUES (?, ?, NULL, ?, ?, ?, ?, NULL)');
         if (!$insertGradeStmt) {
             throw new Exception('Failed to prepare grade creation statement: ' . $conn->error);
@@ -327,6 +356,8 @@ try {
         }
     }
 
+    $finalRemarkForDb = normalize_remark_for_db($finalRemark);
+
     $gradedAtValue = $finalGrade !== null ? date('Y-m-d H:i:s') : null;
 
     if ($finalGrade !== null) {
@@ -334,13 +365,13 @@ try {
         if (!$updateGradeStmt) {
             throw new Exception('Failed to prepare final grade update statement: ' . $conn->error);
         }
-        $updateGradeStmt->bind_param('dsisi', $finalGrade, $finalRemark, $instructorUserId, $gradedAtValue, $studentGradeId);
+        $updateGradeStmt->bind_param('dsisi', $finalGrade, $finalRemarkForDb, $instructorUserId, $gradedAtValue, $studentGradeId);
     } else {
         $updateGradeStmt = $conn->prepare('UPDATE student_grades SET grade = NULL, remark = ?, instructor_user_id = ?, graded_at = NULL WHERE id = ?');
         if (!$updateGradeStmt) {
             throw new Exception('Failed to prepare partial grade update statement: ' . $conn->error);
         }
-        $updateGradeStmt->bind_param('sii', $finalRemark, $instructorUserId, $studentGradeId);
+        $updateGradeStmt->bind_param('sii', $finalRemarkForDb, $instructorUserId, $studentGradeId);
     }
 
     if (!$updateGradeStmt->execute()) {
