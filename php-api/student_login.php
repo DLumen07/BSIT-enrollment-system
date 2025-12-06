@@ -71,26 +71,13 @@ if (!is_array($payload)) {
 }
 
 $email = trim((string) ($payload['email'] ?? ''));
-$currentPassword = trim((string) ($payload['currentPassword'] ?? ''));
-$newPassword = trim((string) ($payload['newPassword'] ?? ''));
+$password = (string) ($payload['password'] ?? '');
 
-if ($email === '' || $newPassword === '') {
+if ($email === '' || $password === '') {
     http_response_code(400);
     echo json_encode([
         'status' => 'error',
-        'message' => 'Email and new password are required.',
-    ]);
-    if (isset($conn) && $conn instanceof mysqli) {
-        $conn->close();
-    }
-    exit;
-}
-
-if (strlen($newPassword) < 8) {
-    http_response_code(400);
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'New password must be at least 8 characters long.',
+        'message' => 'Email and password are required.',
     ]);
     if (isset($conn) && $conn instanceof mysqli) {
         $conn->close();
@@ -101,26 +88,27 @@ if (strlen($newPassword) < 8) {
 try {
     $conn->set_charset('utf8mb4');
 
-    $findUserSql = 'SELECT u.id, u.password_hash, sp.birthdate'
+    $lookupSql = 'SELECT u.id, u.email, u.password_hash, sp.student_id_number, sp.name, sp.birthdate'
         . ' FROM users u'
-        . ' LEFT JOIN student_profiles sp ON sp.user_id = u.id'
+        . ' INNER JOIN student_profiles sp ON sp.user_id = u.id'
         . ' WHERE u.email = ? AND u.role = "student"'
         . ' LIMIT 1';
-    $findUserStmt = $conn->prepare($findUserSql);
-    if (!$findUserStmt) {
-        throw new Exception('Failed to prepare user lookup statement: ' . $conn->error, 500);
+
+    $lookupStmt = $conn->prepare($lookupSql);
+    if (!$lookupStmt) {
+        throw new Exception('Failed to prepare login query: ' . $conn->error);
     }
 
-    $findUserStmt->bind_param('s', $email);
-    $findUserStmt->execute();
-    $userResult = $findUserStmt->get_result();
+    $lookupStmt->bind_param('s', $email);
+    $lookupStmt->execute();
+    $result = $lookupStmt->get_result();
 
-    if (!$userResult instanceof mysqli_result || $userResult->num_rows === 0) {
-        $findUserStmt->close();
-        http_response_code(404);
+    if (!$result instanceof mysqli_result || $result->num_rows === 0) {
+        $lookupStmt->close();
+        http_response_code(401);
         echo json_encode([
             'status' => 'error',
-            'message' => 'Student account not found.',
+            'message' => 'Invalid email or password.',
         ]);
         if ($conn instanceof mysqli) {
             $conn->close();
@@ -128,78 +116,61 @@ try {
         exit;
     }
 
-    $userRow = $userResult->fetch_assoc();
-    $findUserStmt->close();
+    $userRow = $result->fetch_assoc();
+    $lookupStmt->close();
 
-    $userId = (int) $userRow['id'];
     $passwordHash = $userRow['password_hash'] ?? '';
-    $birthdateRaw = $userRow['birthdate'] ?? null;
+    if (!is_string($passwordHash) || $passwordHash === '') {
+        http_response_code(401);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Invalid email or password.',
+        ]);
+        if ($conn instanceof mysqli) {
+            $conn->close();
+        }
+        exit;
+    }
 
-    $temporaryPasswordCandidate = null;
+    if (!password_verify($password, $passwordHash)) {
+        http_response_code(401);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Invalid email or password.',
+        ]);
+        if ($conn instanceof mysqli) {
+            $conn->close();
+        }
+        exit;
+    }
+
+    $needsPasswordUpdate = false;
+    $birthdateRaw = $userRow['birthdate'] ?? null;
     if (is_string($birthdateRaw) && trim($birthdateRaw) !== '') {
         $timestamp = strtotime($birthdateRaw);
         if ($timestamp !== false) {
-            $temporaryPasswordCandidate = strtolower(date('F', $timestamp))
+            $temporaryPassword = strtolower(date('F', $timestamp))
                 . date('d', $timestamp)
                 . date('Y', $timestamp);
+            if (hash_equals($temporaryPassword, $password)) {
+                $needsPasswordUpdate = true;
+            }
         }
     }
-
-    $currentPasswordMatches = $currentPassword !== '' && is_string($passwordHash) && password_verify($currentPassword, $passwordHash);
-    $temporaryPasswordMatches = $currentPasswordMatches ? false : ($temporaryPasswordCandidate !== null && is_string($passwordHash) && password_verify($temporaryPasswordCandidate, $passwordHash));
-
-    if (!$currentPasswordMatches && !$temporaryPasswordMatches) {
-        http_response_code(400);
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'The current password you entered is incorrect, or your temporary password has already been replaced.',
-        ]);
-        if ($conn instanceof mysqli) {
-            $conn->close();
-        }
-        exit;
-    }
-
-    if (password_verify($newPassword, $passwordHash)) {
-        http_response_code(400);
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Please choose a different password from your current one.',
-        ]);
-        if ($conn instanceof mysqli) {
-            $conn->close();
-        }
-        exit;
-    }
-
-    $newPasswordHash = password_hash($newPassword, PASSWORD_BCRYPT);
-    if ($newPasswordHash === false) {
-        throw new Exception('Failed to hash the new password.', 500);
-    }
-
-    $updateSql = 'UPDATE users SET password_hash = ? WHERE id = ? LIMIT 1';
-    $updateStmt = $conn->prepare($updateSql);
-    if (!$updateStmt) {
-        throw new Exception('Failed to prepare password update statement: ' . $conn->error, 500);
-    }
-
-    $updateStmt->bind_param('si', $newPasswordHash, $userId);
-    $updateStmt->execute();
-
-    if ($updateStmt->affected_rows < 0) {
-        $updateStmt->close();
-        throw new Exception('Unable to update the password. Please try again later.', 500);
-    }
-
-    $updateStmt->close();
 
     echo json_encode([
         'status' => 'success',
-        'message' => 'Password updated successfully.',
+        'message' => 'Login successful.',
+        'data' => [
+            'email' => $userRow['email'] ?? $email,
+            'studentId' => $userRow['student_id_number'] ?? '',
+            'name' => $userRow['name'] ?? '',
+            'needsPasswordUpdate' => $needsPasswordUpdate,
+        ],
     ]);
-} catch (Exception $error) {
+} catch (Throwable $error) {
     $statusCode = $error->getCode();
-    if ($statusCode < 400 || $statusCode > 599) {
+    if (!is_int($statusCode) || $statusCode < 400 || $statusCode > 599) {
         $statusCode = 500;
     }
 
@@ -213,3 +184,4 @@ try {
         $conn->close();
     }
 }
+?>

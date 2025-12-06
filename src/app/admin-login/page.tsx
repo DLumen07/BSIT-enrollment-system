@@ -12,12 +12,18 @@ import { useAdmin } from '@/app/admin/context/admin-context';
 import { BSITBackground } from '@/components/bsit-background';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { resolveMediaUrl } from '@/lib/utils';
+import Loading from '@/app/loading';
 
 const ADMIN_PORTAL_API_BASE = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
   .replace(/\/+$/, '')
   .trim();
 
-function LoginForm() {
+type LoginFormProps = {
+  isSubmitting: boolean;
+  setIsSubmitting: (value: boolean) => void;
+};
+
+function LoginForm({ isSubmitting, setIsSubmitting }: LoginFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { adminData, setAdminData } = useAdmin();
@@ -27,8 +33,10 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+
+    if (isSubmitting) return;
 
     if (email.trim() === '' || password.trim() === '') {
       toast({
@@ -39,29 +47,57 @@ function LoginForm() {
       return;
     }
 
-    const admin = adminUsers.find(user => user.email === email);
-    if (admin) {
-      const normalizedAdmin = {
-        ...admin,
-        avatar: resolveMediaUrl(admin.avatar ?? null, ADMIN_PORTAL_API_BASE) ?? (admin.avatar ?? ''),
-      };
-      setAdminData(prev => ({ ...prev, currentUser: normalizedAdmin }));
-      sessionStorage.setItem('currentUser', JSON.stringify(normalizedAdmin));
-        router.push('/admin/dashboard');
-        return;
-    }
+    setIsSubmitting(true);
+    const startTime = Date.now();
 
-    const instructor = instructors.find(user => user.email === email);
-    if (instructor) {
-      router.push(`/instructor/dashboard?email=${encodeURIComponent(email)}`);
-      return;
-    }
-    
-    toast({
+    try {
+      // Simulate network request / processing time
+      // Minimum loading time of 2 seconds
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime < 2000) {
+        await new Promise(resolve => setTimeout(resolve, 2000 - elapsedTime));
+      }
+
+      const admin = adminUsers.find(user => user.email === email);
+      if (admin) {
+        const normalizedAdmin = {
+          ...admin,
+          avatar: resolveMediaUrl(admin.avatar ?? null, ADMIN_PORTAL_API_BASE) ?? (admin.avatar ?? ''),
+        };
+        setAdminData(prev => ({ ...prev, currentUser: normalizedAdmin }));
+        sessionStorage.setItem('currentUser', JSON.stringify(normalizedAdmin));
+          router.push('/admin/dashboard');
+          return;
+      }
+
+      const instructor = instructors.find(user => user.email === email);
+      if (instructor) {
+        router.push(`/instructor/dashboard?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      
+      toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: 'No account found with that email address. Please check your credentials.',
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
         variant: 'destructive',
-        title: 'Login Failed',
-        description: 'No account found with that email address. Please check your credentials.',
-    });
+        title: 'Login Error',
+        description: 'An unexpected error occurred.',
+      });
+    } finally {
+       // Only stop submitting if we didn't redirect (i.e. error or failure)
+       // If we redirected, we want the loading screen to persist until the new page loads
+       const admin = adminUsers.find(user => user.email === email);
+       const instructor = instructors.find(user => user.email === email);
+       
+       if (!admin && !instructor) {
+           setIsSubmitting(false);
+       }
+    }
   };
 
   return (
@@ -113,6 +149,7 @@ function LoginForm() {
 
 export default function AdminLoginPage() {
     const [isClient, setIsClient] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // 3D Tilt Logic
     const mouseX = useMotionValue(0);
@@ -131,6 +168,12 @@ export default function AdminLoginPage() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center font-sans selection:bg-blue-500/30">
       <BSITBackground />
+
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50">
+            <Loading />
+        </div>
+      )}
 
       <main className="container relative z-10 px-4 flex flex-col items-center justify-center py-10">
         
@@ -187,7 +230,7 @@ export default function AdminLoginPage() {
                 Admin <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-blue-700">Portal</span>
               </h1>
               
-              {isClient && <LoginForm />}
+              {isClient && <LoginForm isSubmitting={isSubmitting} setIsSubmitting={setIsSubmitting} />}
 
             </div>
           </div>

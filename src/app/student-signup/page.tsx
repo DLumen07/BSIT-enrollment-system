@@ -20,6 +20,13 @@ import {
 import { BSITBackground } from '@/components/bsit-background';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 
+type ReturningLookupResult = {
+    studentIdNumber: string;
+    name: string | null;
+    email: string;
+    temporaryPassword: string;
+};
+
 export default function StudentSignupPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -27,15 +34,13 @@ export default function StudentSignupPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [studentIdNumber, setStudentIdNumber] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showReturningDialog, setShowReturningDialog] = useState(true);
-    const [returningDialogStep, setReturningDialogStep] = useState<'prompt' | 'lookup'>('prompt');
+    const [returningDialogStep, setReturningDialogStep] = useState<'prompt' | 'lookup' | 'result'>('prompt');
     const [lookupStudentId, setLookupStudentId] = useState('');
     const [lookupError, setLookupError] = useState<string | null>(null);
     const [isCheckingStudentId, setIsCheckingStudentId] = useState(false);
-    const [isReturningStudentFlow, setIsReturningStudentFlow] = useState(false);
-    const [returningStudentName, setReturningStudentName] = useState<string | null>(null);
+    const [lookupResult, setLookupResult] = useState<ReturningLookupResult | null>(null);
     const { toast } = useToast();
     const router = useRouter();
     const { refreshAdminData } = useAdmin();
@@ -66,11 +71,8 @@ export default function StudentSignupPage() {
         setEmail('');
         setPassword('');
         setConfirmPassword('');
-        setStudentIdNumber('');
         setShowPassword(false);
         setShowConfirmPassword(false);
-        setIsReturningStudentFlow(false);
-        setReturningStudentName(null);
     };
 
     useEffect(() => {
@@ -83,6 +85,7 @@ export default function StudentSignupPage() {
         setReturningDialogStep('prompt');
         setLookupStudentId('');
         setLookupError(null);
+        setLookupResult(null);
     };
 
     const handleLookupSubmit = async () => {
@@ -112,19 +115,29 @@ export default function StudentSignupPage() {
 
             const profile = result.data ?? {};
             const foundStudentId: string = profile.studentIdNumber ?? trimmedLookup.toUpperCase();
-            const foundName: string = profile.name ?? '';
+            const registeredEmail: string = profile.email ?? '';
+            const temporaryPassword: string = profile.temporaryPassword ?? '';
 
-            setIsReturningStudentFlow(true);
-            setStudentIdNumber(foundStudentId);
-            setFullName(foundName);
-            setReturningStudentName(foundName || null);
-            setEmail('');
-            setPassword('');
-            setConfirmPassword('');
-            closeReturningDialog();
+            if (!registeredEmail) {
+                throw new Error('We found your student record, but no email is on file. Please contact the registrar.');
+            }
+
+            if (!temporaryPassword) {
+                throw new Error('We were unable to generate a temporary password. Please contact the registrar.');
+            }
+
+            setLookupResult({
+                studentIdNumber: foundStudentId,
+                name: profile.name ?? null,
+                email: registeredEmail,
+                temporaryPassword,
+            });
+            setLookupStudentId('');
+            setLookupError(null);
+            setReturningDialogStep('result');
             toast({
-                title: 'Student found',
-                description: `We matched your records for ${foundStudentId}. Please update your email and password to continue.`,
+                title: 'Account located',
+                description: `Use the Student Login page with ${registeredEmail} and the temporary password we provided.`,
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unable to look up that Student ID right now.';
@@ -132,6 +145,16 @@ export default function StudentSignupPage() {
         } finally {
             setIsCheckingStudentId(false);
         }
+    };
+
+    const handleRedirectToLogin = () => {
+        closeReturningDialog();
+        router.push('/student-login?mode=temp');
+    };
+
+    const handleRedirectToForgotPassword = () => {
+        closeReturningDialog();
+        router.push('/student-login?mode=forgot');
     };
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -170,8 +193,6 @@ export default function StudentSignupPage() {
             return;
         }
 
-        const trimmedStudentId = studentIdNumber.trim();
-
         setIsSubmitting(true);
         try {
             const payloadBody: Record<string, unknown> = {
@@ -180,10 +201,6 @@ export default function StudentSignupPage() {
                 password,
                 confirmPassword,
             };
-
-            if (trimmedStudentId) {
-                payloadBody.studentIdNumber = trimmedStudentId;
-            }
 
             const response = await fetch(buildApiUrl('student_signup.php'), {
                 method: 'POST',
@@ -287,11 +304,6 @@ export default function StudentSignupPage() {
                             
                             {isClient && (
                                 <form className="space-y-4 w-full text-left" onSubmit={handleSubmit}>
-                                    {isReturningStudentFlow && returningStudentName && (
-                                        <p className="text-xs text-blue-400 text-left bg-blue-500/10 p-3 rounded-lg border border-blue-500/20">
-                                            Welcome back, <span className="font-bold">{returningStudentName}</span>. Confirm your details below to reactivate your account.
-                                        </p>
-                                    )}
                                     <div className="space-y-2">
                                         <Label htmlFor="fullName" className="text-slate-300">Full Name</Label>
                                         <div className="relative">
@@ -304,8 +316,6 @@ export default function StudentSignupPage() {
                                                 className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
                                                 value={fullName}
                                                 onChange={(event) => setFullName(event.target.value)}
-                                                readOnly={isReturningStudentFlow}
-                                                aria-readonly={isReturningStudentFlow}
                                             />
                                         </div>
                                     </div>
@@ -324,9 +334,6 @@ export default function StudentSignupPage() {
                                             />
                                         </div>
                                     </div>
-                                    {isReturningStudentFlow && (
-                                        <input type="hidden" name="studentIdNumber" value={studentIdNumber} />
-                                    )}
                                     <div className="space-y-2">
                                         <Label htmlFor="password" className="text-slate-300">Password</Label>
                                         <div className="relative group">
@@ -429,7 +436,6 @@ export default function StudentSignupPage() {
                                     variant="outline" 
                                     className="h-16 border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-all hover:scale-[1.02]"
                                     onClick={() => {
-                                        setIsReturningStudentFlow(false);
                                         closeReturningDialog();
                                     }}
                                 >
@@ -445,7 +451,7 @@ export default function StudentSignupPage() {
                                 </Button>
                             </div>
                         </>
-                    ) : (
+                    ) : returningDialogStep === 'lookup' ? (
                         <>
                             <DialogHeader>
                                 <DialogTitle className="text-xl font-bold text-white">Enter your Student ID</DialogTitle>
@@ -469,10 +475,29 @@ export default function StudentSignupPage() {
                                         />
                                     </div>
                                     {lookupError && (
-                                        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded-lg flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                            {lookupError}
-                                        </p>
+                                        <div className="space-y-3 text-sm text-red-300 bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400" />
+                                                <p>{lookupError}</p>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="h-10 border-red-500/40 text-red-200 hover:text-white hover:bg-red-500/20"
+                                                    onClick={handleRedirectToForgotPassword}
+                                                >
+                                                    Forgot Password Flow
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    className="h-10 bg-blue-600 hover:bg-blue-500 text-white"
+                                                    onClick={handleRedirectToLogin}
+                                                >
+                                                    Go to Student Login
+                                                </Button>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -496,6 +521,60 @@ export default function StudentSignupPage() {
                                     disabled={isCheckingStudentId}
                                 >
                                     {isCheckingStudentId ? 'Checking...' : 'Continue'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    ) : (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-bold text-white">We found your account</DialogTitle>
+                                <DialogDescription className="text-slate-400">
+                                    Sign in using the registered email below. We generated a temporary password based on your birthdate.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-white/10">
+                                            <Mail className="w-5 h-5 text-blue-200" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide text-slate-400">Registered Email</p>
+                                            <p className="text-base font-semibold text-white break-words">
+                                                {lookupResult?.email ?? 'Unavailable'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {lookupResult?.studentIdNumber && (
+                                        <p className="mt-2 text-xs text-slate-400">
+                                            Student ID: <span className="font-semibold text-white">{lookupResult.studentIdNumber}</span>
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-white/10">
+                                            <Lock className="w-5 h-5 text-blue-200" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide text-slate-400">Temporary Password</p>
+                                            <p className="text-xl font-mono font-semibold text-blue-200 mt-1">
+                                                {lookupResult?.temporaryPassword ?? 'Unavailable'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <p className="mt-3 text-xs text-slate-400">
+                                        Use this password on the Student Login page, then update your password after signing in.
+                                    </p>
+                                </div>
+                            </div>
+                            <DialogFooter className="justify-end">
+                                <Button
+                                    type="button"
+                                    className="h-11 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02]"
+                                    onClick={handleRedirectToLogin}
+                                >
+                                    Go to Student Login
                                 </Button>
                             </DialogFooter>
                         </>

@@ -1,8 +1,9 @@
 'use client';
 import React, { useMemo } from 'react';
-import { CalendarClock, Clock, Layers, MapPin } from 'lucide-react';
+import { CalendarClock, Clock, Layers, MapPin, Printer } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ScrollReveal } from '@/components/ui/scroll-reveal';
 import { useInstructor } from '@/app/instructor/context/instructor-context';
@@ -52,6 +53,35 @@ export default function InstructorSchedulePage() {
     const { schedule, personal } = instructorData;
     const { academicYear, semester, semesterOptions } = adminData;
     const semesterLabel = semesterOptions.find((option) => option.value === semester)?.label ?? semester;
+
+    const apiBaseUrl = useMemo(() => {
+        return (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
+            .replace(/\/$/, '')
+            .trim();
+    }, []);
+
+    const handlePrint = () => {
+        if (typeof window === 'undefined') return;
+
+        const printUrl = `${apiBaseUrl}/print_instructor_schedule.php?email=${encodeURIComponent(personal.email)}`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+
+        const cleanup = () => {
+            setTimeout(() => {
+                iframe.remove();
+            }, 1500);
+        };
+
+        iframe.addEventListener('load', cleanup, { once: true });
+        iframe.src = printUrl;
+        document.body.appendChild(iframe);
+    };
 
     const blocksHandled = useMemo(() => {
         const unique = new Set<string>();
@@ -131,6 +161,15 @@ export default function InstructorSchedulePage() {
                             </CardDescription>
                         </div>
                         <div className="flex flex-wrap justify-end gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+                                onClick={handlePrint}
+                            >
+                                <Printer className="mr-1.5 h-3.5 w-3.5" />
+                                Print Schedule
+                            </Button>
                             <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
                                 <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> A.Y. {academicYear}
                             </Badge>

@@ -6,11 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useStudent } from '../../context/student-context';
-import { Settings, User, Lock, Mail, Phone, Save, ShieldCheck } from 'lucide-react';
+import { Settings, User, Lock, Mail, Phone, Save, ShieldCheck, LogOut } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function StudentSettingsPage() {
     const { toast } = useToast();
     const { studentData, setStudentData } = useStudent();
+    const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [email, setEmail] = useState('');
     const [contactNumber, setContactNumber] = useState('');
@@ -18,6 +21,8 @@ export default function StudentSettingsPage() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordSaving, setPasswordSaving] = useState(false);
+    const [canSkipCurrentPassword, setCanSkipCurrentPassword] = useState(false);
+    const [showPostUpdateNotice, setShowPostUpdateNotice] = useState(false);
 
     const apiBaseUrl = useMemo(() => {
         return (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api')
@@ -34,6 +39,12 @@ export default function StudentSettingsPage() {
         setEmail(studentData.contact?.email ?? '');
         setContactNumber(studentData.contact?.phoneNumber ?? '');
     }, [studentData]);
+
+    useEffect(() => {
+        if (searchParams?.get('needsPasswordUpdate') === '1') {
+            setCanSkipCurrentPassword(true);
+        }
+    }, [searchParams]);
 
     if (!studentData) {
         return null;
@@ -70,6 +81,15 @@ export default function StudentSettingsPage() {
     const handlePasswordChange = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
+        if (!canSkipCurrentPassword && currentPassword.trim() === '') {
+            toast({
+                variant: 'destructive',
+                title: 'Current Password Required',
+                description: 'Enter your existing password before choosing a new one.',
+            });
+            return;
+        }
+
         if (newPassword !== confirmPassword) {
             toast({
                 variant: 'destructive',
@@ -98,6 +118,7 @@ export default function StudentSettingsPage() {
             return;
         }
 
+        const wasSkippingCurrentPassword = canSkipCurrentPassword;
         setPasswordSaving(true);
 
         try {
@@ -138,6 +159,10 @@ export default function StudentSettingsPage() {
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
+            if (canSkipCurrentPassword) {
+                setCanSkipCurrentPassword(false);
+            }
+            setShowPostUpdateNotice(wasSkippingCurrentPassword);
         } catch (error) {
             const description = error instanceof Error ? error.message : 'Unable to update password. Please try again later.';
             toast({
@@ -148,6 +173,14 @@ export default function StudentSettingsPage() {
         } finally {
             setPasswordSaving(false);
         }
+    };
+
+    const handleLogout = () => {
+        setStudentData(null);
+        if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem('bsit_student_email');
+        }
+        router.push('/student-login');
     };
 
     return (
@@ -240,6 +273,11 @@ export default function StudentSettingsPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="flex-1 space-y-4 pt-6">
+                            {canSkipCurrentPassword && (
+                                <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
+                                    You signed in using a temporary password. You can leave the current password field blank once to set a permanent password.
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <Label htmlFor="current-password" className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Current Password</Label>
                                 <div className="relative">
@@ -250,8 +288,9 @@ export default function StudentSettingsPage() {
                                         value={currentPassword}
                                         onChange={(event) => setCurrentPassword(event.target.value)}
                                         className="pl-9 rounded-xl border-white/10 bg-white/5 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all"
-                                        required
+                                        required={!canSkipCurrentPassword}
                                         disabled={passwordSaving}
+                                        placeholder={canSkipCurrentPassword ? 'Leave blank if you only have a temporary password' : undefined}
                                     />
                                 </div>
                             </div>
@@ -310,6 +349,25 @@ export default function StudentSettingsPage() {
                     </form>
                 </Card>
             </div>
+
+            {showPostUpdateNotice && (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <p className="text-lg font-semibold text-emerald-100">Log out to finish securing your account</p>
+                        <p className="text-sm text-emerald-200 mt-1">
+                            Your password is now updated. Please log out and sign in again using the new password so we can refresh your session.
+                        </p>
+                    </div>
+                    <Button
+                        type="button"
+                        className="w-full md:w-auto bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-semibold"
+                        onClick={handleLogout}
+                    >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout Now
+                    </Button>
+                </div>
+            )}
         </main>
     );
 }

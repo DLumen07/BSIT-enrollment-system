@@ -17,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import { ChartContainer, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { 
@@ -62,49 +61,13 @@ export default function ReportsPage() {
   const {
     academicYear: globalAcademicYear,
     semester: globalSemester,
-    academicYearOptions,
-    semesterOptions,
     reports,
     students,
   } = adminData;
 
-  const [academicYear, setAcademicYear] = React.useState(globalAcademicYear);
-  const [semester, setSemester] = React.useState(globalSemester);
-
-  React.useEffect(() => {
-    setAcademicYear(globalAcademicYear);
-    setSemester(globalSemester);
-  }, [globalAcademicYear, globalSemester]);
-
-  React.useEffect(() => {
-    const selectedKey = `${academicYear}::${semester}`;
-    if (reports.byTerm[selectedKey]) {
-      return;
-    }
-    const fallback = reports.terms.find((term) => term.academicYear === academicYear);
-    if (fallback && fallback.semester !== semester) {
-      setSemester(fallback.semester);
-    }
-  }, [academicYear, semester, reports.byTerm, reports.terms]);
-
-  const availableAcademicYears = React.useMemo(() => {
-    if (reports.terms.length === 0) {
-      return academicYearOptions;
-    }
-    const merged = new Set<string>([...academicYearOptions, ...reports.terms.map((term) => term.academicYear)]);
-    return Array.from(merged);
-  }, [academicYearOptions, reports.terms]);
-
-  const availableSemesters = React.useMemo(() => {
-    const relevantTerms = reports.terms.filter((term) => term.academicYear === academicYear);
-    if (relevantTerms.length === 0) {
-      return semesterOptions;
-    }
-    const allowed = new Set(relevantTerms.map((term) => term.semester));
-    const filtered = semesterOptions.filter((option) => allowed.has(option.value));
-    return filtered.length > 0 ? filtered : semesterOptions;
-  }, [reports.terms, academicYear, semesterOptions]);
-
+  // Lock the view to the current academic term
+  const academicYear = globalAcademicYear;
+  const semester = globalSemester;
   const termKey = `${academicYear}::${semester}`;
   const currentReport = reports.byTerm[termKey];
 
@@ -203,12 +166,8 @@ export default function ReportsPage() {
       return currentReport.semesterLabel;
     }
     const fallbackTerm = reports.terms.find((term) => term.academicYear === academicYear && term.semester === semester);
-    if (fallbackTerm) {
-      return fallbackTerm.semesterLabel;
-    }
-    const option = semesterOptions.find((item) => item.value === semester);
-    return option?.label ?? 'Unknown Semester';
-  }, [currentReport, reports.terms, academicYear, semester, semesterOptions]);
+    return fallbackTerm?.semesterLabel ?? 'Current Semester';
+  }, [currentReport, reports.terms, academicYear, semester]);
 
   const resolvedReport = React.useMemo(() => {
     if (derivedCurrentTermReport) {
@@ -330,41 +289,23 @@ export default function ReportsPage() {
                     <Filter className="h-5 w-5" />
                 </div>
                 <div>
-                    <CardTitle className="text-lg font-semibold text-white">Report Filters</CardTitle>
-                    <CardDescription className="text-slate-400">Select the academic year and semester to generate a report.</CardDescription>
+                    <CardTitle className="text-lg font-semibold text-white">Current Term</CardTitle>
+                    <CardDescription className="text-slate-400">Reports are locked to the active academic year and semester.</CardDescription>
                 </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6 flex flex-col gap-6 sm:flex-row">
-            <div className="flex-1 space-y-2">
-              <label htmlFor="academic-year" className="text-sm font-medium text-slate-300">Academic Year</label>
-              <Select value={academicYear} onValueChange={setAcademicYear}>
-                <SelectTrigger id="academic-year" className="h-11 rounded-xl bg-white/5 border-white/10 text-slate-200 focus:ring-blue-500/20">
-                  <SelectValue placeholder="Select Academic Year" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                  {availableAcademicYears.map((yearOption) => (
-                    <SelectItem key={yearOption} value={yearOption} className="focus:bg-white/10 focus:text-white">
-                      {yearOption}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <CardContent className="p-6 grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-slate-300">Academic Year</span>
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white font-semibold">
+                {academicYear}
+              </div>
             </div>
-            <div className="flex-1 space-y-2">
-              <label htmlFor="semester" className="text-sm font-medium text-slate-300">Semester</label>
-              <Select value={semester} onValueChange={setSemester}>
-                <SelectTrigger id="semester" className="h-11 rounded-xl bg-white/5 border-white/10 text-slate-200 focus:ring-blue-500/20">
-                  <SelectValue placeholder="Select Semester" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                  {availableSemesters.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="focus:bg-white/10 focus:text-white">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-slate-300">Semester</span>
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white font-semibold">
+                {semesterLabel}
+              </div>
             </div>
           </CardContent>
         </Card>

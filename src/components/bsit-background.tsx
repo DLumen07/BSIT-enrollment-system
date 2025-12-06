@@ -165,6 +165,19 @@ const HollowOctagons = () => {
 };
 
 const DigitalGrid = () => {
+  const [dots, setDots] = useState<{ left: string; top: string; duration: number; delay: number }[]>([]);
+
+  useEffect(() => {
+    setDots(
+      Array.from({ length: 20 }).map(() => ({
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        duration: Math.random() * 3 + 2,
+        delay: Math.random() * 5,
+      }))
+    );
+  }, []);
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {/* Base Grid */}
@@ -187,22 +200,22 @@ const DigitalGrid = () => {
       />
 
       {/* Random Glowing Dots */}
-      {Array.from({ length: 20 }).map((_, i) => (
+      {dots.map((dot, i) => (
         <motion.div
           key={i}
           className="absolute w-1 h-1 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            left: dot.left,
+            top: dot.top,
           }}
           animate={{
             opacity: [0, 1, 0],
             scale: [0, 1.5, 0],
           }}
           transition={{
-            duration: Math.random() * 3 + 2,
+            duration: dot.duration,
             repeat: Infinity,
-            delay: Math.random() * 5,
+            delay: dot.delay,
           }}
         />
       ))}

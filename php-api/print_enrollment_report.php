@@ -473,70 +473,100 @@ SQL;
         <meta charset="UTF-8" />
         <title>Official Enrollment Report — <?= htmlspecialchars($academicYear, ENT_QUOTES, 'UTF-8') ?></title>
         <style>
-            @page { margin: 24mm 20mm; }
-            * { box-sizing: border-box; }
-            body {
-                font-family: 'Times New Roman', 'Segoe UI', Arial, sans-serif;
-                background: #ffffff;
-                color: #000000;
+            /* Reset page margins to handle them manually */
+            @page { 
                 margin: 0;
-                padding: 0;
-                font-size: 13px;
-                line-height: 1.45;
+                size: auto;
             }
+            
+            * { box-sizing: border-box; }
+            
+            body {
+                font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background-color: #f3f4f6;
+                color: #1f2937;
+                margin: 0;
+                padding: 40px 0;
+                font-size: 11px;
+                line-height: 1.5;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
             .report-sheet {
-                max-width: 780px;
+                background-color: #ffffff;
+                width: 210mm; /* A4 width */
+                min-height: 297mm;
                 margin: 0 auto;
-                padding: 0 8px 24px;
+                /* Explicit margins via padding: Top/Bottom 15mm, Left/Right 25mm (approx 1 inch) */
+                padding: 15mm 25mm; 
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                position: relative;
             }
+
+            @media print {
+                html, body {
+                    width: 100%;
+                    height: 100%;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background-color: #ffffff;
+                }
+                .report-sheet {
+                    width: 100% !important;
+                    margin: 0 !important;
+                    box-shadow: none !important;
+                    min-height: 0 !important;
+                    /* Enforce the margins during print */
+                    padding: 15mm 25mm !important;
+                    page-break-after: always;
+                }
+            }
+
+            /* Header - Preserving Original Look */
             .report-header {
+                font-family: 'Times New Roman', Times, serif;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 12px;
-                border-bottom: 2px solid #000000;
-                padding: 14px 20px;
-                margin: 24px auto;
-                width: 100%;
-                max-width: 780px;
+                gap: 16px;
+                border-bottom: 2px solid #111827;
+                padding-bottom: 16px;
+                margin-bottom: 24px;
                 text-align: center;
-                position: relative;
             }
             .header-copy {
                 flex: 1;
                 text-align: center;
-                letter-spacing: 0.9px;
+                letter-spacing: 0.5px;
                 font-size: 12px;
             }
             .logo-wrapper,
             .header-spacer {
-                width: 96px;
-                height: 96px;
+                width: 80px;
+                height: 80px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 flex-shrink: 0;
             }
             .logo-wrapper.logo-bsit {
-                width: 83px;
-                height: 83px;
+                width: 80px;
+                height: 80px;
             }
             .logo-wrapper img {
-                height: 92px;
+                height: 100%;
                 width: auto;
-                max-width: 100%;
                 object-fit: contain;
                 display: block;
             }
-            .logo-wrapper.logo-bsit img {
-                height: 80px;
-            }
             .header-copy .org-line {
                 margin-bottom: 2px;
+                font-weight: normal;
             }
             .header-title {
-                font-size: 18px;
-                margin: 6px 0 4px;
+                font-size: 20px;
+                margin: 8px 0 4px;
                 font-weight: 700;
                 letter-spacing: 1px;
             }
@@ -544,20 +574,89 @@ SQL;
                 font-size: 14px;
                 margin: 0;
                 font-weight: 600;
+                text-transform: uppercase;
             }
-            .meta-table,
-            .summary-table,
-            .data-table {
-                width: 100%;
-                border-collapse: collapse;
+
+            /* Layout Grid for Meta */
+            .meta-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+                margin-bottom: 24px;
+                background: #f9fafb;
+                padding: 16px;
+                border-radius: 6px;
+                border: 1px solid #e5e7eb;
             }
+            .meta-item {
+                display: flex;
+                flex-direction: column;
+            }
+            .meta-label {
+                font-size: 10px;
+                text-transform: uppercase;
+                color: #6b7280;
+                font-weight: 600;
+                margin-bottom: 2px;
+            }
+            .meta-value {
+                font-size: 13px;
+                font-weight: 600;
+                color: #111827;
+            }
+
+            .section-title {
+                font-size: 14px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: #111827;
+                border-bottom: 2px solid #e5e7eb;
+                padding-bottom: 8px;
+                margin: 32px 0 16px;
+                display: flex;
+                align-items: center;
+            }
+
+            /* Summary Cards instead of Table */
+            .summary-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+                margin-bottom: 24px;
+            }
+            .summary-card {
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                padding: 12px;
+                text-align: center;
+            }
+            .summary-card.highlight {
+                background-color: #eff6ff;
+                border-color: #bfdbfe;
+            }
+            .summary-card .label {
+                font-size: 10px;
+                text-transform: uppercase;
+                color: #6b7280;
+                margin-bottom: 4px;
+                font-weight: 600;
+            }
+            .summary-card .value {
+                font-size: 20px;
+                font-weight: 700;
+                color: #111827;
+            }
+
+            /* Chart */
             .year-chart {
-                margin: 12px auto 0;
-                padding: 12px 18px 16px;
-                border-radius: 12px;
+                margin: 0 auto;
+                padding: 16px;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
                 background: #ffffff;
                 width: 100%;
-                max-width: 360px;
+                max-width: 500px;
             }
             .year-chart-content {
                 width: 100%;
@@ -581,132 +680,125 @@ SQL;
             }
             .chart-subtitle {
                 font-size: 11px;
-                color: #000000;
-                margin-top: 8px;
+                color: #6b7280;
+                margin-top: 12px;
                 text-align: center;
                 width: 100%;
             }
-            .meta-table th,
-            .meta-table td {
-                text-align: left;
-                padding: 6px 8px;
+
+            /* UniFAST */
+            .unifast-narrative {
                 font-size: 13px;
-                color: #000000;
-            }
-            .meta-table th {
-                width: 18%;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.6px;
-            }
-            .section-title {
-                font-size: 15px;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.6px;
-                margin: 28px 0 10px;
-            }
-            .summary-table td,
-            .summary-table th {
-                border: 1px solid #000000;
-                padding: 6px 8px;
-                text-align: center;
-            }
-            .summary-table th {
-                text-transform: uppercase;
-                font-size: 10px;
-                letter-spacing: 0.4px;
-                background: #ffffff;
-            }
-            .summary-table td {
-                font-size: 16px;
-                font-weight: 600;
+                color: #374151;
+                line-height: 1.6;
+                margin-bottom: 16px;
+                text-align: justify;
+                font-weight: 400;
+                background: transparent;
+                border: none;
+                padding: 0;
             }
             .unifast-summary {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 10px;
-                margin: 12px 0 14px;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 16px;
+                margin-bottom: 16px;
                 justify-content: center;
             }
             .unifast-summary-card {
-                flex: 0 1 180px;
-                max-width: 200px;
-                border: none;
-                border-radius: 0;
-                padding: 6px 10px;
-                background: transparent;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 16px;
+                background: #f9fafb;
                 text-align: center;
+                max-width: none;
+                flex: auto;
             }
             .unifast-summary-card .label {
-                font-size: 10px;
-                letter-spacing: 0.4px;
+                font-size: 11px;
+                font-weight: 600;
                 text-transform: uppercase;
-                color: #111827;
+                color: #6b7280;
                 margin-bottom: 4px;
             }
             .unifast-summary-card .value {
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: 700;
                 color: #111827;
             }
-            .unifast-narrative {
-                border: none;
-                border-radius: 0;
-                padding: 0;
-                margin-top: 6px;
-                background: transparent;
-                font-size: 13px;
-                color: #000000;
-                line-height: 1.6;
-                font-weight: 500;
-            }
             .unifast-note {
-                font-size: 10px;
-                color: #374151;
+                font-size: 11px;
+                color: #9ca3af;
+                font-style: italic;
                 margin-top: 6px;
             }
-            .data-table th,
-            .data-table td {
-                border: 1px solid #000000;
-                padding: 8px;
-            }
+
+            /* Data Table */
             .block-section {
-                margin-top: 20px;
+                margin-top: 24px;
                 padding-bottom: 6px;
             }
             .block-heading {
+                font-size: 14px;
+                font-weight: 700;
+                color: #111827;
+                margin-bottom: 12px;
+                padding-left: 8px;
+                border-left: 4px solid #f97316; /* Orange accent */
                 display: flex;
                 justify-content: space-between;
                 align-items: baseline;
-                font-size: 14px;
-                font-weight: 600;
-                margin-bottom: 10px;
-                border-bottom: 1px solid #000000;
-                padding-bottom: 4px;
+                border-bottom: none;
             }
             .block-heading small {
                 font-size: 11px;
                 font-weight: normal;
-                color: #000000;
+                color: #6b7280;
+            }
+            .data-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
             }
             .data-table th {
+                background-color: #f3f4f6;
+                color: #374151;
+                font-weight: 600;
                 text-transform: uppercase;
                 font-size: 11px;
-                letter-spacing: 0.5px;
-                background: #ffffff;
+                padding: 10px 12px;
+                text-align: left;
+                border: none;
+                border-bottom: 2px solid #e5e7eb;
+            }
+            .data-table td {
+                padding: 10px 12px;
+                border: none;
+                border-bottom: 1px solid #e5e7eb;
+                color: #1f2937;
+            }
+            .data-table tr:last-child td {
+                border-bottom: none;
+            }
+            .data-table tr:nth-child(even) {
+                background-color: #f9fafb;
             }
             .empty-state {
-                border: 1px dashed #000000;
-                padding: 14px;
+                border: 1px dashed #d1d5db;
+                padding: 24px;
                 text-align: center;
-                color: #000000;
+                color: #6b7280;
                 font-style: italic;
+                border-radius: 8px;
+                background: #f9fafb;
             }
+
+            /* Footer */
             .signature-footer {
-                margin-top: 48px;
+                margin-top: 64px;
                 display: flex;
                 justify-content: flex-end;
+                page-break-inside: avoid;
             }
             .signature-line {
                 text-align: center;
@@ -714,25 +806,29 @@ SQL;
             }
             .signature-line .line {
                 border-bottom: 1px solid #000000;
-                margin-bottom: 6px;
-                height: 28px;
+                margin-bottom: 8px;
+                height: 1px;
+            }
+            .signature-line div:last-child {
+                font-weight: 600;
+                font-size: 12px;
+                text-transform: uppercase;
             }
             .note {
                 font-size: 11px;
-                color: #000000;
+                color: #6b7280;
                 text-align: right;
-                margin-top: 6px;
+                margin-top: 8px;
             }
+
             @media print {
                 body { padding: 0; }
-                .report-sheet { padding: 0; }
-                .report-header { margin-top: 12px; }
+                .report-sheet { padding: 0; max-width: none; }
+                .report-header { margin-top: 0; }
+                .section-title { margin-top: 24px; }
                 .block-section { page-break-inside: avoid; }
                 .block-section-break { page-break-before: always; }
-                .signature-footer {
-                    page-break-inside: avoid;
-                    padding-bottom: 18mm;
-                }
+                .signature-footer { padding-bottom: 0; }
             }
         </style>
     </head>
@@ -762,20 +858,24 @@ SQL;
                 <?php endif; ?>
             </header>
 
-            <table class="meta-table">
-                <tr>
-                    <th>Academic Year</th>
-                    <td><?= htmlspecialchars($academicYear, ENT_QUOTES, 'UTF-8') ?></td>
-                    <th>Generated On</th>
-                    <td><?= htmlspecialchars($generatedOn, ENT_QUOTES, 'UTF-8') ?></td>
-                </tr>
-                <tr>
-                    <th>Semester</th>
-                    <td><?= htmlspecialchars($semesterLabel, ENT_QUOTES, 'UTF-8') ?></td>
-                    <th>Prepared By</th>
-                    <td>Registrar's Office</td>
-                </tr>
-            </table>
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <div class="meta-label">Academic Year</div>
+                    <div class="meta-value"><?= htmlspecialchars($academicYear, ENT_QUOTES, 'UTF-8') ?></div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Generated On</div>
+                    <div class="meta-value"><?= htmlspecialchars($generatedOn, ENT_QUOTES, 'UTF-8') ?></div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Semester</div>
+                    <div class="meta-value"><?= htmlspecialchars($semesterLabel, ENT_QUOTES, 'UTF-8') ?></div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Prepared By</div>
+                    <div class="meta-value">Registrar's Office</div>
+                </div>
+            </div>
 
             <p style="font-size: 13px; color: #000000; margin: 20px 0 26px; line-height: 1.6; font-weight: 500;">
                 This official memorandum summarizes the verified enrollment status of Bachelor of Science in Information Technology students for
@@ -794,20 +894,15 @@ SQL;
                 'onHoldStudents' => 'On Hold',
                 'graduatedStudents' => 'Graduated',
             ];
-            $summaryChunks = array_chunk($summaryOrder, 3, true);
             ?>
-            <table class="summary-table">
-                <tbody>
-                    <?php foreach ($summaryChunks as $chunk): ?>
-                        <tr>
-                            <?php foreach ($chunk as $key => $label): ?>
-                                <th><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></th>
-                                <td><?= number_format($summary[$key] ?? 0) ?></td>
-                            <?php endforeach; ?>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+            <div class="summary-grid">
+                <?php foreach ($summaryOrder as $key => $label): ?>
+                    <div class="summary-card <?= $key === 'totalEnrollees' ? 'highlight' : '' ?>">
+                        <div class="label"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></div>
+                        <div class="value"><?= number_format($summary[$key] ?? 0) ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
 
             <div class="section-title">Year-Level Distribution</div>
             <?php if (empty($yearChartSegments)): ?>

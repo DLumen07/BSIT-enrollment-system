@@ -57,7 +57,7 @@ import { cn } from '@/lib/utils';
 import { useAdmin } from '../context/admin-context';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/page-transition';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import Loading from '@/app/loading';
 import NotificationBell from '@/components/notification-bell';
 import { useNotificationCenter } from '@/hooks/use-notification-center';
 import type { NotificationSeed } from '@/types/notifications';
@@ -304,8 +304,11 @@ export default function AdminDashboardLayout({
 
   const isModerator = currentUser?.role === 'Moderator';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsLoggingOut(true);
+    // Show loading screen for 2 seconds
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     sessionStorage.removeItem('currentUser');
     setAdminData(prev => ({ ...prev, currentUser: null }));
     router.push('/');
@@ -321,15 +324,16 @@ export default function AdminDashboardLayout({
   }, [currentUser, isLoggingOut, router]);
 
   if (!currentUser) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <LoadingSpinner className="h-8 w-8" />
-        </div>
-    );
+    return <Loading />;
   }
 
   return (
       <SidebarProvider>
+        {isLoggingOut && (
+            <div className="fixed inset-0 z-[100]">
+                <Loading message="LOGGING OUT" />
+            </div>
+        )}
         <Sidebar className="border-r border-white/10 bg-[#020617] text-white overflow-hidden" variant="sidebar">
           
           <SidebarHeader className="border-b border-white/10 bg-white/5 backdrop-blur-sm py-4 relative z-10">

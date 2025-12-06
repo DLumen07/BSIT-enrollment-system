@@ -2,7 +2,7 @@
 'use client';
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import Loading from '@/app/loading';
 import { resolveMediaUrl } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { DATA_SYNC_CHANNEL } from '@/lib/live-sync';
@@ -400,27 +400,29 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
   const buildApiUrl = useMemo(() => buildUrlHelper(apiBaseUrl), [apiBaseUrl]);
 
   useEffect(() => {
-    const nextEmail = studentEmail && studentEmail.trim() !== '' ? studentEmail.trim() : null;
-    if (nextEmail) {
-      setResolvedEmail(nextEmail);
-      setEmailError(null);
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('bsit_student_email', nextEmail);
-      }
+    const queryEmail = studentEmail && studentEmail.trim() !== '' ? studentEmail.trim() : null;
+
+    if (typeof window === 'undefined') {
+      setResolvedEmail(null);
+      setEmailError('Initializing student session...');
       return;
     }
 
-    if (typeof window !== 'undefined') {
-      const cached = window.sessionStorage.getItem('bsit_student_email');
-      if (cached && cached.trim() !== '') {
-        setResolvedEmail(cached.trim());
-        setEmailError(null);
-        return;
-      }
+    const cached = window.sessionStorage.getItem('bsit_student_email');
+    const cachedEmail = cached && cached.trim() !== '' ? cached.trim() : null;
+
+    if (cachedEmail) {
+      setResolvedEmail(cachedEmail);
+      setEmailError(null);
+      return;
     }
 
     setResolvedEmail(null);
-    setEmailError('Missing student email in the URL.');
+    if (queryEmail) {
+      setEmailError('Please log in before accessing this student account.');
+    } else {
+      setEmailError('No active student session found. Please log in.');
+    }
   }, [studentEmail]);
 
   const fetchStudentProfile = useCallback(async (email: string, signal?: AbortSignal) => {
@@ -527,11 +529,7 @@ export const StudentProvider = ({ children }: { children: React.ReactNode }) => 
         : null);
 
   if ((isStudentDataPending && !studentData) || (!resolvedEmail && !combinedError)) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <LoadingSpinner className="h-8 w-8" />
-      </div>
-    );
+    return <Loading />;
   }
 
   if (combinedError && !studentData) {

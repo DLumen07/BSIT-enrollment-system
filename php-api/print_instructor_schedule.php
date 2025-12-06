@@ -8,7 +8,7 @@ header('Pragma: no-cache');
 header('Expires: 0');
 
 $emailParam = trim((string) ($_GET['email'] ?? ''));
-$studentIdParam = trim((string) ($_GET['student_id'] ?? ''));
+$instructorIdParam = trim((string) ($_GET['instructor_id'] ?? ''));
 
 function respondWithError(string $message): void {
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />'
@@ -19,16 +19,6 @@ function respondWithError(string $message): void {
         . '.error strong{display:block;margin-bottom:8px;font-size:18px;}</style>'
         . '</head><body><div class="error"><strong>Unable to generate schedule</strong>'
         . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</div></body></html>';
-}
-
-function mapYearLevelLabel(int $level): string {
-    switch ($level) {
-        case 1: return '1st Year';
-        case 2: return '2nd Year';
-        case 3: return '3rd Year';
-        case 4: return '4th Year';
-        default: return $level > 0 ? $level . 'th Year' : '';
-    }
 }
 
 function mapSemesterLabel(string $value): string {
@@ -54,28 +44,6 @@ function mapSemesterShort(string $value): string {
         return 'SU';
     }
     return '1';
-}
-
-function abbreviateWords(string $value): string {
-    $trimmed = trim($value);
-    if ($trimmed === '') {
-        return '';
-    }
-    $noSpaces = preg_replace('/\s+/', '', $trimmed);
-    if (strpos($trimmed, ' ') === false && strlen($noSpaces) <= 6) {
-        return strtoupper($noSpaces);
-    }
-    $stopWords = ['of', 'in', 'and', 'the', 'for', 'with'];
-    $parts = preg_split('/\s+/', $trimmed);
-    $initials = '';
-    foreach ($parts as $part) {
-        $normalized = strtolower($part);
-        if ($normalized === '' || in_array($normalized, $stopWords, true)) {
-            continue;
-        }
-        $initials .= strtoupper(substr($normalized, 0, 1));
-    }
-    return $initials;
 }
 
 function renderUnderline(?string $value): string {
@@ -134,8 +102,8 @@ function getContrastColor($hexColor) {
     return ($yiq >= 128) ? '#1e293b' : '#ffffff'; // Dark slate or white
 }
 
-if ($emailParam === '' && $studentIdParam === '') {
-    respondWithError('Missing student identifier. Provide an "email" or "student_id" query parameter.');
+if ($emailParam === '' && $instructorIdParam === '') {
+    respondWithError('Missing instructor identifier. Provide an "email" or "instructor_id" query parameter.');
     if (isset($conn) && $conn instanceof mysqli) {
         $conn->close();
     }
@@ -149,43 +117,34 @@ try {
 
     $conn->set_charset('utf8mb4');
 
-    $studentSql = 'SELECT sp.*, u.email AS account_email, b.name AS block_name, b.id AS block_id
-                   FROM student_profiles sp
-                   INNER JOIN users u ON u.id = sp.user_id
-                   LEFT JOIN blocks b ON b.id = sp.block_id
-                   WHERE ' . ($emailParam !== '' ? 'u.email = ?' : 'sp.student_id_number = ?') . '
-                   LIMIT 1';
+    $instructorSql = 'SELECT ip.*, u.email AS account_email
+                      FROM instructor_profiles ip
+                      INNER JOIN users u ON u.id = ip.user_id
+                      WHERE ' . ($emailParam !== '' ? 'u.email = ?' : 'ip.user_id = ?') . '
+                      LIMIT 1';
 
-    $studentStmt = $conn->prepare($studentSql);
-    if (!$studentStmt) {
-        throw new RuntimeException('Failed to prepare student query: ' . $conn->error);
+    $instructorStmt = $conn->prepare($instructorSql);
+    if (!$instructorStmt) {
+        throw new RuntimeException('Failed to prepare instructor query: ' . $conn->error);
     }
 
-    $identifierValue = $emailParam !== '' ? $emailParam : $studentIdParam;
-    $studentStmt->bind_param('s', $identifierValue);
-    $studentStmt->execute();
-    $studentResult = $studentStmt->get_result();
+    $identifierValue = $emailParam !== '' ? $emailParam : $instructorIdParam;
+    $instructorStmt->bind_param('s', $identifierValue);
+    $instructorStmt->execute();
+    $instructorResult = $instructorStmt->get_result();
 
-    if (!$studentResult || $studentResult->num_rows === 0) {
-        $studentStmt->close();
-        respondWithError('Student record not found.');
+    if (!$instructorResult || $instructorResult->num_rows === 0) {
+        $instructorStmt->close();
+        respondWithError('Instructor record not found.');
         if ($conn instanceof mysqli) {
             $conn->close();
         }
         exit;
     }
 
-    $student = $studentResult->fetch_assoc();
-    $studentStmt->close();
-
-    $blockId = isset($student['block_id']) ? (int) $student['block_id'] : 0;
-    if ($blockId <= 0) {
-        respondWithError('Student is not assigned to a block yet, so no schedule is available to print.');
-        if ($conn instanceof mysqli) {
-            $conn->close();
-        }
-        exit;
-    }
+    $instructor = $instructorResult->fetch_assoc();
+    $instructorStmt->close();
+    $instructorId = (int)$instructor['user_id'];
 
     $settingsRow = null;
     if ($settingsResult = $conn->query('SELECT academic_year, semester FROM system_settings ORDER BY id DESC LIMIT 1')) {
@@ -199,42 +158,18 @@ try {
     $semesterCode = isset($settingsRow['semester']) ? (string) $settingsRow['semester'] : '';
     $semesterLabel = mapSemesterLabel($semesterCode);
 
-    // --- Fetch Student Subjects (for the list view) ---
-    $subjects = [];
-    $subjectsSql = 'SELECT subj.code, subj.description, subj.units, subj.semester
-                    FROM student_subjects ss
-                    INNER JOIN subjects subj ON subj.id = ss.subject_id
-                    WHERE ss.student_user_id = ?
-                    ORDER BY subj.code';
-    $subjectsStmt = $conn->prepare($subjectsSql);
-    if ($subjectsStmt) {
-        $userId = (int)$student['user_id'];
-        $subjectsStmt->bind_param('i', $userId);
-        $subjectsStmt->execute();
-        $subjectsResult = $subjectsStmt->get_result();
-        while ($subjectsResult && ($row = $subjectsResult->fetch_assoc())) {
-            $subjects[] = [
-                'code' => trim((string) ($row['code'] ?? '')),
-                'description' => trim((string) ($row['description'] ?? '')),
-                'units' => isset($row['units']) ? (int) $row['units'] : 0,
-                'semester' => trim((string) ($row['semester'] ?? '')),
-            ];
-        }
-        $subjectsStmt->close();
-    }
-
-    // --- Fetch Schedule (for the grid and list details) ---
+    // --- Fetch Schedule ---
     $scheduleSql = "SELECT subj.code, subj.description, subj.units, sch.day_of_week,
                            DATE_FORMAT(sch.start_time, '%H:%i') AS start_time_24,
                            DATE_FORMAT(sch.end_time, '%H:%i') AS end_time_24,
                            DATE_FORMAT(sch.start_time, '%h:%i %p') AS start_time_fmt,
                            DATE_FORMAT(sch.end_time, '%h:%i %p') AS end_time_fmt,
-                           IFNULL(ip.name, 'TBA') AS instructor_name,
+                           IFNULL(b.name, 'TBA') AS block_name,
                            IFNULL(sch.room, 'TBA') AS room
                     FROM schedules sch
                     INNER JOIN subjects subj ON subj.id = sch.subject_id
-                    LEFT JOIN instructor_profiles ip ON ip.user_id = sch.instructor_id
-                    WHERE sch.block_id = ?
+                    LEFT JOIN blocks b ON b.id = sch.block_id
+                    WHERE sch.instructor_id = ?
                     ORDER BY FIELD(sch.day_of_week,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'), sch.start_time";
 
     $scheduleStmt = $conn->prepare($scheduleSql);
@@ -242,7 +177,7 @@ try {
         throw new RuntimeException('Failed to prepare schedule query: ' . $conn->error);
     }
 
-    $scheduleStmt->bind_param('i', $blockId);
+    $scheduleStmt->bind_param('i', $instructorId);
     $scheduleStmt->execute();
     $scheduleResult = $scheduleStmt->get_result();
 
@@ -253,59 +188,47 @@ try {
     while ($scheduleResult && ($row = $scheduleResult->fetch_assoc())) {
         $rawSchedule[] = $row;
         $subjCode = $row['code'];
+        // Simple unit calculation based on unique subjects in schedule
         if (!in_array($subjCode, $processedSubjects)) {
-            // Only count units from schedule if we weren't using student_subjects
-            // But since we have student_subjects, we'll calculate total units from that list instead
+            $totalUnits += (int)$row['units'];
             $processedSubjects[] = $subjCode;
         }
     }
     $scheduleStmt->close();
 
-    // Recalculate total units from the subjects list (more accurate for enrolled subjects)
-    $totalUnits = 0;
-    foreach ($subjects as $subj) {
-        $totalUnits += (int)$subj['units'];
-    }
-
-    // --- Map Schedule to Subjects for List View ---
-    $scheduleByCode = [];
+    // --- Map Schedule to List View ---
+    // We group by Subject Code AND Block Name because an instructor might teach the same subject to different blocks
+    $classList = [];
     foreach ($rawSchedule as $row) {
-        $code = $row['code'];
-        if (!isset($scheduleByCode[$code])) {
-            $scheduleByCode[$code] = [];
-        }
-        $scheduleByCode[$code][] = $row;
-    }
-
-    foreach ($subjects as $index => $subject) {
-        $code = $subject['code'];
-        $days = [];
-        $times = [];
-        $rooms = [];
-        
-        if (isset($scheduleByCode[$code])) {
-            foreach ($scheduleByCode[$code] as $sch) {
-                $d = strtoupper(substr($sch['day_of_week'], 0, 3));
-                $t = $sch['start_time_fmt'] . '-' . $sch['end_time_fmt'];
-                $r = $sch['room'];
-                
-                if (!in_array($d, $days)) $days[] = $d;
-                if (!in_array($t, $times)) $times[] = $t;
-                if (!in_array($r, $rooms)) $rooms[] = $r;
-            }
+        $key = $row['code'] . '|' . $row['block_name'];
+        if (!isset($classList[$key])) {
+            $classList[$key] = [
+                'code' => $row['code'],
+                'description' => $row['description'],
+                'block_name' => $row['block_name'],
+                'units' => $row['units'],
+                'days' => [],
+                'times' => [],
+                'rooms' => []
+            ];
         }
         
-        $subjects[$index]['days'] = $days;
-        $subjects[$index]['times'] = $times;
-        $subjects[$index]['rooms'] = $rooms;
+        $d = strtoupper(substr($row['day_of_week'], 0, 3));
+        $t = $row['start_time_fmt'] . '-' . $row['end_time_fmt'];
+        $r = $row['room'];
+        
+        if (!in_array($d, $classList[$key]['days'])) $classList[$key]['days'][] = $d;
+        if (!in_array($t, $classList[$key]['times'])) $classList[$key]['times'][] = $t;
+        if (!in_array($r, $classList[$key]['rooms'])) $classList[$key]['rooms'][] = $r;
     }
+    
+    // Sort class list by code
+    usort($classList, function($a, $b) {
+        return strcmp($a['code'], $b['code']);
+    });
 
-    if (empty($rawSchedule) && empty($subjects)) {
-        respondWithError('No schedule or subjects found for this student.');
-        if ($conn instanceof mysqli) {
-            $conn->close();
-        }
-        exit;
+    if (empty($rawSchedule)) {
+        // It's possible the instructor has no schedule yet
     }
 
     // --- Grid Processing Logic ---
@@ -356,7 +279,6 @@ try {
             $slotEndMin = $slotMin + $intervalMinutes;
 
             // Check if this slot is covered by the class
-            // Class covers slot if: ClassStart < SlotEnd AND ClassEnd > SlotStart
             if ($startMin < $slotEndMin && $endMin > $slotMin) {
                 if ($firstSlot === null) {
                     $firstSlot = $slot;
@@ -379,110 +301,15 @@ try {
         }
     }
 
-    // --- Student Info Preparation ---
-    $studentName = trim((string) ($student['name'] ?? ''));
-    $middleName = trim((string) ($student['middle_name'] ?? ''));
-    $fullName = $studentName;
-    if ($middleName !== '') {
-        $lowerName = ' ' . strtolower($studentName) . ' ';
-        if ($studentName === '' || strpos($lowerName, ' ' . strtolower($middleName) . ' ') === false) {
-            $fullName = trim($studentName . ' ' . $middleName);
-        }
-    }
-    if ($fullName === '') $fullName = 'N/A';
-
-    $studentNumber = trim((string) ($student['student_id_number'] ?? ''));
-    $course = trim((string) ($student['course'] ?? ''));
-    $specialization = trim((string) ($student['specialization'] ?? ''));
-    $yearLevel = isset($student['year_level']) ? (int) $student['year_level'] : null;
-    $blockName = trim((string) ($student['block_name'] ?? ''));
-    $sex = trim((string) ($student['sex'] ?? ''));
-    $phoneNumber = trim((string) ($student['phone_number'] ?? ''));
-    $currentAddress = trim((string) ($student['current_address'] ?? ''));
-    $permanentAddress = trim((string) ($student['permanent_address'] ?? ''));
-
-    // Address Logic
-    if ($currentAddress !== '' && $permanentAddress !== '' && strcasecmp($currentAddress, $permanentAddress) !== 0) {
-        $fullAddress = $currentAddress . ' / ' . $permanentAddress;
-    } else {
-        $fullAddress = $currentAddress !== '' ? $currentAddress : $permanentAddress;
-    }
-
-    // Course Major Logic
-    $courseMajor = $course !== '' ? $course : 'N/A';
-    if ($specialization !== '') {
-        $specializationUpper = strtoupper($specialization);
-        if ($specializationUpper === 'AP') {
-            $specializationProper = 'Application Programming';
-        } elseif ($specializationUpper === 'DD') {
-            $specializationProper = 'Digital Design';
-        } else {
-            $specializationProper = ucwords(strtolower($specialization));
-        }
-
-        $courseDisciplineMap = [
-            'bsit' => 'Information Technology',
-            'bsis' => 'Information Systems',
-            'bscs' => 'Computer Science',
-            'bses' => 'Environmental Science',
-        ];
-        $courseKey = strtolower($course);
-        $disciplineProper = $course !== '' && stripos($course, 'Bachelor') !== false
-            ? rtrim($course, '. ')
-            : ($courseDisciplineMap[$courseKey] ?? ($course !== '' ? ucwords(strtolower($course)) : 'Information Technology'));
-
-        if (stripos($course, 'Bachelor') !== false) {
-            $courseMajor = $disciplineProper . ' with Specialization in ' . $specializationProper . '.';
-        } else {
-            $courseMajor = sprintf('Bachelor of Science in %s with Specialization in %s.', $disciplineProper, $specializationProper);
-        }
-    }
-
-    // Year Section Logic
-    $courseAcronym = abbreviateWords($course);
-    $specializationAcronym = abbreviateWords($specialization);
-    $yearSectionSegments = [];
-
-    if ($courseAcronym !== '') {
-        $prefix = $courseAcronym;
-        if ($specializationAcronym !== '') {
-            $prefix .= '-' . $specializationAcronym;
-        }
-        $yearSectionSegments[] = $prefix;
-    } elseif ($specializationAcronym !== '') {
-        $yearSectionSegments[] = $specializationAcronym;
-    }
-
-    $yearBlock = '';
-    if ($yearLevel !== null && $yearLevel > 0) {
-        $yearBlock = (string) $yearLevel;
-    }
-    $blockCode = strtoupper(preg_replace('/\s+/', '', $blockName));
-    if ($blockCode !== '') {
-        $yearBlock .= ($yearBlock !== '' ? '-' : '') . $blockCode;
-    }
-    if ($yearBlock !== '') {
-        $yearSectionSegments[] = $yearBlock;
-    }
-    $yearLevelLabel = $yearLevel !== null ? mapYearLevelLabel($yearLevel) : '';
-    if (empty($yearSectionSegments) && $yearLevelLabel !== '') {
-        $yearSectionSegments[] = $yearLevelLabel;
-    }
-    $yearSectionDisplay = implode(' ', $yearSectionSegments);
-
+    // --- Instructor Info Preparation ---
+    $instructorName = trim((string) ($instructor['name'] ?? ''));
+    $department = 'BSIT Department';
+    $email = trim((string) ($instructor['account_email'] ?? ''));
+    
     // School Year Logic
     $semesterShort = mapSemesterShort($semesterCode);
     $schoolYearDisplay = trim($academicYear !== '' ? $academicYear . '/' . $semesterShort : '');
     $registrationDate = date('F d, Y');
-
-    $logoImageUrl = null;
-    $logoCandidates = ['assets/site-logo.png', 'assets/site-logo.svg', 'assets/ascot-logo.png'];
-    foreach ($logoCandidates as $candidate) {
-        if (file_exists(__DIR__ . '/' . $candidate)) {
-            $logoImageUrl = $candidate;
-            break;
-        }
-    }
 
     ob_start();
     ?>
@@ -490,7 +317,7 @@ try {
     <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <title>Printable Class Schedule</title>
+        <title>Printable Instructor Schedule</title>
         <style>
             :root {
                 --ink: #0f172a;
@@ -525,17 +352,12 @@ try {
                 pointer-events: none;
             }
 
-            /* Header Styles from Registration Form */
+            /* Header Styles */
             .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; font-family: "Times New Roman", Times, serif; }
-            .header-logo { width: 90px; height: 90px; object-fit: contain; }
-            .header-text { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
-            .fallback-header { text-transform: uppercase; font-size: 15px; letter-spacing: 1px; }
-            .fallback-sub { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
-            .form-title { font-size: 16px; letter-spacing: 1px; font-weight: 700; margin-top: 4px; }
-
-            /* Student Info Section Styles */
+            
+            /* Info Section Styles */
             .field-underline { border-bottom: 0.4px solid #111; padding: 1px 4px 0; min-height: 14px; display: inline-block; line-height: 1; }
-            .student-info-section { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; font-size: 11.5px; position: relative; z-index: 1; }
+            .info-section { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; font-size: 11.5px; position: relative; z-index: 1; }
             .section-divider { border-bottom: 0.6px solid #111; margin: 18px 0 12px; }
             .info-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; line-height: 1; }
             .info-field { display: grid; grid-template-columns: 120px 1fr; column-gap: 6px; align-items: end; }
@@ -545,7 +367,7 @@ try {
             .info-field.col-span-2 { grid-column: span 2; }
             .info-field.col-span-3 { grid-column: span 3; }
             
-            /* Grid Table Styles - Even Smaller */
+            /* Grid Table Styles */
             .timetable-wrapper {
                 margin-top: 12px;
                 overflow-x: auto;
@@ -555,12 +377,12 @@ try {
                 border-collapse: collapse;
                 table-layout: fixed;
                 border: 1px solid var(--border);
-                font-size: 7px; /* Reduced from 8px */
+                font-size: 7px;
             }
             .timetable th, .timetable td {
                 border: 1px solid var(--border);
                 padding: 0;
-                height: 18px; /* Increased height */
+                height: 18px;
                 text-align: center;
                 vertical-align: middle;
             }
@@ -573,7 +395,7 @@ try {
                 padding: 4px 2px;
             }
             .timetable .time-col {
-                width: 55px; /* Adjusted width for better alignment */
+                width: 55px;
                 background: #f8fafc;
                 color: var(--muted);
                 font-weight: 600;
@@ -659,54 +481,26 @@ try {
     </head>
     <body>
         <div class="sheet" id="printable-schedule">
-            <!-- New Header from Registration Form -->
             <div class="header" style="display: block; text-align: center; margin-bottom: 24px;">
-                <div style="font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">STUDENT CLASS SCHEDULE</div>
+                <div style="font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">INSTRUCTOR CLASS SCHEDULE</div>
                 <div style="font-size: 14px; margin-bottom: 4px;">School Year <?= htmlspecialchars($academicYear, ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars($semesterLabel, ENT_QUOTES, 'UTF-8') ?></div>
-                <div style="font-size: 13px; font-weight: 700; line-height: 1.5;">
-                    <?= str_replace(' with Specialization', '<br>with Specialization', htmlspecialchars($courseMajor, ENT_QUOTES, 'UTF-8')) ?>
-                </div>
             </div>
 
-            <div class="student-info-section">
+            <div class="info-section">
                 <div class="info-row">
-                    <div class="info-field">
-                        <span class="label">Student ID</span>
-                        <span class="value"><?= renderUnderline($studentNumber) ?></span>
-                    </div>
                     <div class="info-field col-span-2">
-                        <span class="label">Student Name</span>
-                        <span class="value"><?= renderUnderline($fullName) ?></span>
-                    </div>
-                </div>
-                <div class="info-row">
-                    <div class="info-field">
-                        <span class="label">Gender</span>
-                        <span class="value"><?= renderUnderline($sex) ?></span>
-                    </div>
-                    <div class="info-field col-span-2">
-                        <span class="label">Course / Major</span>
-                        <span class="value"><?= renderUnderline($courseMajor) ?></span>
-                    </div>
-                </div>
-                <div class="info-row">
-                    <div class="info-field">
-                        <span class="label">School Year</span>
-                        <span class="value"><?= renderUnderline($schoolYearDisplay) ?></span>
+                        <span class="label">Instructor Name</span>
+                        <span class="value"><?= renderUnderline($instructorName) ?></span>
                     </div>
                     <div class="info-field">
-                        <span class="label">Year / Section</span>
-                        <span class="value"><?= renderUnderline($yearSectionDisplay) ?></span>
-                    </div>
-                    <div class="info-field">
-                        <span class="label">Date of Registration</span>
-                        <span class="value"><?= renderUnderline($registrationDate) ?></span>
+                        <span class="label">Employee ID</span>
+                        <span class="value"><?= renderUnderline((string)$instructorId) ?></span>
                     </div>
                 </div>
                 <div class="info-row">
                     <div class="info-field col-span-2">
-                        <span class="label">Contact Number</span>
-                        <span class="value"><?= renderUnderline($phoneNumber) ?></span>
+                        <span class="label">Department</span>
+                        <span class="value"><?= renderUnderline($department) ?></span>
                     </div>
                     <div class="info-field">
                         <span class="label">Total Units</span>
@@ -714,16 +508,20 @@ try {
                     </div>
                 </div>
                 <div class="info-row">
-                    <div class="info-field col-span-3">
-                        <span class="label">Address</span>
-                        <span class="value"><?= renderUnderline($fullAddress) ?></span>
+                    <div class="info-field col-span-2">
+                        <span class="label">Email</span>
+                        <span class="value"><?= renderUnderline($email) ?></span>
+                    </div>
+                    <div class="info-field">
+                        <span class="label">Date Printed</span>
+                        <span class="value"><?= renderUnderline($registrationDate) ?></span>
                     </div>
                 </div>
             </div>
 
             <div class="section-divider"></div>
 
-            <!-- Subject List Table (Moved Up) -->
+            <!-- Class List Table -->
             <table class="subjects">
                 <colgroup>
                     <col style="width: 12%;" />
@@ -746,19 +544,18 @@ try {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (!empty($subjects)): ?>
-                        <?php foreach ($subjects as $subject): ?>
+                    <?php if (!empty($classList)): ?>
+                        <?php foreach ($classList as $class): ?>
                             <?php
-                                $sectionDisplay = $blockName !== '' ? $blockName : 'TBA';
-                                $daysText = renderMultiline($subject['days'] ?? []);
-                                $timesText = renderMultiline($subject['times'] ?? []);
-                                $roomsText = renderMultiline($subject['rooms'] ?? []);
+                                $daysText = renderMultiline($class['days'] ?? []);
+                                $timesText = renderMultiline($class['times'] ?? []);
+                                $roomsText = renderMultiline($class['rooms'] ?? []);
                             ?>
                             <tr>
-                                <td><?= renderPlain($subject['code']) ?></td>
-                                <td><?= renderPlain($sectionDisplay) ?></td>
-                                <td><?= renderPlain($subject['description']) ?></td>
-                                <td><?= renderPlain((string) ($subject['units'] ?? '0')) ?></td>
+                                <td><?= renderPlain($class['code']) ?></td>
+                                <td><?= renderPlain($class['block_name']) ?></td>
+                                <td><?= renderPlain($class['description']) ?></td>
+                                <td><?= renderPlain((string) ($class['units'] ?? '0')) ?></td>
                                 <td><?= $daysText ?></td>
                                 <td><?= $timesText ?></td>
                                 <td><?= $roomsText ?></td>
@@ -766,7 +563,7 @@ try {
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" style="text-align: center; padding: 12px;">No registered subjects found.</td>
+                            <td colspan="7" style="text-align: center; padding: 12px;">No scheduled classes found.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -774,7 +571,7 @@ try {
 
             <div class="section-divider"></div>
 
-            <!-- Timetable Grid (Moved Down) -->
+            <!-- Timetable Grid -->
             <div class="timetable-wrapper">
                 <table class="timetable">
                     <thead>
@@ -795,7 +592,6 @@ try {
                                     <?php 
                                     $cell = $grid[$slot][$day];
                                     if ($cell['type'] === 'OCCUPIED') {
-                                        // Skip rendering occupied cells
                                         continue;
                                     }
                                     if ($cell['type'] === 'START') {
@@ -805,11 +601,10 @@ try {
                                         ?>
                                         <td class="subject-cell" rowspan="<?= $cell['rowspan'] ?>" style="background-color: <?= $bgColor ?>; color: <?= $textColor ?>;">
                                             <span class="subject-code"><?= htmlspecialchars($data['code']) ?></span>
-                                            <span class="subject-desc"><?= htmlspecialchars($data['description']) ?></span>
+                                            <span class="subject-desc"><?= htmlspecialchars($data['block_name']) ?></span>
                                             <span class="subject-meta">
                                                 <?= htmlspecialchars($data['start_time_fmt'] . ' - ' . $data['end_time_fmt']) ?><br>
-                                                <?= htmlspecialchars($data['room']) ?><br>
-                                                <?= htmlspecialchars($data['instructor_name']) ?>
+                                                <?= htmlspecialchars($data['room']) ?>
                                             </span>
                                         </td>
                                         <?php
@@ -827,8 +622,8 @@ try {
             </div>
 
             <div class="signature-boxes">
-                <div class="signature-box">Class Adviser / Instructor</div>
-                <div class="signature-box">Student Signature</div>
+                <div class="signature-box">Department Head</div>
+                <div class="signature-box">Instructor Signature</div>
             </div>
 
             <div class="footer">

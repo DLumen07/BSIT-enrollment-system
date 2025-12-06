@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Eye, EyeOff, User, Lock, Mail, Shield, Settings, Save, Key, CheckCircle2 } from 'lucide-react';
+import { Camera, Eye, EyeOff, User, Lock, Mail, Shield, Settings, Save, Key, CheckCircle2, BookOpen } from 'lucide-react';
 import { useInstructor } from '@/app/instructor/context/instructor-context';
 import { useAdmin } from '@/app/admin/context/admin-context';
 import { resolveMediaUrl } from '@/lib/utils';
@@ -42,7 +42,19 @@ export default function InstructorSettingsPage() {
 
     if (!instructorData) return null;
     
-    const { personal } = instructorData;
+    const { personal, allSubjects } = instructorData;
+    
+    const getSubjectColor = (index: number) => {
+        const colors = [
+            'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+            'text-amber-400 bg-amber-500/10 border-amber-500/20',
+            'text-purple-400 bg-purple-500/10 border-purple-500/20',
+            'text-pink-400 bg-pink-500/10 border-pink-500/20',
+            'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
+            'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+        ];
+        return colors[index % colors.length];
+    };
 
     const handleAvatarUploadClick = () => {
         avatarInputRef.current?.click();
@@ -258,6 +270,21 @@ export default function InstructorSettingsPage() {
                                 <div className="text-center border-l border-white/5">
                                     <div className="text-2xl font-bold text-slate-200">BSIT</div>
                                     <div className="text-xs text-slate-500 uppercase tracking-wider font-medium mt-1">Department</div>
+                                </div>
+                            </div>
+
+                            <div className="w-full mt-6 pt-6 border-t border-white/5">
+                                <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-3">Assigned Subjects</h3>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {allSubjects.map((subject, index) => (
+                                        <div key={subject} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${getSubjectColor(index)}`}>
+                                            <BookOpen className="h-3 w-3" />
+                                            <span>{subject}</span>
+                                        </div>
+                                    ))}
+                                    {allSubjects.length === 0 && (
+                                        <span className="text-slate-500 text-sm italic">No subjects assigned</span>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>

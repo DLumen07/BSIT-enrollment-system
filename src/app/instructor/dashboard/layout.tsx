@@ -13,8 +13,9 @@ import {
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { Suspense, useState, useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { InstructorProvider, useInstructor } from '@/app/instructor/context/instructor-context';
+import Loading from '@/app/loading';
 import {
   SidebarProvider,
   Sidebar,
@@ -135,7 +136,7 @@ const weekdayOrder: Record<string, number> = {
     Saturday: 6,
 };
 
-function Header() {
+function Header({ onLogout }: { onLogout: (e: React.MouseEvent) => void }) {
     const { instructorData } = useInstructor();
     const searchParams = useSearchParams();
     const queryString = searchParams.toString();
@@ -259,8 +260,9 @@ function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuItem>Support</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/">Logout</Link>
+                  <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -276,9 +278,24 @@ function InstructorLayoutContent({ children }: { children: React.ReactNode }) {
   const emailQuery = searchParams.toString();
   const isClassesHistoryPath = pathname === '/instructor/dashboard/classes/history';
   const isClassesPath = pathname.startsWith('/instructor/dashboard/classes') && !isClassesHistoryPath;
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsLoggingOut(true);
+    // Show loading screen for 2 seconds
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    router.push('/');
+  };
 
   return (
     <SidebarProvider>
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-[100]">
+            <Loading message="LOGGING OUT" />
+        </div>
+      )}
       <Sidebar className="border-r border-white/10 bg-[#020617] text-white overflow-hidden" variant="sidebar">
 
         <SidebarHeader className="border-b border-white/10 bg-white/5 backdrop-blur-sm py-4 relative z-10">
@@ -355,18 +372,16 @@ function InstructorLayoutContent({ children }: { children: React.ReactNode }) {
                 </div>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="text-white/60 hover:bg-white/5 hover:text-white transition-all duration-200">
-                <Link href="/">
+              <SidebarMenuButton onClick={handleLogout} className="text-white/60 hover:bg-white/5 hover:text-white transition-all duration-200 cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
-                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <Header />
+        <Header onLogout={handleLogout} />
         <PageTransition>
           {children}
         </PageTransition>

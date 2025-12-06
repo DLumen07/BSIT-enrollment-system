@@ -671,7 +671,13 @@ export default function AdminSettingsPage() {
             return;
         }
 
-        if (!validateEnrollmentDates()) {
+        const startDateIso = formatDateForApi(startDate ?? null);
+        const endDateIso = formatDateForApi(endDate ?? null);
+        const originalStartIso = formatDateForApi(enrollmentStartDate ?? null);
+        const originalEndIso = formatDateForApi(enrollmentEndDate ?? null);
+        const datesChanged = startDateIso !== originalStartIso || endDateIso !== originalEndIso;
+
+        if (datesChanged && !validateEnrollmentDates()) {
             return;
         }
 
@@ -783,6 +789,95 @@ export default function AdminSettingsPage() {
         setEditableData(prev => ({ ...prev, [id]: value }));
     }
 
+    const validateProfileInputs = useCallback((name: string, email: string) => {
+        if (name === '' || email === '') {
+            toast({
+                variant: 'destructive',
+                title: 'Missing information',
+                description: 'Please provide both name and email before saving.',
+            });
+            return false;
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Email',
+                description: 'Please provide a valid email address.',
+            });
+            return false;
+        }
+
+        return true;
+    }, [toast]);
+
+    const persistProfileUpdates = useCallback(async (name: string, email: string) => {
+        if (!currentUser) {
+            throw new Error('Unable to update profile. Please re-authenticate.');
+        }
+
+        await callAdminApi('update_admin.php', {
+            userId: currentUser.id,
+            name,
+            email,
+            role: currentUser.role,
+            avatar: currentUser.avatar ?? '',
+        });
+
+        const refreshed = await refreshAdminData();
+        const updatedUser = refreshed.adminUsers.find((user) => user.id === currentUser.id) ?? {
+            id: currentUser.id,
+            name,
+            email,
+            role: currentUser.role,
+            avatar: currentUser.avatar ?? '',
+        };
+
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+        setAdminData(() => ({
+            ...refreshed,
+            currentUser: updatedUser,
+        }));
+
+        setEditableData({ name: updatedUser.name, email: updatedUser.email });
+
+        return { updatedUser, refreshedAdminData: refreshed };
+    }, [callAdminApi, currentUser, refreshAdminData, setAdminData, setEditableData]);
+
+    const handleSaveProfile = async () => {
+        if (!currentUser || isSaving) {
+            return;
+        }
+
+        const trimmedName = editableData.name.trim();
+        const trimmedEmail = editableData.email.trim().toLowerCase();
+
+        if (!validateProfileInputs(trimmedName, trimmedEmail)) {
+            return;
+        }
+
+        setIsSaving(true);
+
+        try {
+            await persistProfileUpdates(trimmedName, trimmedEmail);
+            notifyDataChanged();
+            toast({
+                title: 'Profile Updated',
+                description: 'Your personal information has been saved.',
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to update profile.';
+            toast({
+                variant: 'destructive',
+                title: 'Save failed',
+                description: message,
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleSaveAll = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!currentUser || isSaving) {
@@ -792,25 +887,17 @@ export default function AdminSettingsPage() {
         const trimmedName = editableData.name.trim();
         const trimmedEmail = editableData.email.trim().toLowerCase();
 
-        if (trimmedName === '' || trimmedEmail === '') {
-            toast({
-                variant: 'destructive',
-                title: 'Missing information',
-                description: 'Please provide both name and email before saving.',
-            });
+        if (!validateProfileInputs(trimmedName, trimmedEmail)) {
             return;
         }
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-            toast({
-                variant: 'destructive',
-                title: 'Invalid Email',
-                description: 'Please provide a valid email address.',
-            });
-            return;
-        }
+        const startDateIso = formatDateForApi(startDate ?? null);
+        const endDateIso = formatDateForApi(endDate ?? null);
+        const originalStartIso = formatDateForApi(enrollmentStartDate ?? null);
+        const originalEndIso = formatDateForApi(enrollmentEndDate ?? null);
+        const datesChanged = startDateIso !== originalStartIso || endDateIso !== originalEndIso;
 
-        if (!validateEnrollmentDates()) {
+        if (datesChanged && !validateEnrollmentDates()) {
             return;
         }
 
@@ -823,37 +910,8 @@ export default function AdminSettingsPage() {
         setIsSaving(true);
 
         try {
-            await callAdminApi('update_admin.php', {
-                userId: currentUser.id,
-                name: trimmedName,
-                email: trimmedEmail,
-                role: currentUser.role,
-                avatar: currentUser.avatar ?? '',
-            });
+            const { updatedUser } = await persistProfileUpdates(trimmedName, trimmedEmail);
 
-            const refreshed = await refreshAdminData();
-            const updatedUser = refreshed.adminUsers.find((user) => user.id === currentUser.id) ?? {
-                id: currentUser.id,
-                name: trimmedName,
-                email: trimmedEmail,
-                role: currentUser.role,
-                avatar: currentUser.avatar ?? '',
-            };
-
-            sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
-            setAdminData(() => ({
-                ...refreshed,
-                currentUser: updatedUser,
-            }));
-
-            setEditableData({ name: updatedUser.name, email: updatedUser.email });
-
-            const startDateIso = formatDateForApi(startDate ?? null);
-            const endDateIso = formatDateForApi(endDate ?? null);
-            const originalStartIso = formatDateForApi(enrollmentStartDate ?? null);
-            const originalEndIso = formatDateForApi(enrollmentEndDate ?? null);
-            const datesChanged = startDateIso !== originalStartIso || endDateIso !== originalEndIso;
             const activePhaseChanged = activeEnrollmentPhase !== (serverActiveEnrollmentPhase ?? 'all');
             if (datesChanged || activePhaseChanged) {
                 await callAdminApi('update_system_settings.php', {
@@ -1236,7 +1294,7 @@ export default function AdminSettingsPage() {
 
                                     <div className="text-center space-y-1 mb-6">
                                         <h2 className="text-2xl font-bold text-white">{editableData.name}</h2>
-                                        <p className="text-slate-400 font-medium">{currentUser.email}</p>
+                                        <p className="text-slate-400 font-medium">{editableData.email || currentUser.email}</p>
                                         <div className="flex items-center justify-center gap-2 mt-3">
                                             <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-3 py-1">
                                                 {currentUser.role}
@@ -1521,6 +1579,26 @@ export default function AdminSettingsPage() {
                                             </div>
                                         </div>
                                     </div>
+                                    <div className="flex justify-end pt-2">
+                                        <Button
+                                            type="button"
+                                            onClick={handleSaveProfile}
+                                            className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20"
+                                            disabled={isSaving}
+                                        >
+                                            {isSaving ? (
+                                                <>
+                                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                                    Saving Changes...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save className="mr-2 h-4 w-4" />
+                                                    Save Profile
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
 
@@ -1733,14 +1811,14 @@ export default function AdminSettingsPage() {
                                                             root: 'w-full',
                                                             months: 'w-full',
                                                             month: 'w-full space-y-4',
-                                                            caption: 'flex justify-between pt-1 relative items-center px-2',
+                                                            caption: 'flex justify-center pt-1 relative items-center px-2',
                                                             caption_label: 'text-sm font-medium text-slate-200',
                                                             nav: 'space-x-1 flex items-center',
                                                             nav_button: 'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 text-slate-200 hover:bg-white/10 rounded-md',
                                                             table: 'w-full border-collapse space-y-1',
-                                                            head_row: 'flex',
+                                                            head_row: 'flex w-full justify-between',
                                                             head_cell: 'text-slate-500 rounded-md w-9 font-normal text-[0.8rem]',
-                                                            row: 'flex w-full mt-2',
+                                                            row: 'flex w-full mt-2 justify-between',
                                                             cell: 'text-center text-sm p-0 relative [&:has([aria-selected])]:bg-blue-500/20 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
                                                             day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-white/10 rounded-md text-slate-200',
                                                             day_selected: 'bg-blue-600 text-white hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white',

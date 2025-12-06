@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info, Users, Clock, BookOpen, UserCheck, FileText, Layers, GraduationCap, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
     Dialog,
     DialogContent,
@@ -108,12 +109,20 @@ const formatSemesterLabel = (semester?: string | null): string | null => {
 export default function StudentDashboardPage() {
   const { studentData } = useStudent();
   const [isClassmatesDialogOpen, setIsClassmatesDialogOpen] = useState(false);
+    const [showPasswordUpdatePrompt, setShowPasswordUpdatePrompt] = useState(false);
+    const searchParams = useSearchParams();
     const classmates = useMemo(() => {
         if (!studentData?.classmates) {
             return [];
         }
         return [...studentData.classmates].sort((a, b) => a.name.localeCompare(b.name));
     }, [studentData?.classmates]);
+
+    useEffect(() => {
+        if (searchParams?.get('needsPasswordUpdate') === '1') {
+                setShowPasswordUpdatePrompt(true);
+        }
+    }, [searchParams]);
   
   if (!studentData) {
     return <div>Loading...</div>; // Or a loading spinner
@@ -189,6 +198,29 @@ export default function StudentDashboardPage() {
             : semesterDisplay;
 
   return (
+    <>
+    <Dialog open={showPasswordUpdatePrompt} onOpenChange={setShowPasswordUpdatePrompt}>
+        <DialogContent className="max-w-md border-white/10 bg-[#020617] text-white">
+            <DialogHeader>
+                <DialogTitle className="text-2xl font-semibold">Secure your account</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                    You signed in using a temporary password. Please update your password in Settings as soon as possible.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 text-sm text-slate-300">
+                <p>Updating your password ensures no one else can access your student portal using the temporary credential.</p>
+                <p>If you already changed your password, you can dismiss this reminder.</p>
+            </div>
+            <DialogFooter className="gap-2">
+                <Button variant="ghost" className="text-slate-300 hover:text-white" onClick={() => setShowPasswordUpdatePrompt(false)}>
+                    Later
+                </Button>
+                <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white font-semibold">
+                    <Link href="/student/dashboard/settings?needsPasswordUpdate=1">Go to Settings</Link>
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     <main className="flex-1 p-4 sm:p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
         <div className="space-y-2">
             <h1 className="text-2xl font-bold tracking-tight">Welcome back, {studentData.personal.firstName}!</h1>
@@ -494,7 +526,8 @@ export default function StudentDashboardPage() {
                 </Card>
             </div>
         </div>
-    </main>
+        </main>
+        </>
   );
 }
 

@@ -88,7 +88,7 @@ if ($normalizedStudentId === '') {
 try {
     $conn->set_charset('utf8mb4');
 
-    $lookupSql = 'SELECT sp.user_id, sp.student_id_number, sp.name, sp.status, sp.course, sp.year_level, COALESCE(u.email, "") AS email'
+    $lookupSql = 'SELECT sp.user_id, sp.student_id_number, sp.name, sp.status, sp.course, sp.year_level, COALESCE(u.email, "") AS email, sp.birthdate, COALESCE(u.password_hash, "") AS password_hash'
         . ' FROM student_profiles sp'
         . ' LEFT JOIN users u ON u.id = sp.user_id'
         . ' WHERE sp.student_id_number = ?'
@@ -101,9 +101,85 @@ try {
 
     $lookupStmt->bind_param('s', $normalizedStudentId);
     $lookupStmt->execute();
-    $lookupStmt->bind_result($userId, $studentIdNumber, $name, $status, $course, $yearLevel, $email);
+    $lookupStmt->bind_result($userId, $studentIdNumber, $name, $status, $course, $yearLevel, $email, $birthdate, $passwordHash);
 
     if ($lookupStmt->fetch()) {
+        $lookupStmt->close();
+
+        $registeredEmail = trim((string) $email);
+        if ($registeredEmail === '') {
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'We found your record, but there is no email associated with this account. Please contact the registrar to update your information.',
+            ]);
+            if ($conn instanceof mysqli) {
+                $conn->close();
+            }
+            exit;
+        }
+
+        $birthdateValue = trim((string) $birthdate);
+        if ($birthdateValue === '') {
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'We found your record, but your birthdate is missing. Please contact the registrar to update your profile.',
+            ]);
+            if ($conn instanceof mysqli) {
+                $conn->close();
+            }
+            exit;
+        }
+
+        $existingPasswordHash = trim((string) $passwordHash);
+        if ($existingPasswordHash !== '') {
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'An account for this Student ID already has a password. Please use the Forgot Password option on the Student Login page to regain access.',
+            ]);
+            if ($conn instanceof mysqli) {
+                $conn->close();
+            }
+            exit;
+        }
+
+        $birthdateTimestamp = strtotime($birthdateValue);
+        if ($birthdateTimestamp === false) {
+            http_response_code(500);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Unable to determine your birthdate from our records. Please contact support.',
+            ]);
+            if ($conn instanceof mysqli) {
+                $conn->close();
+            }
+            exit;
+        }
+
+        $temporaryPassword = strtolower(date('F', $birthdateTimestamp))
+            . date('d', $birthdateTimestamp)
+            . date('Y', $birthdateTimestamp);
+
+        $temporaryPasswordHash = password_hash($temporaryPassword, PASSWORD_BCRYPT);
+        if ($temporaryPasswordHash === false) {
+            throw new Exception('Failed to generate a temporary password. Please try again later.');
+        }
+
+        $updateSql = 'UPDATE users SET password_hash = ? WHERE id = ? LIMIT 1';
+        $updateStmt = $conn->prepare($updateSql);
+        if (!$updateStmt) {
+            throw new Exception('Failed to prepare password update statement: ' . $conn->error);
+        }
+
+        $updateStmt->bind_param('si', $temporaryPasswordHash, $userId);
+        if (!$updateStmt->execute()) {
+            $updateStmt->close();
+            throw new Exception('Unable to update the account password at this time. Please try again later.');
+        }
+        $updateStmt->close();
+
         echo json_encode([
             'status' => 'success',
             'data' => [
@@ -113,10 +189,10 @@ try {
                 'status' => $status,
                 'course' => $course,
                 'yearLevel' => $yearLevel,
-                'email' => $email,
+                'email' => $registeredEmail,
+                'temporaryPassword' => $temporaryPassword,
             ],
         ]);
-        $lookupStmt->close();
         if ($conn instanceof mysqli) {
             $conn->close();
         }

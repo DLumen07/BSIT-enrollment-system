@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MoreHorizontal, PlusCircle, Trash2, Pencil, Calendar, ChevronDown, Eye, EyeOff, GraduationCap } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Pencil, Calendar, ChevronDown, Eye, EyeOff, GraduationCap, X } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -58,6 +58,30 @@ type ApiSuccessResponse<T = unknown> = {
     message?: string;
 };
 
+const getYearLevelColor = (yearLevel: number) => {
+    switch (yearLevel) {
+        case 1:
+            return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20';
+        case 2:
+            return 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20';
+        case 3:
+            return 'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20';
+        case 4:
+            return 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20';
+        default:
+            return 'bg-slate-800 text-slate-300 border-white/10 hover:bg-slate-700';
+    }
+};
+
+const getYearLevelTextColor = (yearLevel: number) => {
+    switch (yearLevel) {
+        case 1: return 'text-emerald-400';
+        case 2: return 'text-blue-400';
+        case 3: return 'text-purple-400';
+        case 4: return 'text-amber-400';
+        default: return 'text-slate-400';
+    }
+};
 
 const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedSubjects: string[], onSelectionChange: (selected: string[]) => void }) => {
     const { adminData } = useAdmin();
@@ -72,37 +96,64 @@ const MultiSelectSubject = ({ selectedSubjects, onSelectionChange }: { selectedS
         }
     };
 
+    const getSubjectYearLevel = (subjectCode: string) => {
+        const subject = availableSubjects.find(s => s.id === subjectCode);
+        return subject ? subject.yearLevel : 0;
+    };
+
     return (
-         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full justify-between rounded-xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white">
-                    <span>{selectedSubjects.length > 0 ? `${selectedSubjects.length} selected` : 'Select subjects'}</span>
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-full rounded-xl max-h-72 overflow-y-auto bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
-                <DropdownMenuLabel className="text-slate-400">Available Subjects</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-white/10" />
-                {availableSubjects.map(subject => (
-                    <DropdownMenuCheckboxItem
-                        key={subject.id}
-                        checked={selectedSubjects.includes(subject.id)}
-                        onSelect={(e) => { e.preventDefault(); handleSelect(subject.id); }}
-                        className="focus:bg-white/10 focus:text-white"
-                    >
-                        {subject.label}
-                    </DropdownMenuCheckboxItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="space-y-3">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between rounded-xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white">
+                        <span>{selectedSubjects.length > 0 ? `${selectedSubjects.length} selected` : 'Select subjects'}</span>
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-full rounded-xl max-h-72 overflow-y-auto bg-slate-900/95 backdrop-blur-xl border-white/10 text-slate-200">
+                    <DropdownMenuLabel className="text-slate-400">Available Subjects</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-white/10" />
+                    {availableSubjects.map(subject => (
+                        <DropdownMenuCheckboxItem
+                            key={subject.id}
+                            checked={selectedSubjects.includes(subject.id)}
+                            onSelect={(e) => { e.preventDefault(); handleSelect(subject.id); }}
+                            className="focus:bg-white/10 focus:text-white"
+                        >
+                            <span className={`font-medium ${getYearLevelTextColor(subject.yearLevel)}`}>
+                                {subject.id}
+                            </span>
+                            <span className="text-slate-400">
+                                {subject.label.substring(subject.id.length)}
+                            </span>
+                        </DropdownMenuCheckboxItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {selectedSubjects.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    {selectedSubjects.map(subject => (
+                        <Badge key={subject} variant="secondary" className={`${getYearLevelColor(getSubjectYearLevel(subject))} border cursor-pointer`} onClick={() => handleSelect(subject)}>
+                            {subject}
+                            <X className="ml-1 h-3 w-3" />
+                        </Badge>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 };
 
 
 export default function InstructorsPage() {
     const { adminData, refreshAdminData } = useAdmin();
-    const { instructors } = adminData;
+    const { instructors, availableSubjects } = adminData;
     const { toast } = useToast();
+
+    const getSubjectYearLevel = (subjectCode: string) => {
+        const subject = availableSubjects.find(s => s.id === subjectCode);
+        return subject ? subject.yearLevel : 0;
+    };
     const API_BASE_URL = (process.env.NEXT_PUBLIC_BSIT_API_BASE_URL ?? 'http://localhost/bsit_api').replace(/\/$/, '').trim();
     const buildApiUrl = useCallback((endpoint: string) => `${API_BASE_URL}/${endpoint.replace(/^\//, '')}`, [API_BASE_URL]);
     const callInstructorApi = useCallback(async (endpoint: string, payload: unknown): Promise<ApiSuccessResponse> => {
@@ -314,23 +365,46 @@ export default function InstructorsPage() {
                             Manage instructor profiles and their assigned subjects.
                         </p>
                     </div>
-                    <Button onClick={openAddDialog} className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 border-0">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Instructor
-                    </Button>
+                    <div className="flex items-center gap-4">
+                        <Button onClick={openAddDialog} className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 border-0">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Instructor
+                        </Button>
+                    </div>
                 </div>
 
                 <Card className="rounded-xl border-white/10 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
                     <CardHeader className="border-b border-white/5 pb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-                                <GraduationCap className="h-5 w-5" />
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                    <GraduationCap className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-semibold text-white">Instructor List</CardTitle>
+                                    <CardDescription className="text-slate-400">
+                                        A list of all instructors in the system.
+                                    </CardDescription>
+                                </div>
                             </div>
-                            <div>
-                                <CardTitle className="text-lg font-semibold text-white">Instructor List</CardTitle>
-                                <CardDescription className="text-slate-400">
-                                    A list of all instructors in the system.
-                                </CardDescription>
+                            <div className="hidden md:flex items-center gap-3 text-xs bg-slate-900/50 px-3 py-2 rounded-xl border border-white/10">
+                                <span className="text-slate-500 font-medium mr-1">Year Levels:</span>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <span className="text-slate-400">1st</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                    <span className="text-slate-400">2nd</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                                    <span className="text-slate-400">3rd</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                                    <span className="text-slate-400">4th</span>
+                                </div>
                             </div>
                         </div>
                     </CardHeader>
@@ -361,9 +435,15 @@ export default function InstructorsPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-1">
-                                                    {instructor.subjects.map(subject => (
-                                                        <Badge key={subject} variant="secondary" className="bg-slate-800 text-slate-300 border-white/10 hover:bg-slate-700">{subject}</Badge>
-                                                    ))}
+                                                    {instructor.subjects.map(subject => {
+                                                        const yearLevel = getSubjectYearLevel(subject);
+                                                        const colorClass = getYearLevelColor(yearLevel);
+                                                        return (
+                                                            <Badge key={subject} variant="secondary" className={`${colorClass} border`}>
+                                                                {subject}
+                                                            </Badge>
+                                                        );
+                                                    })}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">

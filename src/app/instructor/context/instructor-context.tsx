@@ -5,7 +5,7 @@ import { useAdmin } from '@/app/admin/context/admin-context';
 import type { Subject as ScheduleSubject } from '@/app/admin/dashboard/schedule/[blockId]/page';
 import type { AdminAnnouncement, Student, Subject } from '@/app/admin/context/admin-context';
 import { useSearchParams } from 'next/navigation';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import Loading from '@/app/loading';
 import { resolveMediaUrl } from '@/lib/utils';
 import { notifyDataChanged, DATA_SYNC_CHANNEL } from '@/lib/live-sync';
 
@@ -53,7 +53,8 @@ type InstructorDataType = {
     schedule: (ScheduleSubject & { block: string })[];
     classes: InstructorClass[];
     grades: StudentGrades;
-  announcements: AdminAnnouncement[];
+    announcements: AdminAnnouncement[];
+    allSubjects: string[];
 };
 
 const TERM_KEYS: GradeTermKey[] = ['prelim', 'midterm', 'final'];
@@ -240,7 +241,7 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
           announcement.audience === 'All' || announcement.audience === 'Instructors'
         );
 
-        setInstructorData({
+            setInstructorData({
             personal: {
                 id: currentInstructor.id,
                 name: currentInstructor.name,
@@ -251,6 +252,7 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
             classes: instructorClasses,
             grades: adminData.grades,
             announcements: relevantAnnouncements,
+            allSubjects: currentInstructor.subjects || [],
         });
       }
     }
@@ -404,11 +406,7 @@ export const InstructorProvider = ({ children }: { children: React.ReactNode }) 
   }, [instructorEmail]);
 
   if (!instructorData) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <LoadingSpinner className="h-8 w-8" />
-        </div>
-    );
+    return <Loading />;
   }
 
   return (

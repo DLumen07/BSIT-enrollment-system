@@ -3,10 +3,10 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, CalendarClock, MapPin, User2, Layers } from 'lucide-react';
+import { Clock, CalendarClock, MapPin, User2, Layers, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStudent } from '@/app/student/context/student-context';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import Loading from '@/app/loading';
 import { Badge } from '@/components/ui/badge';
 
 type Subject = {
@@ -84,11 +84,7 @@ export default function StudentSchedulePage() {
     }, []);
 
     if (!studentData) {
-        return (
-            <div className="flex h-full min-h-[300px] w-full items-center justify-center">
-                <LoadingSpinner className="h-6 w-6 text-primary" />
-            </div>
-        );
+        return <Loading />;
     }
 
     const registeredSubjects = studentData.enrollment?.registeredSubjects ?? [];
@@ -113,6 +109,31 @@ export default function StudentSchedulePage() {
         ? `A.Y. ${currentTerm.academicYear}`
         : 'A.Y. not set';
     const semesterLabel = formatSemesterLabel(currentTerm.semester);
+
+    const handlePrint = () => {
+        if (typeof window === 'undefined' || !studentData?.contact?.email) {
+            return;
+        }
+
+        const printUrl = `${apiBaseUrl}/print_student_schedule.php?email=${encodeURIComponent(studentData.contact.email)}`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+
+        const cleanup = () => {
+            setTimeout(() => {
+                iframe.remove();
+            }, 1500);
+        };
+
+        iframe.addEventListener('load', cleanup, { once: true });
+        iframe.src = printUrl;
+        document.body.appendChild(iframe);
+    };
 
     return (
         <>
@@ -141,6 +162,10 @@ export default function StudentSchedulePage() {
                                 <span className="text-sm font-bold text-foreground">{block}</span>
                             </div>
                         )}
+                        <Button onClick={handlePrint} variant="outline" size="sm" className="gap-2 hidden sm:flex">
+                            <Printer className="h-4 w-4" />
+                            Print Schedule
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto" id="student-schedule-print" ref={scheduleContainerRef}>

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useQuery } from '@tanstack/react-query';
 import { AdminUser, initialAdminUsers, roles as adminRoles } from '../data/admin-users';
 import { Subject as ScheduleSubject } from '../dashboard/schedule/[blockId]/page';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import Loading from '@/app/loading';
 import { resolveMediaUrl } from '@/lib/utils';
 import { DATA_SYNC_CHANNEL } from '@/lib/live-sync';
 
@@ -1483,11 +1483,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
                 : null;
 
     if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <LoadingSpinner className="h-8 w-8" />
-      </div>
-    );
+    return <Loading />;
   }
   if (error) {
     return <div>Error: {error}</div>;
