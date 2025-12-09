@@ -210,16 +210,28 @@ SQL;
     $blockId = isset($studentRow['block_id']) ? (int) $studentRow['block_id'] : null;
 
     $fullName = safe_string($studentRow['name']);
-    $nameParts = preg_split('/\s+/', $fullName, -1, PREG_SPLIT_NO_EMPTY);
-    $firstName = '';
-    $lastName = '';
-
-    if (is_array($nameParts) && count($nameParts) > 0) {
-        $firstName = array_shift($nameParts) ?? '';
-        $lastName = count($nameParts) > 0 ? implode(' ', $nameParts) : '';
-    }
-
+    $firstName = safe_string($studentRow['first_name'] ?? '');
     $middleName = safe_string($studentRow['middle_name'] ?? '');
+    $lastName = safe_string($studentRow['last_name'] ?? '');
+
+    if ($firstName === '' || $lastName === '' || $middleName === '') {
+        $nameParts = preg_split('/\s+/', $fullName, -1, PREG_SPLIT_NO_EMPTY);
+        if (is_array($nameParts) && count($nameParts) > 0) {
+            $parsedFirst = array_shift($nameParts) ?? '';
+            $parsedLast = count($nameParts) > 0 ? array_pop($nameParts) : '';
+            $parsedMiddle = count($nameParts) > 0 ? implode(' ', $nameParts) : '';
+
+            if ($firstName === '' && $parsedFirst !== '') {
+                $firstName = $parsedFirst;
+            }
+            if ($lastName === '' && $parsedLast !== '') {
+                $lastName = $parsedLast;
+            }
+            if ($middleName === '' && $parsedMiddle !== '') {
+                $middleName = $parsedMiddle;
+            }
+        }
+    }
     $avatarUrl = safe_string($studentRow['avatar_url'] ?? '');
     $birthdate = safe_string($studentRow['birthdate'] ?? '');
     $sex = safe_string($studentRow['sex'] ?? '');

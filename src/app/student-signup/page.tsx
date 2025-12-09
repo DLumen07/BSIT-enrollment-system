@@ -30,7 +30,9 @@ type ReturningLookupResult = {
 export default function StudentSignupPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [fullName, setFullName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [middleName, setMiddleName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -67,7 +69,9 @@ export default function StudentSignupPage() {
     }, [apiBaseUrl]);
 
     const resetForm = () => {
-        setFullName('');
+        setFirstName('');
+        setMiddleName('');
+        setLastName('');
         setEmail('');
         setPassword('');
         setConfirmPassword('');
@@ -163,17 +167,39 @@ export default function StudentSignupPage() {
             return;
         }
 
-        const trimmedName = fullName.trim();
+        const trimmedFirstName = firstName.trim();
+        const trimmedMiddleName = middleName.trim();
+        const trimmedLastName = lastName.trim();
         const trimmedEmail = email.trim();
 
-        if (!trimmedName || !trimmedEmail) {
+        if (!trimmedFirstName || !trimmedLastName || !trimmedEmail) {
             toast({
                 variant: 'destructive',
                 title: 'Missing information',
-                description: 'Please provide both your full name and email address.',
+                description: 'Please provide your first name, last name, and email address.',
             });
             return;
         }
+
+        const nameSegments: string[] = [];
+        const appendSegment = (value: string) => {
+            const normalized = value.replace(/\s+/g, ' ').trim();
+            if (!normalized) {
+                return;
+            }
+            const alreadyListed = nameSegments.some((segment) =>
+                segment.localeCompare(normalized, undefined, { sensitivity: 'accent' }) === 0
+            );
+            if (!alreadyListed) {
+                nameSegments.push(normalized);
+            }
+        };
+
+        appendSegment(trimmedFirstName);
+        appendSegment(trimmedMiddleName);
+        appendSegment(trimmedLastName);
+
+        const normalizedFullName = nameSegments.join(' ');
 
         if (password.length < 8) {
             toast({
@@ -196,7 +222,10 @@ export default function StudentSignupPage() {
         setIsSubmitting(true);
         try {
             const payloadBody: Record<string, unknown> = {
-                fullName: trimmedName,
+                firstName: trimmedFirstName,
+                middleName: trimmedMiddleName,
+                lastName: trimmedLastName,
+                fullName: normalizedFullName,
                 email: trimmedEmail,
                 password,
                 confirmPassword,
@@ -253,7 +282,7 @@ export default function StudentSignupPage() {
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="relative group perspective-[1000px] w-full max-w-md"
+                    className="relative group perspective-[1000px] w-full max-w-5xl"
                     onMouseMove={handleMouseMove}
                 >
                     {/* Gradient Border */}
@@ -297,94 +326,175 @@ export default function StudentSignupPage() {
                             }}
                         />
 
-                        <div className="relative z-10 flex flex-col items-center text-center pt-4">
-                            <h1 className="text-3xl font-black tracking-tighter text-white mb-8">
-                                Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-orange-600">Account</span>
-                            </h1>
-                            
-                            {isClient && (
-                                <form className="space-y-4 w-full text-left" onSubmit={handleSubmit}>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="fullName" className="text-slate-300">Full Name</Label>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                            <Input
-                                                id="fullName"
-                                                type="text"
-                                                placeholder="Juan Dela Cruz"
-                                                required
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
-                                                value={fullName}
-                                                onChange={(event) => setFullName(event.target.value)}
-                                            />
+                        <div className="relative z-10 grid gap-8 lg:gap-12 lg:grid-cols-[1.05fr_0.95fr] pt-6 text-left">
+                            <div className="flex flex-col gap-6">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-blue-200/70">BSIT Enrollment</p>
+                                <div className="space-y-4">
+                                    <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">
+                                        Build your BSIT identity with confidence
+                                    </h1>
+                                    <p className="text-slate-400 leading-relaxed">
+                                        Start fresh or reconnect an existing student ID. Your data stays encrypted, synced with the registrar, and ready for enrollment approvals.
+                                    </p>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col gap-3">
+                                        <div className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                                            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-200">
+                                                <IdCard className="w-4 h-4" />
+                                            </div>
+                                            Returning Students
                                         </div>
+                                        <p className="text-xs text-slate-400 leading-relaxed">
+                                            Use the lookup flow to unlock your temporary credentials and keep every past record intact.
+                                        </p>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="email" className="text-slate-300">Email</Label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                placeholder="student@example.com"
-                                                required
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
-                                                value={email}
-                                                onChange={(event) => setEmail(event.target.value)}
-                                            />
+                                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col gap-3">
+                                        <div className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                                            <div className="p-2 rounded-xl bg-orange-500/10 text-orange-200">
+                                                <UserPlus className="w-4 h-4" />
+                                            </div>
+                                            Guided Security
                                         </div>
+                                        <p className="text-xs text-slate-400 leading-relaxed">
+                                            Two-step password confirmation and live validation prevent typos before they reach our servers.
+                                        </p>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="password" className="text-slate-300">Password</Label>
-                                        <div className="relative group">
-                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                            <Input
-                                                id="password"
-                                                type={showPassword ? 'text' : 'password'}
-                                                required
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 pr-10 h-12"
-                                                value={password}
-                                                onChange={(event) => setPassword(event.target.value)}
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white hover:bg-transparent"
-                                                onClick={() => setShowPassword((prev) => !prev)}
-                                            >
-                                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </div>
+                                <ul className="space-y-2 text-sm text-slate-400">
+                                    <li className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                        Auto-generated student ID after signup
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                                        Seamless transition to the enrollment dashboard
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                        Live feedback if anything looks incomplete
+                                    </li>
+                                </ul>
+                            </div>
+                            <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-6 md:p-8 shadow-xl shadow-blue-900/20 backdrop-blur">
+                                {isClient && (
+                                    <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="firstName" className="text-slate-300">First Name</Label>
+                                            <div className="relative">
+                                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                <Input
+                                                    id="firstName"
+                                                    type="text"
+                                                    placeholder="Juan"
+                                                    required
+                                                    autoComplete="given-name"
+                                                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
+                                                    value={firstName}
+                                                    onChange={(event) => setFirstName(event.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="middleName" className="text-slate-300">Middle Name</Label>
+                                            <div className="relative">
+                                                <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                <Input
+                                                    id="middleName"
+                                                    type="text"
+                                                    placeholder="Santos"
+                                                    autoComplete="additional-name"
+                                                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
+                                                    value={middleName}
+                                                    onChange={(event) => setMiddleName(event.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="lastName" className="text-slate-300">Last Name</Label>
+                                            <div className="relative">
+                                                <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                <Input
+                                                    id="lastName"
+                                                    type="text"
+                                                    placeholder="Dela Cruz"
+                                                    required
+                                                    autoComplete="family-name"
+                                                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
+                                                    value={lastName}
+                                                    onChange={(event) => setLastName(event.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="email" className="text-slate-300">Email</Label>
+                                            <div className="relative">
+                                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                <Input
+                                                    id="email"
+                                                    type="email"
+                                                    placeholder="student@example.com"
+                                                    required
+                                                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 h-12"
+                                                    value={email}
+                                                    onChange={(event) => setEmail(event.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="password" className="text-slate-300">Password</Label>
+                                            <div className="relative group">
+                                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                <Input
+                                                    id="password"
+                                                    type={showPassword ? 'text' : 'password'}
+                                                    required
+                                                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 pr-10 h-12"
+                                                    value={password}
+                                                    onChange={(event) => setPassword(event.target.value)}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white hover:bg-transparent"
+                                                    onClick={() => setShowPassword((prev) => !prev)}
+                                                >
+                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="confirmPassword" className="text-slate-300">Confirm Password</Label>
+                                            <div className="relative group">
+                                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                <Input
+                                                    id="confirmPassword"
+                                                    type={showConfirmPassword ? 'text' : 'password'}
+                                                    required
+                                                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 pr-10 h-12"
+                                                    value={confirmPassword}
+                                                    onChange={(event) => setConfirmPassword(event.target.value)}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white hover:bg-transparent"
+                                                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                                >
+                                                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/40 transition-all hover:scale-[1.01]" disabled={isSubmitting}>
+                                                {isSubmitting ? 'Creating Account...' : 'Create Account'}
                                             </Button>
                                         </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="confirmPassword" className="text-slate-300">Confirm Password</Label>
-                                        <div className="relative group">
-                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                            <Input
-                                                id="confirmPassword"
-                                                type={showConfirmPassword ? 'text' : 'password'}
-                                                required
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all pl-10 pr-10 h-12"
-                                                value={confirmPassword}
-                                                onChange={(event) => setConfirmPassword(event.target.value)}
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-400 hover:text-white hover:bg-transparent"
-                                                onClick={() => setShowConfirmPassword((prev) => !prev)}
-                                            >
-                                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] mt-2" disabled={isSubmitting}>
-                                        {isSubmitting ? 'Creating Account...' : 'Create Account'}
-                                    </Button>
-                                </form>
-                            )}
+                                    </form>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </motion.div>

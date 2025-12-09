@@ -142,7 +142,13 @@ if (isset($payload['subjects']) && is_array($payload['subjects'])) {
     }
 }
 
-if (count($subjects) === 0) {
+// Treat transferee based on status or explicit transfereeDetails payload
+$isTransferee = strcasecmp($studentStatus, 'Transferee') === 0;
+if (!$isTransferee && isset($payload['transfereeDetails']) && is_array($payload['transfereeDetails'])) {
+    $isTransferee = true;
+}
+
+if (count($subjects) === 0 && !$isTransferee) {
     respond(400, [
         'status' => 'error',
         'message' => 'Select at least one subject before submitting the enrollment form.',
@@ -156,6 +162,7 @@ function default_credentials(): array
         'grades' => false,
         'goodMoral' => false,
         'registrationForm' => false,
+        'transcript' => false,
     ];
 }
 
@@ -307,11 +314,28 @@ try {
         }
     }
 
+    $transfereeDetailsPayload = null;
+    if (isset($payload['transfereeDetails']) && is_array($payload['transfereeDetails'])) {
+        $td = $payload['transfereeDetails'];
+        $previousSchool = isset($td['previousSchool']) ? trim((string) $td['previousSchool']) : '';
+        $earnedUnits = isset($td['earnedUnits']) ? trim((string) $td['earnedUnits']) : '';
+        $notes = isset($td['notes']) ? trim((string) $td['notes']) : '';
+
+        if ($previousSchool !== '' || $earnedUnits !== '' || $notes !== '') {
+            $transfereeDetailsPayload = [
+                'previousSchool' => $previousSchool !== '' ? $previousSchool : null,
+                'earnedUnits' => $earnedUnits !== '' ? $earnedUnits : null,
+                'notes' => $notes !== '' ? $notes : null,
+            ];
+        }
+    }
+
     $applicationPayload = [
         'birthCertificate' => $credentials['birthCertificate'],
         'grades' => $credentials['grades'],
         'goodMoral' => $credentials['goodMoral'],
         'registrationForm' => $credentials['registrationForm'],
+        'transfereeDetails' => $transfereeDetailsPayload,
         '_application' => [
             'student' => [
                 'studentIdNumber' => $resolvedStudentIdNumber,
@@ -325,6 +349,7 @@ try {
             'specialization' => $normalizedSpecialization,
             'subjects' => $subjects,
             'formSnapshot' => $formSnapshot,
+            'transfereeDetails' => $transfereeDetailsPayload,
         ],
     ];
 

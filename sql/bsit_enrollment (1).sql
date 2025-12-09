@@ -318,6 +318,7 @@ CREATE TABLE `program_events` (
 CREATE TABLE `student_profiles` (
   `user_id` int(11) NOT NULL,
   `student_id_number` varchar(255) NOT NULL,
+  `first_name` varchar(255) DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `avatar_url` text DEFAULT NULL,
   `course` enum('BSIT','ACT') NOT NULL,
@@ -329,6 +330,7 @@ CREATE TABLE `student_profiles` (
   `sex` enum('Male','Female') DEFAULT NULL,
   `phone_number` varchar(255) DEFAULT NULL,
   `middle_name` varchar(255) DEFAULT NULL,
+  `last_name` varchar(255) DEFAULT NULL,
   `birthdate` date DEFAULT NULL,
   `current_address` text DEFAULT NULL,
   `permanent_address` text DEFAULT NULL,
@@ -366,10 +368,10 @@ CREATE TABLE `student_profiles` (
 -- Dumping data for table `student_profiles`
 --
 
-INSERT INTO `student_profiles` (`user_id`, `student_id_number`, `name`, `avatar_url`, `course`, `year_level`, `enrollment_status`, `block_id`, `specialization`, `sex`, `phone_number`, `middle_name`, `birthdate`, `current_address`, `permanent_address`, `nationality`, `religion`, `dialect`, `civil_status`, `status`, `enrollment_track`, `fathers_name`, `fathers_occupation`, `mothers_name`, `mothers_occupation`, `guardians_name`, `guardians_occupation`, `guardians_address`, `living_with_family`, `boarding`, `differently_abled`, `disability`, `minority_group`, `minority`, `elementary_school`, `elem_year_graduated`, `secondary_school`, `secondary_year_graduated`, `collegiate_school`, `collegiate_year_graduated`, `emergency_contact_name`, `emergency_contact_address`, `emergency_contact_number`) VALUES
-(3, '24-00-0002', 'Bob Williams', NULL, 'BSIT', 3, 'Enrolled', 2, 'DD', 'Male', '09123456780', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Old', 'Irregular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(13, '25-00-0001', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', 'Regular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(14, '25-00-0002', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', 'Regular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `student_profiles` (`user_id`, `student_id_number`, `first_name`, `name`, `avatar_url`, `course`, `year_level`, `enrollment_status`, `block_id`, `specialization`, `sex`, `phone_number`, `middle_name`, `last_name`, `birthdate`, `current_address`, `permanent_address`, `nationality`, `religion`, `dialect`, `civil_status`, `status`, `enrollment_track`, `fathers_name`, `fathers_occupation`, `mothers_name`, `mothers_occupation`, `guardians_name`, `guardians_occupation`, `guardians_address`, `living_with_family`, `boarding`, `differently_abled`, `disability`, `minority_group`, `minority`, `elementary_school`, `elem_year_graduated`, `secondary_school`, `secondary_year_graduated`, `collegiate_school`, `collegiate_year_graduated`, `emergency_contact_name`, `emergency_contact_address`, `emergency_contact_number`) VALUES
+(3, '24-00-0002', 'Bob', 'Bob Williams', NULL, 'BSIT', 3, 'Enrolled', 2, 'DD', 'Male', '09123456780', NULL, 'Williams', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Old', 'Irregular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(13, '25-00-0001', 'Daren', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, 'De Lumen', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', 'Regular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(14, '25-00-0002', 'Daren', 'Daren De Lumen', NULL, 'BSIT', 1, 'Not Enrolled', NULL, NULL, NULL, NULL, NULL, 'De Lumen', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'New', 'Regular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 

@@ -70,7 +70,104 @@ if (!is_array($payload)) {
     exit;
 }
 
-$fullName = trim((string) ($payload['fullName'] ?? ''));
+function normalize_name_part($value): string {
+    if (!is_string($value) && !is_numeric($value)) {
+        return '';
+    }
+    $trimmed = trim((string) $value);
+    if ($trimmed === '') {
+        return '';
+    }
+    $normalized = preg_replace('/\s+/u', ' ', $trimmed);
+    return is_string($normalized) ? trim($normalized) : $trimmed;
+}
+
+function parse_full_name_components(string $fullName): array {
+    $parts = preg_split('/\s+/', trim($fullName), -1, PREG_SPLIT_NO_EMPTY);
+    if (!is_array($parts) || count($parts) === 0) {
+        return ['', '', ''];
+    }
+
+    $first = array_shift($parts) ?? '';
+    $last = '';
+    if (count($parts) > 0) {
+        $last = array_pop($parts) ?? '';
+    }
+    $middle = count($parts) > 0 ? implode(' ', $parts) : '';
+
+    return [
+        normalize_name_part($first),
+        normalize_name_part($middle),
+        normalize_name_part($last),
+    ];
+}
+
+function compose_full_name(string $firstName, string $middleName, string $lastName): string {
+    $segments = [];
+    foreach ([$firstName, $middleName, $lastName] as $segment) {
+        $normalized = normalize_name_part($segment);
+        if ($normalized === '') {
+            continue;
+        }
+        $duplicate = false;
+        foreach ($segments as $existing) {
+            if (strcasecmp($existing, $normalized) === 0) {
+                $duplicate = true;
+                break;
+            }
+        }
+        if (!$duplicate) {
+            $segments[] = $normalized;
+        }
+    }
+
+    return implode(' ', $segments);
+}
+
+function normalize_for_comparison(string $value): string {
+    $collapsed = preg_replace('/\s+/u', ' ', trim($value));
+    if (!is_string($collapsed) || $collapsed === '') {
+        $collapsed = trim($value);
+    }
+
+    return mb_strtolower($collapsed, 'UTF-8');
+}
+
+function ensure_student_profile_name_columns(mysqli $conn): void {
+    static $ensured = false;
+
+    if ($ensured) {
+        return;
+    }
+
+    $definitions = [
+        'first_name' => 'ADD COLUMN first_name varchar(255) DEFAULT NULL AFTER student_id_number',
+        'last_name' => 'ADD COLUMN last_name varchar(255) DEFAULT NULL AFTER middle_name',
+    ];
+
+    foreach ($definitions as $column => $definition) {
+        $safeColumn = $conn->real_escape_string($column);
+        $columnResult = $conn->query("SHOW COLUMNS FROM student_profiles LIKE '{$safeColumn}'");
+        if (!$columnResult) {
+            throw new Exception('Failed to inspect student_profiles columns: ' . $conn->error);
+        }
+        $exists = $columnResult->num_rows > 0;
+        $columnResult->free();
+
+        if (!$exists) {
+            if (!$conn->query("ALTER TABLE student_profiles {$definition}")) {
+                throw new Exception('Failed to update student_profiles schema: ' . $conn->error);
+            }
+        }
+    }
+
+    $ensured = true;
+}
+
+$firstName = normalize_name_part($payload['firstName'] ?? '');
+$middleName = normalize_name_part($payload['middleName'] ?? '');
+$lastName = normalize_name_part($payload['lastName'] ?? '');
+$fullNameInput = trim((string) ($payload['fullName'] ?? ''));
 $email = trim((string) ($payload['email'] ?? ''));
 $password = (string) ($payload['password'] ?? '');
 $confirmPassword = (string) ($payload['confirmPassword'] ?? '');
@@ -93,17 +190,38 @@ $isReturningStudent = false;
 $returningUserId = null;
 $lookupProfile = null;
 
-if ($fullName === '') {
+if (($firstName === '' || $lastName === '') && $fullNameInput !== '') {
+    [$parsedFirst, $parsedMiddle, $parsedLast] = parse_full_name_components($fullNameInput);
+    if ($firstName === '') {
+        $firstName = $parsedFirst;
+    }
+    if ($middleName === '' && $parsedMiddle !== '') {
+        $middleName = $parsedMiddle;
+    }
+    if ($lastName === '') {
+        $lastName = $parsedLast;
+    }
+}
+
+if ($firstName === '' || $lastName === '') {
     http_response_code(400);
     echo json_encode([
         'status' => 'error',
-        'message' => 'Full name is required.',
+        'message' => 'First name and last name are required.',
     ]);
     if (isset($conn) && $conn instanceof mysqli) {
         $conn->close();
     }
     exit;
 }
+
+$fullName = compose_full_name($firstName, $middleName, $lastName);
+$firstNameKey = normalize_for_comparison($firstName);
+$lastNameKey = normalize_for_comparison($lastName);
+$fullNameKey = normalize_for_comparison($fullName);
+$firstNameCompactKey = str_replace(' ', '', $firstNameKey);
+$lastNameCompactKey = str_replace(' ', '', $lastNameKey);
+$fullNameCompactKey = str_replace(' ', '', $fullNameKey);
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     http_response_code(400);
@@ -144,6 +262,7 @@ if ($password !== $confirmPassword) {
 try {
     $transactionStarted = false;
     $conn->set_charset('utf8mb4');
+    ensure_student_profile_name_columns($conn);
 
     if ($normalizedStudentId !== '') {
         $lookupSql = 'SELECT user_id, student_id_number, name, course, year_level, status FROM student_profiles WHERE student_id_number = ? LIMIT 1';
@@ -170,6 +289,33 @@ try {
             $profileStatus = $foundStatus !== null && $foundStatus !== '' ? $foundStatus : 'Old';
         }
         $lookupStmt->close();
+    }
+
+    if (!$isReturningStudent) {
+        $nameCheckSql = 'SELECT sp.student_id_number FROM student_profiles sp WHERE ((sp.first_name IS NOT NULL AND sp.last_name IS NOT NULL AND REPLACE(LOWER(sp.first_name), " ", "") = ? AND REPLACE(LOWER(sp.last_name), " ", "") = ?) OR REPLACE(LOWER(sp.name), " ", "") = ?) LIMIT 1';
+        $nameCheckStmt = $conn->prepare($nameCheckSql);
+        if (!$nameCheckStmt) {
+            throw new Exception('Failed to prepare duplicate name check: ' . $conn->error);
+        }
+        $nameCheckStmt->bind_param('sss', $firstNameCompactKey, $lastNameCompactKey, $fullNameCompactKey);
+        $nameCheckStmt->execute();
+        $nameCheckStmt->bind_result($existingStudentIdForName);
+        if ($nameCheckStmt->fetch()) {
+            $nameCheckStmt->close();
+            http_response_code(409);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'A student with the same name already exists. If this is you, use the returning student option with your Student ID.',
+                'data' => [
+                    'studentIdNumber' => $existingStudentIdForName,
+                ],
+            ]);
+            if ($conn instanceof mysqli) {
+                $conn->close();
+            }
+            exit;
+        }
+        $nameCheckStmt->close();
     }
 
     $emailExistsSql = 'SELECT id FROM users WHERE email = ? LIMIT 1';
@@ -220,12 +366,12 @@ try {
         $studentIdNumber = $lookupProfile['student_id_number'];
         $profileStatus = $profileStatus ?: 'Old';
 
-        $updateProfileSql = 'UPDATE student_profiles SET name = ?, status = ?, course = ?, year_level = ?, phone_number = NULLIF(?, "") WHERE user_id = ?';
+        $updateProfileSql = 'UPDATE student_profiles SET first_name = ?, middle_name = NULLIF(?, ""), last_name = ?, name = ?, status = ?, course = ?, year_level = ?, phone_number = NULLIF(?, "") WHERE user_id = ?';
         $updateProfileStmt = $conn->prepare($updateProfileSql);
         if (!$updateProfileStmt) {
             throw new Exception('Failed to prepare profile update statement: ' . $conn->error);
         }
-        $updateProfileStmt->bind_param('sssisi', $fullName, $profileStatus, $course, $yearLevel, $phoneNumber, $returningUserId);
+        $updateProfileStmt->bind_param('ssssssisi', $firstName, $middleName, $lastName, $fullName, $profileStatus, $course, $yearLevel, $phoneNumber, $returningUserId);
         if (!$updateProfileStmt->execute()) {
             throw new Exception('Failed to update student profile: ' . $updateProfileStmt->error);
         }
@@ -267,16 +413,19 @@ try {
         $profileStatus = 'New';
 
         $insertProfileSql = 'INSERT INTO student_profiles (
-            user_id, student_id_number, name, course, year_level, enrollment_status, status, phone_number
-        ) VALUES (?, ?, ?, ?, ?, "Not Enrolled", ?, NULLIF(?, ""))';
+            user_id, student_id_number, first_name, middle_name, last_name, name, course, year_level, enrollment_status, status, phone_number
+        ) VALUES (?, ?, ?, NULLIF(?, ""), ?, ?, ?, ?, "Not Enrolled", ?, NULLIF(?, ""))';
         $profileStmt = $conn->prepare($insertProfileSql);
         if (!$profileStmt) {
             throw new Exception('Failed to prepare student profile insert statement: ' . $conn->error);
         }
         $profileStmt->bind_param(
-            'isssiss',
+            'issssssiss',
             $userId,
             $studentIdNumber,
+            $firstName,
+            $middleName,
+            $lastName,
             $fullName,
             $course,
             $yearLevel,
@@ -301,6 +450,9 @@ try {
             'userId' => $userId,
             'studentIdNumber' => $studentIdNumber,
             'email' => $email,
+            'firstName' => $firstName,
+            'middleName' => $middleName,
+            'lastName' => $lastName,
             'name' => $fullName,
             'status' => $profileStatus,
             'course' => $course,

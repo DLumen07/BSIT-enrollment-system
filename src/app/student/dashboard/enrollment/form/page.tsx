@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,6 +19,7 @@ import { useAdmin } from '@/app/admin/context/admin-context';
 import { useRouter } from 'next/navigation';
 import { isStudentProfileComplete } from '@/app/student/utils/profile-completeness';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 
 
 type SelectableSubjectOption = {
@@ -45,8 +46,11 @@ const baseAcademicSchema = z.object({
     yearLevel: z.string().min(1, 'Year level is required'),
     status: z.enum(['New', 'Old', 'Transferee']),
     block: z.string({required_error: 'Please select a block.'}).min(1, 'Please select a block.'),
-    subjects: z.array(z.string()).min(1, "Please select at least one subject."),
+    subjects: z.array(z.string()).default([]),
     specialization: z.string().optional(),
+    transfereeSchool: z.string().optional(),
+    transfereeUnits: z.string().optional(),
+    transfereeNotes: z.string().optional(),
 });
 
 const applySpecializationRule = <T extends z.ZodTypeAny>(schema: T) =>
@@ -60,17 +64,41 @@ const applySpecializationRule = <T extends z.ZodTypeAny>(schema: T) =>
         }
     });
 
-const academicSchema = applySpecializationRule(baseAcademicSchema);
+const academicSchema = applySpecializationRule(baseAcademicSchema).superRefine((data, ctx) => {
+    if (data.status === 'Transferee' && (!data.transfereeSchool || data.transfereeSchool.trim() === '')) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Please provide your previous school so the registrar can credit your subjects.',
+            path: ['transfereeSchool'],
+        });
+    }
+
+    if (data.status !== 'Transferee' && (!Array.isArray(data.subjects) || data.subjects.length === 0)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Please select at least one subject.',
+            path: ['subjects'],
+        });
+    }
+});
 
 type EnrollmentSchemaType = z.infer<typeof academicSchema>;
 
-function AcademicSelectionSection() {
+type AcademicSelectionProps = {
+    transcriptFile: File | null;
+    setTranscriptFile: (file: File | null) => void;
+    isSubmitting: boolean;
+    isUploadingTranscript: boolean;
+};
+
+function AcademicSelectionSection({ transcriptFile, setTranscriptFile, isSubmitting, isUploadingTranscript }: AcademicSelectionProps) {
     const { adminData } = useAdmin();
     const { studentData } = useStudent();
     const form = useFormContext();
     const selectedYear = form.watch('yearLevel');
     const selectedCourse = form.watch('course');
     const selectedSpecialization = form.watch('specialization');
+    const selectedStatus = form.watch('status');
     const isUpperYear = selectedYear === '3rd Year' || selectedYear === '4th Year';
     const isFourthYear = selectedYear === '4th Year';
 
@@ -231,7 +259,7 @@ function AcademicSelectionSection() {
                             <Calendar className="h-4 w-4" />
                             <span className="text-xs font-medium uppercase tracking-wider">Status</span>
                         </div>
-                        <div className="font-bold text-lg pl-6">{form.getValues('status')}</div>
+                        <div className="font-bold text-lg pl-6">{selectedStatus}</div>
                         <input type="hidden" {...form.register('status')} />
                     </div>
 
@@ -258,6 +286,104 @@ function AcademicSelectionSection() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                        name="status"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Enrollment Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl">
+                                            <SelectValue placeholder="Select your status" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="New">New</SelectItem>
+                                        <SelectItem value="Old">Continuing</SelectItem>
+                                        <SelectItem value="Transferee">Transferee</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    Transferees: pick <span className="font-semibold">Transferee</span> and tell us your previous school so the registrar can credit your completed subjects.
+                                </p>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {selectedStatus === 'Transferee' && (
+                        <div className="md:col-span-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                                    <ShieldCheck className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold">Transferee details</h4>
+                                    <p className="text-sm text-muted-foreground">Share your last school and units earned so the registrar can override prerequisites where applicable.</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <FormField
+                                    name="transfereeSchool"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Previous School</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., ABC College" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    name="transfereeUnits"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Units Earned (optional)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., 48" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    name="transfereeNotes"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Notes (optional)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Prereqs completed, majors taken, etc." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Transcript of Records (PDF or image)</Label>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                    <Input
+                                        type="file"
+                                        accept=".pdf,image/*"
+                                        disabled={isSubmitting || isUploadingTranscript}
+                                        onChange={(event) => {
+                                            const file = event.target.files?.[0];
+                                            setTranscriptFile(file ?? null);
+                                        }}
+                                    />
+                                    {transcriptFile && (
+                                        <Badge variant="secondary" className="max-w-full truncate px-3 py-2">
+                                            {transcriptFile.name}
+                                        </Badge>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">Required for transferees. Upload a clear copy so the registrar can credit your earned subjects.</p>
+                            </div>
+                        </div>
+                    )}
+
                     <FormField name="block" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Block Section</FormLabel>
@@ -317,6 +443,8 @@ function AcademicSelectionSection() {
                             {form.watch('subjects')?.length ?? 0} Selected
                         </Badge>
                     </div>
+            {selectedStatus !== 'Transferee' && (
+                <>
 
                     <FormField
                         control={form.control}
@@ -398,6 +526,8 @@ function AcademicSelectionSection() {
                             </FormItem>
                         )}
                     />
+                </>
+            )}
                 </div>
             )}
         </div>
@@ -410,6 +540,10 @@ export default function EnrollmentFormPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
+    const [isUploadingTranscript, setIsUploadingTranscript] = useState(false);
+    const hasAppliedInitialDefaults = useRef(false);
+    const lastStudentIdRef = useRef<string | null>(null);
     const profileComplete = studentData ? isStudentProfileComplete(studentData) : false;
 
     const API_BASE_URL = useMemo(() => {
@@ -421,6 +555,39 @@ export default function EnrollmentFormPage() {
     const buildApiUrl = useCallback((endpoint: string) => {
         return `${API_BASE_URL}/${endpoint.replace(/^\/+/, '')}`;
     }, [API_BASE_URL]);
+
+    const uploadTranscript = useCallback(async () => {
+        if (!studentData?.contact?.email) {
+            throw new Error('Student email is required to upload documents.');
+        }
+        if (!transcriptFile) {
+            throw new Error('Please upload your transcript of records before submitting.');
+        }
+
+        setIsUploadingTranscript(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('document', transcriptFile);
+            formData.append('email', studentData.contact.email);
+            formData.append('document_name', 'Transcript of Records');
+
+            const response = await fetch(buildApiUrl('upload_student_document.php'), {
+                method: 'POST',
+                credentials: 'include',
+                body: formData,
+            });
+
+            const payload = await response.json();
+            if (!response.ok || payload?.status !== 'success') {
+                throw new Error(payload?.message ?? 'Failed to upload transcript of records.');
+            }
+
+            return payload?.data?.document ?? null;
+        } finally {
+            setIsUploadingTranscript(false);
+        }
+    }, [buildApiUrl, studentData?.contact?.email, transcriptFile]);
 
     useEffect(() => {
         if (studentData && !profileComplete) {
@@ -463,27 +630,60 @@ export default function EnrollmentFormPage() {
                 specialization: studentData.academic.specialization || '',
                 subjects: [],
                 block: '',
+                transfereeSchool: '',
+                transfereeUnits: '',
+                transfereeNotes: '',
             } satisfies EnrollmentSchemaType;
         }, [studentData])
     });
     
     useEffect(() => {
-        if (studentData) {
-            const yearNumber = parseInt(studentData.academic.yearLevel, 10);
-            const normalizedCourse = deriveCourseForYearLevel(
-                studentData.academic.yearLevel,
-                studentData.academic.course,
-            );
-            methods.reset({
-                status: yearNumber > 1 ? 'Old' : 'New',
-                yearLevel: studentData.academic.yearLevel,
-                course: normalizedCourse,
-                specialization: studentData.academic.specialization || '',
-                subjects: methods.getValues('subjects') ?? [],
-                block: methods.getValues('block') ?? '',
-            });
+        if (!studentData) {
+            return;
         }
+
+        const studentIdNumber = studentData.academic.studentId;
+        const hasDifferentStudent = lastStudentIdRef.current !== studentIdNumber;
+
+        if (hasAppliedInitialDefaults.current && !hasDifferentStudent) {
+            return;
+        }
+
+        const yearNumber = parseInt(studentData.academic.yearLevel, 10);
+        const normalizedCourse = deriveCourseForYearLevel(
+            studentData.academic.yearLevel,
+            studentData.academic.course,
+        );
+
+        methods.reset({
+            status: yearNumber > 1 ? 'Old' : 'New',
+            yearLevel: studentData.academic.yearLevel,
+            course: normalizedCourse,
+            specialization: studentData.academic.specialization || '',
+            subjects: methods.getValues('subjects') ?? [],
+            block: methods.getValues('block') ?? '',
+            transfereeSchool: methods.getValues('transfereeSchool') ?? '',
+            transfereeUnits: methods.getValues('transfereeUnits') ?? '',
+            transfereeNotes: methods.getValues('transfereeNotes') ?? '',
+        });
+
+        hasAppliedInitialDefaults.current = true;
+        lastStudentIdRef.current = studentIdNumber;
     }, [studentData, methods]);
+
+    const selectedStatus = methods.watch('status');
+
+    useEffect(() => {
+        if (selectedStatus !== 'Transferee' && transcriptFile) {
+            setTranscriptFile(null);
+        }
+    }, [selectedStatus, transcriptFile]);
+
+    useEffect(() => {
+        if (selectedStatus === 'Transferee') {
+            methods.setValue('subjects', [], { shouldDirty: true });
+        }
+    }, [selectedStatus, methods]);
 
     const buildFormSnapshot = (values: EnrollmentSchemaType) => {
         if (!studentData) {
@@ -504,6 +704,13 @@ export default function EnrollmentFormPage() {
                 block: values.block,
                 specialization: values.specialization || studentData.academic.specialization || null,
                 subjects: values.subjects,
+                transfereeDetails: values.status === 'Transferee'
+                    ? {
+                        previousSchool: values.transfereeSchool?.trim() || null,
+                        earnedUnits: values.transfereeUnits?.trim() || null,
+                        notes: values.transfereeNotes?.trim() || null,
+                    }
+                    : null,
             },
         };
     };
@@ -515,6 +722,7 @@ export default function EnrollmentFormPage() {
             grades: true,
             goodMoral: !isOldStudent,
             registrationForm: true,
+            transcript: values.status === 'Transferee',
         };
     };
 
@@ -526,6 +734,15 @@ export default function EnrollmentFormPage() {
         setIsSubmitting(true);
 
         try {
+            let uploadedTranscript: any = null;
+            if (data.status === 'Transferee') {
+                if (!transcriptFile) {
+                    throw new Error('Please upload your transcript of records before submitting.');
+                }
+
+                uploadedTranscript = await uploadTranscript();
+            }
+
             const formSnapshot = buildFormSnapshot(data);
             const specializationValue = (() => {
                 const trimmed = data.specialization?.trim();
@@ -548,6 +765,14 @@ export default function EnrollmentFormPage() {
                 subjects: data.subjects,
                 credentials: buildCredentialSnapshot(data),
                 formSnapshot,
+                transfereeDetails: data.status === 'Transferee'
+                    ? {
+                        previousSchool: data.transfereeSchool?.trim() || null,
+                        earnedUnits: data.transfereeUnits?.trim() || null,
+                        notes: data.transfereeNotes?.trim() || null,
+                    }
+                    : null,
+                transcriptDocument: uploadedTranscript,
             };
 
             const response = await fetch(buildApiUrl('submit_enrollment.php'), {
@@ -589,6 +814,9 @@ export default function EnrollmentFormPage() {
                 ? `/student/dashboard/enrollment?email=${encodeURIComponent(studentData.contact.email)}`
                 : '/student/dashboard/enrollment';
             router.replace(enrollmentOverviewUrl);
+            if (data.status === 'Transferee') {
+                setTranscriptFile(null);
+            }
         } catch (error) {
             const message = error instanceof Error
                 ? error.message
@@ -626,7 +854,12 @@ export default function EnrollmentFormPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="pt-6">
-                            <AcademicSelectionSection />
+                            <AcademicSelectionSection
+                                transcriptFile={transcriptFile}
+                                setTranscriptFile={setTranscriptFile}
+                                isSubmitting={isSubmitting}
+                                isUploadingTranscript={isUploadingTranscript}
+                            />
                         </CardContent>
                         <CardFooter className="border-t bg-muted/10 py-6">
                            <div className="flex justify-end w-full">

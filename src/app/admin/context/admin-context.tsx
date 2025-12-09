@@ -142,6 +142,7 @@ export type ApplicationCredentials = {
     grades: boolean;
     goodMoral: boolean;
     registrationForm: boolean;
+    transcript?: boolean;
 };
 
 export type EnrollmentApplicationSnapshot = Record<string, unknown> | null;
@@ -170,6 +171,11 @@ export type Application = {
     enrollmentTrack: 'Regular' | 'Irregular';
     block?: string | null;
     credentials: ApplicationCredentials;
+    transfereeDetails?: {
+        previousSchool: string | null;
+        earnedUnits: string | null;
+        notes: string | null;
+    } | null;
     rejectionReason?: string | null;
     submittedAt?: string | null;
     formSnapshot?: EnrollmentApplicationSnapshot;
@@ -177,9 +183,9 @@ export type Application = {
 };
 
 const initialPendingApplications: Application[] = [
-    { id: 1, studentId: '24-00-0001', studentUserId: 1001, name: 'John Doe', course: 'BSIT', year: 3, status: 'Old', statusDisplay: 'Old', enrollmentTrack: 'Regular', block: 'BSIT 3-A', credentials: { birthCertificate: true, grades: true, goodMoral: false, registrationForm: true }, submittedAt: '2024-07-31T10:00:00Z', documents: [] },
-    { id: 2, studentId: '24-00-0002', studentUserId: 1002, name: 'Jane Smith', course: 'ACT', year: 1, status: 'New', statusDisplay: 'New', enrollmentTrack: 'Regular', block: 'ACT 1-A', credentials: { birthCertificate: true, grades: false, goodMoral: true, registrationForm: false }, submittedAt: '2024-07-31T11:15:00Z', documents: [] },
-    { id: 3, studentId: '24-00-0003', studentUserId: 1003, name: 'Peter Jones', course: 'BSIT', year: 3, status: 'Transferee', statusDisplay: 'Transferee', enrollmentTrack: 'Regular', block: 'BSIT 3-B', credentials: { birthCertificate: true, grades: true, goodMoral: true, registrationForm: true }, submittedAt: '2024-07-31T13:30:00Z', documents: [] },
+    { id: 1, studentId: '24-00-0001', studentUserId: 1001, name: 'John Doe', course: 'BSIT', year: 3, status: 'Old', statusDisplay: 'Old', enrollmentTrack: 'Regular', block: 'BSIT 3-A', credentials: { birthCertificate: true, grades: true, goodMoral: false, registrationForm: true, transcript: false }, submittedAt: '2024-07-31T10:00:00Z', documents: [] },
+    { id: 2, studentId: '24-00-0002', studentUserId: 1002, name: 'Jane Smith', course: 'ACT', year: 1, status: 'New', statusDisplay: 'New', enrollmentTrack: 'Regular', block: 'ACT 1-A', credentials: { birthCertificate: true, grades: false, goodMoral: true, registrationForm: false, transcript: false }, submittedAt: '2024-07-31T11:15:00Z', documents: [] },
+    { id: 3, studentId: '24-00-0003', studentUserId: 1003, name: 'Peter Jones', course: 'BSIT', year: 3, status: 'Transferee', statusDisplay: 'Transferee', enrollmentTrack: 'Regular', block: 'BSIT 3-B', credentials: { birthCertificate: true, grades: true, goodMoral: true, registrationForm: true, transcript: true }, submittedAt: '2024-07-31T13:30:00Z', documents: [] },
 ];
 
 const initialApprovedApplications: Application[] = [
@@ -932,6 +938,10 @@ const normalizeApplications = (entries?: BackendApplicationRecord[]): Applicatio
         return [];
     }
 
+    const toRecord = (value: unknown): Record<string, unknown> | null => (
+        value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+    );
+
     const toBoolean = (value: unknown, fallback = false): boolean => {
         if (typeof value === 'boolean') {
             return value;
@@ -995,6 +1005,42 @@ const normalizeApplications = (entries?: BackendApplicationRecord[]): Applicatio
             ? entry.block.trim()
             : null;
 
+        const resolveTransfereeDetails = (): Application['transfereeDetails'] => {
+            const fromDirect = toRecord(entry.transfereeDetails ?? null);
+            const fromFormSnapshot = (() => {
+                const root = toRecord(entry.formSnapshot ?? null);
+                if (!root) return null;
+                const nestedForm = toRecord(root['formSnapshot'] ?? null);
+                const academic = toRecord(nestedForm?.academic ?? root['academic'] ?? null);
+                return toRecord(academic?.transfereeDetails ?? root['transfereeDetails'] ?? null);
+            })();
+
+            const source = fromDirect ?? fromFormSnapshot;
+            if (!source) {
+                return null;
+            }
+
+            const normalizeString = (value: unknown): string | null => {
+                if (typeof value !== 'string') return null;
+                const trimmed = value.trim();
+                return trimmed === '' ? null : trimmed;
+            };
+
+            const previousSchool = normalizeString(source.previousSchool);
+            const earnedUnits = normalizeString(source.earnedUnits);
+            const notes = normalizeString(source.notes);
+
+            if (!previousSchool && !earnedUnits && !notes) {
+                return null;
+            }
+
+            return {
+                previousSchool: previousSchool ?? null,
+                earnedUnits: earnedUnits ?? null,
+                notes: notes ?? null,
+            };
+        };
+
         const documents = documentsRaw
             .filter((doc): doc is Partial<ApplicationDocument> => !!doc && typeof doc === 'object')
             .map((doc) => {
@@ -1030,7 +1076,9 @@ const normalizeApplications = (entries?: BackendApplicationRecord[]): Applicatio
                 grades: toBoolean(credentialsRaw.grades, false),
                 goodMoral: toBoolean(credentialsRaw.goodMoral, false),
                 registrationForm: toBoolean(credentialsRaw.registrationForm, false),
+                transcript: toBoolean((credentialsRaw as Record<string, unknown>).transcript, false),
             },
+            transfereeDetails: resolveTransfereeDetails(),
             rejectionReason: typeof entry.rejectionReason === 'string' && entry.rejectionReason !== ''
                 ? entry.rejectionReason
                 : null,

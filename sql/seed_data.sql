@@ -64,13 +64,16 @@ ON DUPLICATE KEY UPDATE
 
 -- Student profiles
 INSERT INTO student_profiles (
-  user_id, student_id_number, name, course, year_level, enrollment_status,
+  user_id, student_id_number, first_name, middle_name, last_name, name, course, year_level, enrollment_status,
   block_id, specialization, sex, phone_number, status, enrollment_track
 ) VALUES
-  (2, '24-00-0001', 'Alice Johnson', 'BSIT', 3, 'Enrolled', 1, 'AP', 'Female', '09123456789', 'Old', 'Regular'),
-  (3, '24-00-0002', 'Bob Williams', 'BSIT', 3, 'Not Enrolled', 2, 'DD', 'Male', '09123456780', 'Old', 'Irregular'),
-  (4, '24-00-0003', 'Charlie Brown', 'ACT', 1, 'Enrolled', 3, NULL, 'Male', '09123456781', 'New', 'Regular')
+  (2, '24-00-0001', 'Alice', NULL, 'Johnson', 'Alice Johnson', 'BSIT', 3, 'Enrolled', 1, 'AP', 'Female', '09123456789', 'Old', 'Regular'),
+  (3, '24-00-0002', 'Bob', NULL, 'Williams', 'Bob Williams', 'BSIT', 3, 'Not Enrolled', 2, 'DD', 'Male', '09123456780', 'Old', 'Irregular'),
+  (4, '24-00-0003', 'Charlie', NULL, 'Brown', 'Charlie Brown', 'ACT', 1, 'Enrolled', 3, NULL, 'Male', '09123456781', 'New', 'Regular')
 ON DUPLICATE KEY UPDATE
+  first_name = VALUES(first_name),
+  middle_name = VALUES(middle_name),
+  last_name = VALUES(last_name),
   name = VALUES(name),
   course = VALUES(course),
   year_level = VALUES(year_level),

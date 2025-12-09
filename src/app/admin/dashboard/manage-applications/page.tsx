@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { MoreHorizontal, CheckCircle2, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle, BadgeCheck, FileText, Download, Clock, BookOpen, User, Calendar, MapPin, Users, GraduationCap, Phone, Mail } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, CheckCircle, XCircle, Pencil, X, RotateCw, Trash2, Search, FilterX, Filter, PlusCircle, UserPlus, AlertTriangle, AlertCircle, BadgeCheck, FileText, FileSignature, Download, Clock, BookOpen, ClipboardList, User, Calendar, MapPin, Users, GraduationCap, Phone, Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,8 +44,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Student, Subject } from '../../context/admin-context';
+import type { Student, Subject, SemesterValue } from '../../context/admin-context';
 import { cn } from '@/lib/utils';
+import { notifyDataChanged } from '@/lib/live-sync';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UNIFAST_FEE_ITEMS, UNIFAST_FEE_TOTALS, formatCurrency } from '@/lib/unifast-fees';
 
@@ -71,6 +72,7 @@ const credentialLabels: CredentialRequirement[] = [
     { key: 'birthCertificate', label: 'Birth Certificate', requiredFor: ['New', 'Transferee'], keywords: ['birth certificate'] },
     { key: 'grades', label: 'Form 138 / Report Card', requiredFor: ['New', 'Transferee'], keywords: ['form 138', 'report card'] },
     { key: 'goodMoral', label: 'Good Moral Certificate', requiredFor: ['New', 'Transferee'], keywords: ['good moral'] },
+    { key: 'transcript', label: 'Transcript of Records', requiredFor: ['Transferee'], keywords: ['transcript', 'tor'] },
     { key: 'registrationForm', label: 'Finished Registration Form', requiredFor: ['New', 'Old', 'Transferee'], keywords: ['registration form'] },
 ];
 
@@ -150,6 +152,16 @@ const credentialStatusMeta: Record<CredentialStatus, { label: string; icon: type
 
 const defaultCredentialStatus: CredentialStatusInfo = { status: 'missing', document: null };
 
+const resolveDocumentUrl = (doc: ApplicationDocument | null | undefined, apiBaseUrl: string): string | null => {
+    if (!doc) return null;
+    const raw = doc.filePath || doc.fileName;
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw)) {
+        return raw;
+    }
+    return `${apiBaseUrl}/${String(raw).replace(/^\//, '')}`;
+};
+
 const formatDocumentDate = (value: string | null | undefined): string => {
     if (!value) {
         return '—';
@@ -177,6 +189,99 @@ const formatDocumentSize = (bytes: number | null | undefined): string => {
     }
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
+
+const formatSpecializationLabel = (spec: string | null | undefined): string | null => {
+    if (!spec) {
+        return null;
+    }
+    if (spec === 'AP') {
+        return 'Application Programming (AP)';
+    }
+    if (spec === 'DD') {
+        return 'Digital Design (DD)';
+    }
+    return spec;
+};
+
+const numericYearToKey = (year: number | null | undefined): '1st-year' | '2nd-year' | '3rd-year' | '4th-year' | null => {
+    if (!year) {
+        return '1st-year';
+    }
+    if (year === 1) return '1st-year';
+    if (year === 2) return '2nd-year';
+    if (year === 3) return '3rd-year';
+    if (year === 4) return '4th-year';
+    return null;
+};
+
+const formatYearLevelLabel = (year: number | null | undefined): string => {
+    if (!year || Number.isNaN(year)) {
+        return '1st Year';
+    }
+    if (year === 1) return '1st Year';
+    if (year === 2) return '2nd Year';
+    if (year === 3) return '3rd Year';
+    if (year === 4) return '4th Year';
+    return `${year} Year`;
+};
+
+const deriveStudentEnrollmentStatus = (student: Student | null): Application['status'] => {
+    if (!student) {
+        return 'New';
+    }
+
+    if (student.profileStatus === 'Transferee') {
+        return 'Transferee';
+    }
+
+    if (student.profileStatus === 'Old') {
+        return 'Old';
+    }
+
+    if (student.profileStatus === 'New') {
+        return 'New';
+    }
+
+    return student.year > 1 ? 'Old' : 'New';
+};
+
+const buildCredentialSnapshotForStatus = (status: Application['status']) => ({
+    birthCertificate: status !== 'Old',
+    grades: true,
+    goodMoral: status !== 'Old',
+    registrationForm: true,
+    transcript: status === 'Transferee',
+});
+
+const buildDirectEnrollmentFormSnapshot = (
+    student: Student,
+    blockName: string,
+    status: Application['status'],
+    subjects: Subject[],
+    adminName: string | null,
+): Record<string, unknown> => ({
+    student: {
+        id: student.studentId,
+        name: student.name,
+        email: student.email,
+        phoneNumber: student.phoneNumber,
+        status: student.status,
+        profileStatus: student.profileStatus ?? null,
+    },
+    academic: {
+        course: student.course,
+        yearLevel: formatYearLevelLabel(student.year),
+        status,
+        block: blockName,
+        specialization: student.specialization ?? null,
+        subjects: subjects.map((subject) => subject.code),
+    },
+    registrarSubmission: {
+        submittedBy: adminName ?? 'Registrar Admin',
+        submittedAt: new Date().toISOString(),
+        via: 'Direct Enrollment',
+    },
+});
 
 const toRecord = (value: unknown): Record<string, unknown> | null => {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -352,9 +457,22 @@ export default function ManageApplicationsPage() {
         return completedSubjectsForFoundStudent.reduce((acc, subj) => acc + subj.units, 0);
     }, [completedSubjectsForFoundStudent]);
 
+    const requiresSpecializationForDirectEnroll = foundStudent ? foundStudent.year >= 3 : false;
+    const foundStudentSpecializationLabel = foundStudent ? formatSpecializationLabel(foundStudent.specialization ?? null) : null;
+
     const flattenedSubjectCatalog = useMemo(() => {
         return Object.values(yearLevelSubjects).flat();
     }, [yearLevelSubjects]);
+
+    const subjectCatalogByCode = useMemo(() => {
+        const map = new Map<string, Subject>();
+        flattenedSubjectCatalog.forEach((subject) => {
+            if (subject.code && !map.has(subject.code)) {
+                map.set(subject.code, subject);
+            }
+        });
+        return map;
+    }, [flattenedSubjectCatalog]);
 
     const resolveDocumentBadgeVariant = (status: Application['documents'][number]['status']) => {
         switch (status) {
@@ -397,8 +515,14 @@ export default function ManageApplicationsPage() {
             showRestrictedActionToast();
             return;
         }
+
         if (!foundStudent || !directEnrollBlock) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select a block.' });
+            return;
+        }
+
+        if (directEnlistedSubjects.length === 0) {
+            toast({ variant: 'destructive', title: 'Missing Subjects', description: 'Select at least one subject before submitting.' });
             return;
         }
 
@@ -407,46 +531,97 @@ export default function ManageApplicationsPage() {
             return;
         }
 
+        const enrollmentStatus = deriveStudentEnrollmentStatus(foundStudent);
+        const subjectCodes = directEnlistedSubjects.map((subject) => subject.code);
+        const formSnapshot = buildDirectEnrollmentFormSnapshot(
+            foundStudent,
+            directEnrollBlock,
+            enrollmentStatus,
+            directEnlistedSubjects,
+            adminData.currentUser?.name ?? null,
+        );
+
+        const payload = {
+            studentIdNumber: foundStudent.studentId,
+            studentEmail: foundStudent.email,
+            studentName: foundStudent.name,
+            blockName: directEnrollBlock,
+            course: foundStudent.course,
+            yearLevel: formatYearLevelLabel(foundStudent.year),
+            studentStatus: enrollmentStatus,
+            specialization: foundStudent.specialization ?? null,
+            subjects: subjectCodes,
+            credentials: buildCredentialSnapshotForStatus(enrollmentStatus),
+            formSnapshot,
+            transfereeDetails: enrollmentStatus === 'Transferee'
+                ? {
+                    previousSchool: null,
+                    earnedUnits: null,
+                    notes: 'Registrar-submitted direct enrollment.',
+                }
+                : null,
+        };
+
         setBusyAction(actionKey);
         try {
-            await callAdminApi('finalize_enrollment.php', {
-                mode: 'direct',
-                studentUserId: foundStudent.id,
-                blockName: directEnrollBlock,
-                subjectIds: directEnlistedSubjects.map(subject => subject.id),
-            });
+            await callAdminApi('submit_enrollment.php', payload);
 
             await refreshAdminData();
+            notifyDataChanged();
 
             toast({
-                title: 'Enrollment Successful',
-                description: `${foundStudent.name} has been directly enrolled in block ${directEnrollBlock}.`,
+                title: 'Enrollment Submitted',
+                description: `${foundStudent.name}'s enrollment request is now pending registrar review.`,
             });
 
             resetDirectEnroll();
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Direct enrollment failed. Please try again.';
-            toast({ variant: 'destructive', title: 'Enrollment Failed', description: message });
+            const message = error instanceof Error ? error.message : 'Direct enrollment submission failed. Please try again.';
+            toast({ variant: 'destructive', title: 'Submission Failed', description: message });
         } finally {
             setBusyAction(null);
         }
     };
 
-     const availableBlocksForDirectEnroll = useMemo(() => {
+    const availableBlocksForDirectEnroll = useMemo(() => {
         if (!foundStudent) return [];
-        let yearKey: '1st-year' | '2nd-year' | '3rd-year' | '4th-year' = '1st-year';
-        if (foundStudent.year === 1) yearKey = '1st-year';
-        else if (foundStudent.year === 2) yearKey = '2nd-year';
-        else if (foundStudent.year === 3) yearKey = '3rd-year';
-        else if (foundStudent.year === 4) yearKey = '4th-year';
-        
-        return blocks.filter(b => {
-             const yearMatch = b.year === yearKey;
-             const courseMatch = b.course === foundStudent.course;
-             const specMatch = !foundStudent.specialization || b.specialization === foundStudent.specialization;
-             return yearMatch && courseMatch && specMatch;
+        const yearKey = numericYearToKey(foundStudent.year);
+        if (!yearKey) {
+            return [];
+        }
+
+        const isUpperYearStudent = requiresSpecializationForDirectEnroll;
+        const requiredSpecialization = isUpperYearStudent ? foundStudent.specialization ?? null : null;
+
+        return blocks.filter((block) => {
+            const yearMatch = block.year === yearKey;
+            const courseMatch = block.course === foundStudent.course;
+            const capacityMatch = block.capacity > block.enrolled;
+            const specMatch = !isUpperYearStudent
+                ? true
+                : requiredSpecialization
+                    ? block.specialization === requiredSpecialization
+                    : false;
+            return yearMatch && courseMatch && capacityMatch && specMatch;
         });
-    }, [blocks, foundStudent]);
+    }, [blocks, foundStudent, requiresSpecializationForDirectEnroll]);
+
+    useEffect(() => {
+        if (!directEnrollBlock) {
+            return;
+        }
+        const stillValid = availableBlocksForDirectEnroll.some((block) => block.name === directEnrollBlock);
+        if (!stillValid) {
+            setDirectEnrollBlock('');
+        }
+    }, [availableBlocksForDirectEnroll, directEnrollBlock]);
+
+    const activeSemester = useMemo(() => {
+        const validSemesters: SemesterValue[] = ['1st-sem', '2nd-sem', 'summer'];
+        return validSemesters.includes(adminData.semester as SemesterValue)
+            ? (adminData.semester as SemesterValue)
+            : '1st-sem';
+    }, [adminData.semester]);
 
     const availableSubjectsForDirectEnroll = useMemo(() => {
         if (!foundStudent) return [];
@@ -457,13 +632,14 @@ export default function ManageApplicationsPage() {
         if (foundStudent.year === 4) yearKey = '4th-year';
 
         const subjectsForYear = yearLevelSubjects[yearKey] ?? [];
-        const validSemesters: Array<'1st-sem' | '2nd-sem' | 'summer'> = ['1st-sem', '2nd-sem', 'summer'];
-        const activeSemester = validSemesters.includes(adminData.semester as '1st-sem' | '2nd-sem' | 'summer')
-            ? (adminData.semester as '1st-sem' | '2nd-sem' | 'summer')
-            : '1st-sem';
         const filtered = subjectsForYear.filter(subject => subject.semester === activeSemester);
         return filtered.length > 0 ? filtered : subjectsForYear;
-    }, [yearLevelSubjects, foundStudent, adminData.semester]);
+    }, [yearLevelSubjects, foundStudent, activeSemester]);
+
+    const semesterLabel = useMemo(() => {
+        const option = adminData.semesterOptions?.find((entry) => entry.value === adminData.semester);
+        return option?.label ?? adminData.semester ?? 'Current Term';
+    }, [adminData.semester, adminData.semesterOptions]);
 
 
     const completedSubjectsForEnrollment = useMemo(() => {
@@ -498,6 +674,28 @@ export default function ManageApplicationsPage() {
         return orderedSubjects;
     }, [applicationToEnroll, flattenedSubjectCatalog]);
 
+    const directSubjectOptions = useMemo(() => {
+        return availableSubjectsForDirectEnroll.map((subject) => {
+            const prerequisites = getSubjectPrerequisites(subject);
+            const unmetPrereqs = prerequisites.filter((code) => !completedSubjectsForFoundStudent.some((cs) => cs.code === code));
+            const eligible = unmetPrereqs.length === 0;
+            const ineligibilityReason = eligible
+                ? null
+                : `Prerequisite${unmetPrereqs.length > 1 ? 's' : ''} ${unmetPrereqs.join(', ')} not met.`;
+            return {
+                subject,
+                prerequisites,
+                eligible,
+                unmetPrereqs,
+                ineligibilityReason,
+            };
+        });
+    }, [availableSubjectsForDirectEnroll, completedSubjectsForFoundStudent]);
+
+    const totalUnitsSelected = useMemo(() => {
+        return directEnlistedSubjects.reduce((sum, subject) => sum + (subject.units ?? 0), 0);
+    }, [directEnlistedSubjects]);
+
     const enrollmentSpecialization = useMemo(() => {
         if (!applicationToEnroll?.formSnapshot) return null;
         const root = toRecord(applicationToEnroll.formSnapshot);
@@ -512,13 +710,19 @@ export default function ManageApplicationsPage() {
     }, [applicationToEnroll]);
 
     const allPrerequisites = useMemo(() => {
-        const prereqs = new Set<string>();
-        Object.values(yearLevelSubjects).flat().forEach((subject) => {
-            getSubjectPrerequisites(subject).forEach((code) => prereqs.add(code));
+        const semesterSubjects = Object.values(yearLevelSubjects)
+            .flat()
+            .filter((subject) => subject.semester === activeSemester);
+
+        const uniqueByCode = new Map<string, Subject>();
+        semesterSubjects.forEach((subject) => {
+            if (!uniqueByCode.has(subject.code)) {
+                uniqueByCode.set(subject.code, subject);
+            }
         });
-        const allSubjects = Object.values(yearLevelSubjects).flat();
-        return Array.from(prereqs).map((code) => allSubjects.find((s) => s.code === code)).filter(Boolean) as Subject[];
-    }, [yearLevelSubjects]);
+
+        return Array.from(uniqueByCode.values());
+    }, [yearLevelSubjects, activeSemester]);
 
     const openEnrollDialog = (application: Application) => {
         if (!canManageApprovedApplications) {
@@ -531,7 +735,28 @@ export default function ManageApplicationsPage() {
         setPrerequisiteOverrides([]);
     };
 
-  useEffect(() => {
+    const overrideSubjectsForEnrollment = useMemo(() => {
+        if (prerequisiteOverrides.length === 0) {
+            return [];
+        }
+        const uniqueCodes = Array.from(new Set(prerequisiteOverrides));
+        return uniqueCodes
+            .map((code) => subjectCatalogByCode.get(code))
+            .filter((subject): subject is Subject => Boolean(subject));
+    }, [prerequisiteOverrides, subjectCatalogByCode]);
+
+    const combinedSubjectsForEnrollment = useMemo(() => {
+        const byId = new Map<number, Subject>();
+        enlistedSubjects.forEach((subject) => byId.set(subject.id, subject));
+        overrideSubjectsForEnrollment.forEach((subject) => {
+            if (!byId.has(subject.id)) {
+                byId.set(subject.id, subject);
+            }
+        });
+        return Array.from(byId.values());
+    }, [enlistedSubjects, overrideSubjectsForEnrollment]);
+
+    useEffect(() => {
     setEnlistedSubjects([]);
   }, [enrollBlock]);
 
@@ -562,6 +787,9 @@ export default function ManageApplicationsPage() {
         const education = pickRecord(nestedForm, 'education') ?? pickRecord(root, 'education');
         const academic = pickRecord(nestedForm, 'academic') ?? pickRecord(root, 'academic');
         const student = pickRecord(root, 'student');
+        const transfereeDetails = pickRecord(academic, 'transfereeDetails')
+            ?? pickRecord(nestedForm, 'transfereeDetails')
+            ?? pickRecord(root, 'transfereeDetails');
 
         const firstName = getStringValue(personal, 'firstName');
         const middleName = getStringValue(personal, 'middleName');
@@ -631,6 +859,13 @@ export default function ManageApplicationsPage() {
                 secondaryYearGraduated: getStringValue(education, 'secondaryYearGraduated'),
                 collegiateSchool: getStringValue(education, 'collegiateSchool'),
             },
+            transfereeDetails: transfereeDetails
+                ? {
+                    previousSchool: getStringValue(transfereeDetails, 'previousSchool'),
+                    earnedUnits: getStringValue(transfereeDetails, 'earnedUnits'),
+                    notes: getStringValue(transfereeDetails, 'notes'),
+                }
+                : null,
             subjects,
         };
     }, [selectedApplication, flattenedSubjectCatalog]);
@@ -676,6 +911,7 @@ export default function ManageApplicationsPage() {
         const contactEmail = formReview?.contact?.email ?? formReview?.student?.email ?? null;
         const contactPhone = formReview?.contact?.phoneNumber ?? null;
         const reviewSubjects = formReview?.subjects ?? [];
+        const transfereeDetails = formReview?.transfereeDetails ?? selectedApplication?.transfereeDetails ?? null;
 
   const handleOpenRejectionDialog = (application: Application) => {
     setRejectionDialog({ isOpen: true, application });
@@ -700,6 +936,7 @@ export default function ManageApplicationsPage() {
         });
 
         await refreshAdminData();
+        notifyDataChanged();
 
         toast({
             title: 'Application Approved',
@@ -812,7 +1049,7 @@ export default function ManageApplicationsPage() {
       setFilters({ course: 'all', year: 'all', status: 'all' });
   };
 
-  const handleEnroll = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleEnroll = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!canManageApprovedApplications) {
@@ -845,12 +1082,16 @@ export default function ManageApplicationsPage() {
 
     setBusyAction(actionKey);
     try {
+        const subjectsToEnroll = combinedSubjectsForEnrollment.length > 0
+            ? combinedSubjectsForEnrollment
+            : availableSubjectsForEnrollment;
+
         await callAdminApi('finalize_enrollment.php', {
             mode: 'application',
             applicationId: applicationToEnroll.id,
             studentUserId: applicationToEnroll.studentUserId,
             blockName: enrollBlock,
-            subjectIds: enlistedSubjects.map(subject => subject.id),
+            subjectIds: subjectsToEnroll.map(subject => subject.id),
             prerequisiteOverrides,
         });
 
@@ -962,6 +1203,37 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
     ) : null
 );
 
+const RegisteredSubjectsPreview = ({ subjects, emptyMessage = 'No subjects selected yet.' }: { subjects: Subject[]; emptyMessage?: string }) => (
+        <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+            <Table>
+                <TableHeader className="bg-white/5">
+                    <TableRow className="border-white/10">
+                        <TableHead className="text-slate-400">Code</TableHead>
+                        <TableHead className="text-slate-400">Description</TableHead>
+                        <TableHead className="text-slate-400">Units</TableHead>
+                        <TableHead className="text-slate-400">Schedule</TableHead>
+                        <TableHead className="text-slate-400">Instructor</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {subjects.length > 0 ? subjects.map((subject) => (
+                        <TableRow key={`preview-${subject.id}`} className="border-white/5 hover:bg-white/5">
+                            <TableCell className="font-medium text-white/90">{subject.code}</TableCell>
+                            <TableCell className="text-slate-200">{subject.description}</TableCell>
+                            <TableCell className="text-slate-100">{subject.units}</TableCell>
+                            <TableCell className="text-slate-400 text-xs">TBA</TableCell>
+                            <TableCell className="text-slate-400 text-xs">TBA</TableCell>
+                        </TableRow>
+                    )) : (
+                        <TableRow className="border-white/5">
+                            <TableCell colSpan={5} className="text-center text-slate-500">{emptyMessage}</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
+
   return (
     <>
         <main className="flex-1 p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -1010,132 +1282,271 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                         {directEnrollStep === 2 && foundStudent && (
                             <>
                                 <DialogHeader>
-                                    <DialogTitle className="text-white">Direct Enrollment: Assign Block & Subjects</DialogTitle>
+                                    <DialogTitle className="text-white flex items-center gap-2">
+                                        <FileSignature className="h-5 w-5 text-emerald-400" />
+                                        Direct Enrollment Sheet
+                                    </DialogTitle>
                                     <DialogDescription className="text-slate-400">
-                                        Assign a block and subjects for {foundStudent.name}.
+                                        Review the student-facing summary while the registrar assigns their block and term subjects.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-4">
-                                    <Card className="p-4 rounded-xl bg-transparent border-white/10">
-                                        <div className="flex items-start gap-4">
-                                            <Avatar className="h-16 w-16 border-2 border-white/10">
-                                                <AvatarImage src={foundStudent.avatar} alt={foundStudent.name} />
-                                                <AvatarFallback className="bg-blue-600 text-white">{foundStudent.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="grid gap-0.5 text-sm text-slate-300">
-                                                <p className="font-semibold text-base text-white">{foundStudent.name}</p>
-                                                <p><span className="text-slate-500">Email:</span> {foundStudent.email}</p>
-                                                <p><span className="text-slate-500">Phone:</span> {foundStudent.phoneNumber}</p>
-                                                <p><span className="text-slate-500">Sex:</span> {foundStudent.sex}</p>
-                                                <p><span className="text-slate-500">Current Level:</span> {foundStudent.course} - {foundStudent.year} Year</p>
-                                                 <p><span className="text-slate-500">Units Earned:</span> {totalUnitsForFoundStudent}</p>
+                                <div className="space-y-6 py-2 max-h-[70vh] overflow-y-auto pr-3">
+                                    <section className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent p-5">
+                                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                                            <div>
+                                                <p className="text-xs uppercase tracking-[0.2em] text-emerald-300 font-semibold">Official Preview</p>
+                                                <h3 className="text-2xl font-semibold text-white mt-2 flex items-center gap-2">
+                                                    <CheckCircle className="h-5 w-5 text-emerald-300" />
+                                                    {adminData.academicYear} • {semesterLabel}
+                                                </h3>
+                                                <p className="text-slate-200 text-sm mt-1">This is exactly how the student will see their enrollment confirmation.</p>
                                             </div>
+                                            <Badge variant="outline" className="px-3 py-1 rounded-full border-emerald-400/30 text-emerald-200 bg-emerald-500/10">
+                                                {activeSemester.replace('-', ' ')} Term
+                                            </Badge>
                                         </div>
-                                    </Card>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="block" className="text-slate-300">Block</Label>
-                                        <Select value={directEnrollBlock} onValueChange={setDirectEnrollBlock} required>
-                                            <SelectTrigger id="block" className="rounded-xl bg-transparent border-white/10 text-white focus:ring-blue-500/20"><SelectValue placeholder="Select a block" /></SelectTrigger>
-                                            <SelectContent className="rounded-xl bg-slate-900/95 border-white/10 text-slate-200">
-                                                {availableBlocksForDirectEnroll.map(b => (
-                                                    <SelectItem key={b.id} value={b.name} className="focus:bg-white/10 focus:text-white">{b.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    {directEnrollBlock && availableSubjectsForDirectEnroll.length > 0 && (
-                                        <div className="space-y-3 mt-4 pt-4 border-t border-white/10">
-                                            <h4 className="font-medium text-white">Enlist Subjects</h4>
+                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6 text-sm">
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Student Name</p>
+                                                <p className="text-white font-medium">{foundStudent.name}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Student ID</p>
+                                                <p className="text-white font-medium">{foundStudent.studentId}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Program</p>
+                                                <p className="text-white font-medium">{foundStudent.course}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Year Level</p>
+                                                <p className="text-white font-medium">{foundStudent.year} Year</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Status</p>
+                                                <Badge className="bg-blue-600/80">{foundStudent.status ?? 'Not Enrolled'}</Badge>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Units Credited</p>
+                                                <p className="text-white font-medium">{totalUnitsForFoundStudent}</p>
+                                            </div>
+                                            {requiresSpecializationForDirectEnroll && (
+                                                <div>
+                                                    <p className="text-slate-400 text-xs uppercase tracking-wide">Specialization</p>
+                                                    <p className={cn('text-white font-medium', !foundStudentSpecializationLabel && 'text-amber-300')}>
+                                                        {foundStudentSpecializationLabel ?? 'Not set'}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+
+                                    <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                                        <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
                                             <div className="space-y-2">
-                                                {availableSubjectsForDirectEnroll.map((subject) => {
-                                                    const prerequisitesMet = hasMetPrerequisites(subject, completedSubjectsForFoundStudent);
-                                                    return (
-                                                        <div key={subject.id} className={cn("flex items-center space-x-2 p-2 border rounded-md border-white/10", prerequisitesMet ? "bg-transparent" : "bg-red-500/5 border-red-500/20")}>
-                                                            <SubjectCheckbox
-                                                                subject={subject}
-                                                                checked={directEnlistedSubjects.some((s) => s.id === subject.id)}
-                                                                onCheckedChange={(checked) => {
-                                                                    if (checked) {
-                                                                        setDirectEnlistedSubjects((prev) => [...prev, subject]);
-                                                                    } else {
-                                                                        setDirectEnlistedSubjects((prev) => prev.filter((s) => s.id !== subject.id));
-                                                                    }
-                                                                }}
-                                                                completedSubjects={completedSubjectsForFoundStudent}
-                                                            />
-                                                            <Label htmlFor={`sub-${subject.id}`} className={cn("flex-1 font-normal text-slate-300", !prerequisitesMet && "text-red-400")}>
-                                                                {subject.code} - {subject.description}
-                                                            </Label>
-                                                            <span className="text-xs text-slate-500">{subject.units} units</span>
-                                                        </div>
-                                                    );
-                                                })}
+                                                <Label htmlFor="block" className="text-slate-300">Assign Block</Label>
+                                                {requiresSpecializationForDirectEnroll && (
+                                                    <p className="text-xs text-slate-400">
+                                                        Specialization: {foundStudentSpecializationLabel ?? <span className="text-red-300">Not set</span>}
+                                                    </p>
+                                                )}
+                                                <Select value={directEnrollBlock} onValueChange={setDirectEnrollBlock} required>
+                                                    <SelectTrigger
+                                                        id="block"
+                                                        disabled={availableBlocksForDirectEnroll.length === 0}
+                                                        className="rounded-xl bg-transparent border-white/10 text-white focus:ring-blue-500/20 disabled:opacity-60"
+                                                    >
+                                                        <SelectValue placeholder="Select a block" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl bg-slate-900/95 border-white/10 text-slate-200">
+                                                        {availableBlocksForDirectEnroll.map((b) => (
+                                                            <SelectItem key={b.id} value={b.name} className="focus:bg-white/10 focus:text-white">{b.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                {availableBlocksForDirectEnroll.length === 0 && (
+                                                    <p className="text-xs text-amber-300">
+                                                        No available blocks matched this student’s year level, course, specialization, or remaining slots.
+                                                    </p>
+                                                )}
+                                                {requiresSpecializationForDirectEnroll && !foundStudent?.specialization && (
+                                                    <p className="text-xs text-red-300">
+                                                        Assign a specialization to this student first so matching 3rd/4th year blocks appear.
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="grid gap-3 text-sm">
+                                                <p className="text-slate-400"><span className="text-slate-500">Email:</span> {foundStudent.email}</p>
+                                                <p className="text-slate-400"><span className="text-slate-500">Phone:</span> {foundStudent.phoneNumber}</p>
+                                                <p className="text-slate-400"><span className="text-slate-500">Sex:</span> {foundStudent.sex}</p>
+                                                <p className="text-slate-400"><span className="text-slate-500">Profile Status:</span> {foundStudent.profileStatus ?? 'Old'}</p>
                                             </div>
                                         </div>
-                                    )}
+
+                                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <h4 className="font-semibold text-white">Enlist Subjects</h4>
+                                                    <p className="text-xs text-slate-400">Pick the subjects this student will take this term.</p>
+                                                </div>
+                                                <Badge variant="outline" className="border-white/10 bg-white/5 text-slate-200">
+                                                    {directEnlistedSubjects.length} Selected
+                                                </Badge>
+                                            </div>
+                                            {directSubjectOptions.length > 0 ? (
+                                                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                                                    {directSubjectOptions.map(({ subject, eligible, prerequisites, ineligibilityReason }) => {
+                                                        const isSelected = directEnlistedSubjects.some((s) => s.id === subject.id);
+                                                        return (
+                                                            <div
+                                                                key={subject.id}
+                                                                className={cn(
+                                                                    'rounded-xl border p-4 transition-all duration-200',
+                                                                    isSelected
+                                                                        ? 'border-blue-500/60 bg-blue-500/5 ring-1 ring-blue-400/20'
+                                                                        : 'border-white/10 hover:border-white/30',
+                                                                    !eligible && 'opacity-60'
+                                                                )}
+                                                            >
+                                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                                    <div className="flex items-start gap-3 flex-1">
+                                                                        <Checkbox
+                                                                            checked={isSelected}
+                                                                            disabled={!eligible}
+                                                                            className="mt-1"
+                                                                            onCheckedChange={(checked) => {
+                                                                                if (!eligible) {
+                                                                                    return;
+                                                                                }
+                                                                                if (checked) {
+                                                                                    setDirectEnlistedSubjects((prev) => [...prev, subject]);
+                                                                                } else {
+                                                                                    setDirectEnlistedSubjects((prev) => prev.filter((s) => s.id !== subject.id));
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <div className="space-y-1">
+                                                                            <p className="font-semibold text-sm text-white">
+                                                                                {subject.code} — {subject.description}
+                                                                            </p>
+                                                                            {prerequisites.length > 0 && (
+                                                                                <p className="text-xs text-slate-400">
+                                                                                    Prerequisites: {prerequisites.join(', ')}
+                                                                                </p>
+                                                                            )}
+                                                                            {!eligible && ineligibilityReason && (
+                                                                                <div className="flex items-start gap-2 text-xs text-red-300 bg-red-500/10 p-2 rounded-lg">
+                                                                                    <AlertCircle className="h-3.5 w-3.5 mt-0.5" />
+                                                                                    <span>{ineligibilityReason}</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <Badge variant="outline" className="text-sm font-medium px-3 py-1 h-auto">
+                                                                        {subject.units} Units
+                                                                    </Badge>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-slate-400 mt-3">No subjects are available for the selected student this semester.</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <section>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2 text-white">
+                                                <ClipboardList className="h-4 w-4 text-blue-400" />
+                                                <h4 className="font-semibold">Registered Subjects Preview</h4>
+                                            </div>
+                                            <Badge variant="outline" className="border-white/10 bg-white/5 text-slate-200">
+                                                {directEnlistedSubjects.length} item{directEnlistedSubjects.length === 1 ? '' : 's'}
+                                            </Badge>
+                                        </div>
+                                        <RegisteredSubjectsPreview subjects={directEnlistedSubjects} emptyMessage="No subjects selected yet. Choose at least one subject above." />
+                                    </section>
                                 </div>
                                 <DialogFooter className="sm:justify-between">
                                     <Button variant="outline" onClick={() => setDirectEnrollStep(1)} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">Back</Button>
-                                    <Button onClick={() => setDirectEnrollStep(3)} className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0">Review</Button>
+                                    <Button
+                                        onClick={() => setDirectEnrollStep(3)}
+                                        className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
+                                        disabled={!directEnrollBlock || directEnlistedSubjects.length === 0}
+                                    >
+                                        Enroll Student
+                                    </Button>
                                 </DialogFooter>
                             </>
                         )}
                         {directEnrollStep === 3 && foundStudent && (
                              <>
                                 <DialogHeader>
-                                    <DialogTitle className="text-white">Review Enrollment</DialogTitle>
+                                    <DialogTitle className="text-white flex items-center gap-2">
+                                        <CheckCircle className="h-5 w-5 text-emerald-400" />
+                                        Submit Enrollment Request
+                                    </DialogTitle>
                                     <DialogDescription className="text-slate-400">
-                                        Please review the details below before finalizing the enrollment for {foundStudent.name}.
+                                        Review what the student will see before sending this request for pending approval.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <div className="space-y-6 py-2 max-h-[60vh] overflow-y-auto pr-4">
-                                     <Card className="p-4 rounded-xl bg-transparent border-white/10">
-                                        <div className="grid gap-1 text-sm text-slate-300">
-                                            <p className="font-semibold text-base text-white">{foundStudent.name}</p>
-                                            <p><span className="text-slate-500">ID:</span> {foundStudent.studentId}</p>
-                                            <p><span className="text-slate-500">Course:</span> {foundStudent.course} - {foundStudent.year} Year</p>
+                                <div className="space-y-6 py-2 max-h-[70vh] overflow-y-auto pr-3">
+                                     <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                                            <div>
+                                                <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">Enrollment Request</p>
+                                                <h3 className="text-2xl font-semibold text-white mt-2">{foundStudent.name}</h3>
+                                                <p className="text-slate-300 text-sm mt-1">{adminData.academicYear} • {semesterLabel}</p>
+                                            </div>
+                                            <Badge className="bg-emerald-500/15 text-emerald-200 border-emerald-400/30 rounded-full px-4 py-1">
+                                                {directEnrollBlock || 'No block selected yet'}
+                                            </Badge>
                                         </div>
-                                    </Card>
-                                    <div>
-                                        <h4 className="font-semibold mb-2 text-white">Enrollment Details</h4>
-                                        <div className="grid gap-1 text-sm p-3 border rounded-lg border-white/10 bg-transparent">
-                                            <p className="text-slate-300"><span className="text-slate-500">Assigned Block:</span> <span className="font-medium text-white">{directEnrollBlock}</span></p>
+                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6 text-sm">
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Student ID</p>
+                                                <p className="text-white font-medium">{foundStudent.studentId}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Program</p>
+                                                <p className="text-white font-medium">{foundStudent.course}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Year Level</p>
+                                                <p className="text-white font-medium">{foundStudent.year} Year</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Status</p>
+                                                <Badge variant="secondary" className="bg-blue-600/30 text-blue-100 border-blue-400/30">Pending Review</Badge>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Units Selected</p>
+                                                <p className="text-white font-medium">{totalUnitsSelected}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 text-xs uppercase tracking-wide">Instructor Action</p>
+                                                <p className="text-white font-medium">Pending confirmation</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                     <div>
-                                        <h4 className="font-semibold mb-2 text-white">Enlisted Subjects ({directEnlistedSubjects.length})</h4>
-                                        <div className="border rounded-lg max-h-40 overflow-y-auto border-white/10 bg-transparent">
-                                            <Table>
-                                                <TableHeader className="bg-transparent">
-                                                    <TableRow className="border-white/10 hover:bg-transparent">
-                                                        <TableHead className="text-slate-400">Code</TableHead>
-                                                        <TableHead className="text-slate-400">Description</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                {directEnlistedSubjects.length > 0 ? directEnlistedSubjects.map(sub => (
-                                                    <TableRow key={sub.id} className="border-white/5 hover:bg-white/5">
-                                                        <TableCell className="text-slate-300">{sub.code}</TableCell>
-                                                        <TableCell className="text-slate-300">{sub.description}</TableCell>
-                                                    </TableRow>
-                                                )) : (
-                                                    <TableRow className="border-white/5 hover:bg-transparent">
-                                                        <TableCell colSpan={2} className="text-center text-slate-500">No subjects enlisted.</TableCell>
-                                                    </TableRow>
-                                                )}
-                                                </TableBody>
-                                            </Table>
+                                    </section>
+                                    <section>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <ClipboardList className="h-4 w-4 text-blue-400" />
+                                            <h4 className="font-semibold text-white">Registered Subjects ({directEnlistedSubjects.length})</h4>
                                         </div>
-                                    </div>
+                                        <RegisteredSubjectsPreview subjects={directEnlistedSubjects} emptyMessage="No subjects selected; go back and choose at least one subject." />
+                                    </section>
                                 </div>
                                 <DialogFooter>
                                     <Button variant="outline" onClick={() => setDirectEnrollStep(2)} className="rounded-xl border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">Back</Button>
                                     <Button
                                         onClick={handleDirectEnrollSubmit}
                                         className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white border-0"
-                                        disabled={foundStudent ? isBusy(`direct-enroll-${foundStudent.id}`) : false}
+                                        disabled={!directEnrollBlock || directEnlistedSubjects.length === 0 || (foundStudent ? isBusy(`direct-enroll-${foundStudent.id}`) : false)}
                                     >
-                                        Confirm Enrollment
+                                        Submit Enrollment
                                     </Button>
                                 </DialogFooter>
                             </>
@@ -1493,6 +1904,8 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                             && Boolean(selectedApplication.formSnapshot)
                                         );
 
+                                        const docUrl = resolveDocumentUrl(statusInfo.document, API_BASE_URL);
+
                                         return (
                                             <div key={credential.key} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors group">
                                                 <div className="flex items-center gap-3">
@@ -1507,7 +1920,21 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                                         </div>
                                                     </div>
                                                 </div>
-                                                
+                                                <div className="flex items-center gap-2">
+                                                {docUrl && (
+                                                    <Button
+                                                        asChild
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 px-3 rounded-lg border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+                                                    >
+                                                        <a href={docUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                                                            <Download className="h-4 w-4" />
+                                                            <span>Open</span>
+                                                        </a>
+                                                    </Button>
+                                                )}
+
                                                 {canViewForm && (
                                                     <Button 
                                                         variant="outline" 
@@ -1518,6 +1945,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                                         View Form
                                                     </Button>
                                                 )}
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -1762,6 +2190,31 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                     </div>
                                 </div>
 
+                                {(selectedApplication.status === 'Transferee' || transfereeDetails) && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+                                                <BookOpen className="h-4 w-4" />
+                                            </div>
+                                            <h4 className="font-semibold text-white">Transferee Details</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                                            <div className="space-y-1 sm:col-span-2">
+                                                <p className="text-xs text-slate-500 uppercase tracking-wider">Previous School</p>
+                                                <p className="font-medium text-white">{withFallback(transfereeDetails?.previousSchool ?? selectedApplication.transfereeDetails?.previousSchool ?? null)}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-slate-500 uppercase tracking-wider">Earned Units</p>
+                                                <p className="font-medium text-white">{withFallback(transfereeDetails?.earnedUnits ?? selectedApplication.transfereeDetails?.earnedUnits ?? null, 'Not specified')}</p>
+                                            </div>
+                                            <div className="space-y-1 sm:col-span-3">
+                                                <p className="text-xs text-slate-500 uppercase tracking-wider">Notes</p>
+                                                <p className="font-medium text-white whitespace-pre-line">{withFallback(transfereeDetails?.notes ?? selectedApplication.transfereeDetails?.notes ?? null, 'No additional notes')}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Enlisted Subjects */}
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
@@ -1915,7 +2368,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                 </div>
                             </div>
 
-                            {(applicationToEnroll.status === 'Transferee' || applicationToEnroll.status === 'New') && allPrerequisites.length > 0 && (
+                            {applicationToEnroll.status === 'Transferee' && allPrerequisites.length > 0 && (
                                  <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                         <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
@@ -1923,7 +2376,7 @@ const ReviewField = ({ label, value }: { label: string, value?: string | null })
                                         </div>
                                         <div>
                                             <h4 className="font-semibold text-white">Credential Override</h4>
-                                            <p className="text-xs text-slate-400">For transferees or new students, manually credit any prerequisites they have fulfilled.</p>
+                                            <p className="text-xs text-slate-400">For transferees, credit subjects from this semester across all year levels.</p>
                                         </div>
                                     </div>
                                     

@@ -126,28 +126,38 @@ export default function EnrollmentPage() {
         return parsed.toLocaleString();
     };
 
+    const extractSnapshotSubjectCodes = (snapshot: unknown): string[] => {
+        if (!snapshot || typeof snapshot !== 'object') {
+            return [];
+        }
+        const root = snapshot as Record<string, any>;
+        const candidates = [
+            root.subjects,
+            root.academic?.subjects,
+            root.formSnapshot?.subjects,
+            root.formSnapshot?.academic?.subjects,
+        ];
+        for (const candidate of candidates) {
+            if (Array.isArray(candidate) && candidate.length > 0) {
+                return candidate.filter((code): code is string => typeof code === 'string' && code.trim() !== '');
+            }
+        }
+        return [];
+    };
+
     const renderSnapshotSubjects = () => {
         if (!currentApplication?.formSnapshot) {
             return null;
         }
 
-        const snapshot = currentApplication.formSnapshot as {
-            formSnapshot?: {
-                personal?: Record<string, unknown>;
-                academic?: { subjects?: string[] };
-            };
-            academic?: { subjects?: string[] };
-        };
-
-        const subjects = snapshot?.academic?.subjects ?? snapshot?.formSnapshot?.academic?.subjects ?? null;
-
-        if (!Array.isArray(subjects) || subjects.length === 0) {
+        const subjectCodes = extractSnapshotSubjectCodes(currentApplication.formSnapshot);
+        if (subjectCodes.length === 0) {
             return null;
         }
 
         const subjectDefinitions = adminData.subjects;
         const flattenedSubjects = Object.values(subjectDefinitions).flat();
-        const matchedSubjects = subjects.map(code => {
+        const matchedSubjects = subjectCodes.map(code => {
             const match = flattenedSubjects.find(subject => subject.code === code);
             return match ? match : { code, description: 'Subject information unavailable', units: 0 };
         });

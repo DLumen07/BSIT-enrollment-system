@@ -73,6 +73,7 @@ function default_credentials(): array {
         'grades' => false,
         'goodMoral' => false,
         'registrationForm' => false,
+        'transcript' => false,
     ];
 }
 
@@ -999,6 +1000,99 @@ SQL;
                 $formSnapshot = $decodedForm;
             }
 
+            $extractStudentStatus = static function ($formSnapshot) {
+                if (!is_array($formSnapshot)) {
+                    return null;
+                }
+
+                $getString = static function ($value) {
+                    if (!is_string($value)) {
+                        return null;
+                    }
+                    $trimmed = trim($value);
+                    return $trimmed === '' ? null : $trimmed;
+                };
+
+                $status = $getString($formSnapshot['studentStatus'] ?? null);
+                if ($status !== null) {
+                    return $status;
+                }
+
+                $nested = $formSnapshot['formSnapshot'] ?? null;
+                if (is_array($nested)) {
+                    $status = $getString($nested['studentStatus'] ?? null);
+                    if ($status !== null) {
+                        return $status;
+                    }
+
+                    $academic = $nested['academic'] ?? null;
+                    if (is_array($academic)) {
+                        $status = $getString($academic['status'] ?? null);
+                        if ($status !== null) {
+                            return $status;
+                        }
+                    }
+                }
+
+                $academicRoot = $formSnapshot['academic'] ?? null;
+                if (is_array($academicRoot)) {
+                    $status = $getString($academicRoot['status'] ?? null);
+                    if ($status !== null) {
+                        return $status;
+                    }
+                }
+
+                return null;
+            };
+
+            $transfereeDetails = null;
+            $extractTransfereeDetails = static function ($source) {
+                if (!is_array($source)) {
+                    return null;
+                }
+
+                $getString = static function ($value) {
+                    if (!is_string($value)) {
+                        return null;
+                    }
+                    $trimmed = trim($value);
+                    return $trimmed === '' ? null : $trimmed;
+                };
+
+                $previousSchool = $getString($source['previousSchool'] ?? null);
+                $earnedUnits = $getString($source['earnedUnits'] ?? null);
+                $notes = $getString($source['notes'] ?? null);
+
+                if ($previousSchool === null && $earnedUnits === null && $notes === null) {
+                    return null;
+                }
+
+                return [
+                    'previousSchool' => $previousSchool,
+                    'earnedUnits' => $earnedUnits,
+                    'notes' => $notes,
+                ];
+            };
+
+            // Prefer direct transfereeDetails field, then nested within form snapshot academic data.
+            if (isset($decodedForm['transfereeDetails']) && is_array($decodedForm['transfereeDetails'])) {
+                $transfereeDetails = $extractTransfereeDetails($decodedForm['transfereeDetails']);
+            }
+
+            if ($transfereeDetails === null && is_array($formSnapshot)) {
+                if (isset($formSnapshot['transfereeDetails']) && is_array($formSnapshot['transfereeDetails'])) {
+                    $transfereeDetails = $extractTransfereeDetails($formSnapshot['transfereeDetails']);
+                }
+
+                $snapshotForm = $formSnapshot['formSnapshot'] ?? null;
+                if ($transfereeDetails === null && is_array($snapshotForm)) {
+                    $academic = $snapshotForm['academic'] ?? null;
+                    if (is_array($academic) && isset($academic['transfereeDetails'])) {
+                        $transfereeDetails = $extractTransfereeDetails($academic['transfereeDetails']);
+                    }
+                }
+            }
+
             $studentUserId = isset($row['student_user_id']) ? (int) $row['student_user_id'] : 0;
             if ($studentUserId > 0) {
                 $studentIdsForDocuments[$studentUserId] = true;
@@ -1008,6 +1102,12 @@ SQL;
             if ($profileStatus === '') {
                 $profileStatus = 'Old';
             }
+            $snapshotStatus = $extractStudentStatus($formSnapshot);
+            $applicationStatusRaw = $snapshotStatus ?? $profileStatus;
+            $applicationStatus = normalize_status_label($applicationStatusRaw);
+            if ($applicationStatus === '') {
+                $applicationStatus = $profileStatus;
+            }
             $enrollmentTrack = normalize_enrollment_track($row['enrollment_track'] ?? '');
             $application = [
                 'id' => (int) $row['id'],
@@ -1016,11 +1116,12 @@ SQL;
                 'name' => $row['student_name'],
                 'course' => $row['course'],
                 'year' => (int) $row['year_level'],
-                'status' => $profileStatus,
+                'status' => $applicationStatus,
                 'enrollmentTrack' => $enrollmentTrack,
-                'statusDisplay' => compose_profile_status_display($profileStatus, $enrollmentTrack),
+                'statusDisplay' => compose_profile_status_display($applicationStatus, $enrollmentTrack),
                 'block' => $row['block_name'],
                 'credentials' => $credentials,
+                'transfereeDetails' => $transfereeDetails,
                 'rejectionReason' => $row['rejection_reason'] ?? null,
                 'submittedAt' => $row['submitted_at'],
                 'formSnapshot' => $formSnapshot,

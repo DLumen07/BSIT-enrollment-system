@@ -137,6 +137,70 @@ function normalize_last_name(string $lastName, string $middleName): string {
     return trim($candidate);
 }
 
+function compose_full_name_from_parts(string $firstName, string $middleName, string $lastName): string {
+    $segments = [];
+    foreach ([$firstName, $middleName, $lastName] as $segment) {
+        $normalized = preg_replace('/\s+/u', ' ', trim($segment));
+        if (!is_string($normalized) || $normalized === '') {
+            continue;
+        }
+
+        $duplicate = false;
+        foreach ($segments as $existing) {
+            if (strcasecmp($existing, $normalized) === 0) {
+                $duplicate = true;
+                break;
+            }
+        }
+
+        if (!$duplicate) {
+            $segments[] = $normalized;
+        }
+    }
+
+    return implode(' ', $segments);
+}
+
+function normalize_for_comparison(string $value): string {
+    $collapsed = preg_replace('/\s+/u', ' ', trim($value));
+    if (!is_string($collapsed) || $collapsed === '') {
+        $collapsed = trim($value);
+    }
+
+    return mb_strtolower($collapsed, 'UTF-8');
+}
+
+function ensure_student_profile_name_columns(mysqli $conn): void {
+    static $ensured = false;
+
+    if ($ensured) {
+        return;
+    }
+
+    $definitions = [
+        'first_name' => 'ADD COLUMN first_name varchar(255) DEFAULT NULL AFTER student_id_number',
+        'last_name' => 'ADD COLUMN last_name varchar(255) DEFAULT NULL AFTER middle_name',
+    ];
+
+    foreach ($definitions as $column => $definition) {
+        $safeColumn = $conn->real_escape_string($column);
+        $columnResult = $conn->query("SHOW COLUMNS FROM student_profiles LIKE '{$safeColumn}'");
+        if (!$columnResult) {
+            throw new Exception('Failed to inspect student_profiles columns: ' . $conn->error, 500);
+        }
+        $exists = $columnResult->num_rows > 0;
+        $columnResult->free();
+
+        if (!$exists) {
+            if (!$conn->query("ALTER TABLE student_profiles {$definition}")) {
+                throw new Exception('Failed to update student_profiles schema: ' . $conn->error, 500);
+            }
+        }
+    }
+
+    $ensured = true;
+}
+
 function map_year_level(int $yearLevel): string {
     switch ($yearLevel) {
         case 1:
@@ -667,6 +731,7 @@ $transactionStarted = false;
 
 try {
     $conn->set_charset('utf8mb4');
+    ensure_student_profile_name_columns($conn);
 
     $lookupSql = 'SELECT sp.user_id, u.email
                    FROM student_profiles sp
@@ -725,16 +790,53 @@ try {
     }
 
     $lastName = normalize_last_name($lastName, $middleName);
+    $fullName = compose_full_name_from_parts($firstName, $middleName, $lastName);
+    $firstNameKey = normalize_for_comparison($firstName);
+    $lastNameKey = normalize_for_comparison($lastName);
+    $fullNameKey = normalize_for_comparison($fullName);
+    $firstNameCompactKey = str_replace(' ', '', $firstNameKey);
+    $lastNameCompactKey = str_replace(' ', '', $lastNameKey);
+    $fullNameCompactKey = str_replace(' ', '', $fullNameKey);
 
-    $fullNameParts = array_filter([$firstName, $middleName, $lastName], static function ($part) {
-        return $part !== '';
-    });
-    $fullName = count($fullNameParts) > 0 ? implode(' ', $fullNameParts) : $firstName;
+    // Block updates that would create the same normalized name combination as another student.
+    $nameCheckSql = <<<SQL
+        SELECT sp.student_id_number
+        FROM student_profiles sp
+        WHERE sp.user_id <> ?
+          AND (
+                (
+                    sp.first_name IS NOT NULL
+                    AND sp.last_name IS NOT NULL
+                    AND REPLACE(LOWER(sp.first_name), ' ', '') = ?
+                    AND REPLACE(LOWER(sp.last_name), ' ', '') = ?
+                )
+                OR REPLACE(LOWER(sp.name), ' ', '') = ?
+          )
+        LIMIT 1
+    SQL;
+
+    $nameCheckStmt = $conn->prepare($nameCheckSql);
+    if (!$nameCheckStmt) {
+        throw new Exception('Failed to prepare duplicate name check: ' . $conn->error, 500);
+    }
+    $nameCheckStmt->bind_param('isss', $studentUserId, $firstNameCompactKey, $lastNameCompactKey, $fullNameCompactKey);
+    $nameCheckStmt->execute();
+    $nameCheckStmt->bind_result($existingStudentIdForName);
+    if ($nameCheckStmt->fetch()) {
+        $nameCheckStmt->close();
+        $existingStudentIdLabel = $existingStudentIdForName !== null && $existingStudentIdForName !== ''
+            ? ' (Student ID: ' . $existingStudentIdForName . ')'
+            : '';
+        throw new Exception('Another student profile already uses this name combination' . $existingStudentIdLabel . '.', 409);
+    }
+    $nameCheckStmt->close();
 
     $updateProfileSql = <<<SQL
         UPDATE student_profiles SET
-            name = ?,
+            first_name = ?,
             middle_name = NULLIF(?, ''),
+            last_name = ?,
+            name = ?,
             birthdate = NULLIF(?, ''),
             sex = NULLIF(?, ''),
             civil_status = NULLIF(?, ''),
@@ -766,11 +868,13 @@ try {
         throw new Exception('Failed to prepare student profile update statement: ' . $conn->error, 500);
     }
 
-    $parameterTypes = str_repeat('s', 24) . 'i';
+    $parameterTypes = str_repeat('s', 26) . 'i';
     $updateProfileStmt->bind_param(
         $parameterTypes,
-        $fullName,
+        $firstName,
         $middleName,
+        $lastName,
+        $fullName,
         $birthdateForDb,
         $sex,
         $civilStatus,
